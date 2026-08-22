@@ -1,0 +1,157 @@
+<style>
+    .ltb-summary {
+        display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+        background: linear-gradient(135deg, rgba(157,132,255,0.14), rgba(157,132,255,0.04));
+        border: 1px solid var(--border); border-radius: 10px; padding: 0.7rem 1.1rem; margin-bottom: 1.25rem;
+        cursor: pointer; user-select: none;
+    }
+    .ltb-summary-left { display: flex; align-items: center; gap: 0.55rem; font-size: 0.88rem; font-weight: 600; }
+    @property --ltb-live-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+    @keyframes ltbLiveBorderSweep { to { --ltb-live-angle: 360deg; } }
+    .ltb-live-badge {
+        position: relative; display: inline-flex; align-items: center; font-size: 0.65rem; font-weight: 800;
+        letter-spacing: 0.05em; color: hsl(253deg 70% 55%);
+        background: color-mix(in srgb, hsl(253deg 70% 55%) 12%, transparent);
+        padding: 0.15rem 0.45rem; border-radius: 999px;
+    }
+    .ltb-live-badge::before {
+        content: ""; position: absolute; inset: -1.5px; border-radius: 999px; padding: 1.5px;
+        background: conic-gradient(from var(--ltb-live-angle), transparent 0%, hsl(298deg 70% 60%) 12%, transparent 32%);
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor; mask-composite: exclude;
+        animation: ltbLiveBorderSweep 2.4s linear infinite;
+        pointer-events: none;
+    }
+    .ltb-summary-chevron { width: 14px; height: 14px; stroke: var(--text-light); fill: none; stroke-width: 2; transition: transform 0.2s ease; }
+    .ltb-summary.expanded .ltb-summary-chevron { transform: rotate(180deg); }
+
+    .ltb-stack { display: none; margin: -0.5rem 0 1.25rem; }
+    .ltb-stack.expanded { display: block; }
+
+    .ltb-banner {
+        background: var(--bg-white); border: 1px solid var(--border); border-radius: 10px;
+        padding: 1.1rem 1.35rem; margin-top: 0.6rem;
+        display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap;
+    }
+    .ltb-left { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
+    .ltb-title { font-size: 1rem; font-weight: 700; }
+    .ltb-sub { font-size: 0.8rem; color: var(--text-light); }
+    .ltb-code {
+        font-family: ui-monospace, Consolas, monospace; font-size: 1.5rem; font-weight: 800;
+        letter-spacing: 0.12em; color: var(--primary); background: rgba(157,132,255,0.12);
+        padding: 0.25rem 0.75rem; border-radius: 10px;
+    }
+    .ltb-stats { display: flex; gap: 1.5rem; }
+    .ltb-stat .n { font-size: 1.25rem; font-weight: 800; color: var(--text-dark); font-variant-numeric: tabular-nums; }
+    .ltb-stat .k { font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-light); }
+    .ltb-present-link {
+        white-space: nowrap; text-decoration: none; padding: 0.55rem 1.1rem; border-radius: 8px;
+        background: var(--primary); color: #fff; font-weight: 700; font-size: 0.85rem;
+    }
+    .ltb-present-link:hover { background: var(--primary-dark); }
+    .ltb-manage-link {
+        white-space: nowrap; text-decoration: none; padding: 0.55rem 1.1rem; border-radius: 8px;
+        border: 1px solid var(--border); background: var(--bg-white); color: var(--text-dark);
+        font-weight: 700; font-size: 0.85rem;
+    }
+    .ltb-manage-link:hover { border-color: var(--primary); color: var(--primary); }
+</style>
+<div id="liveTestBannerContainer"></div>
+<script>
+(function() {
+    const CURRENT_PAPER_ID = {{ (request.view_args.get('paper_id') if request.view_args else None) | tojson }};
+    let expanded = false;
+
+    function formatRemaining(deadlineIso) {
+        if (!deadlineIso) return '—';
+        const msLeft = new Date(deadlineIso) - new Date();
+        if (msLeft <= 0) return '00:00';
+        const totalSeconds = Math.floor(msLeft / 1000);
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function escapeHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s || '';
+        return d.innerHTML;
+    }
+
+    let liveTests = [];
+
+    function toggleExpanded() {
+        expanded = !expanded;
+        render();
+    }
+
+    function render() {
+        const container = document.getElementById('liveTestBannerContainer');
+        if (!container) return;
+
+        // Suppress this paper's own entry — its Assign/Monitor/Build pages already
+        // show its code and progress inline, so repeating it here is just noise.
+        const relevant = CURRENT_PAPER_ID
+            ? liveTests.filter(t => t.test_paper_id !== CURRENT_PAPER_ID)
+            : liveTests;
+
+        if (!relevant.length) { container.innerHTML = ''; return; }
+
+        const n = relevant.length;
+        container.innerHTML = `
+            <div class="ltb-summary ${expanded ? 'expanded' : ''}" id="ltbSummaryToggle">
+
+                <div class="ltb-summary-left">
+                    <span class="ltb-live-badge">Live</span>
+                    <span>${n} test${n === 1 ? '' : 's'} in progress</span>
+                </div>
+
+                <svg class="ltb-summary-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div class="ltb-stack ${expanded ? 'expanded' : ''}" id="ltbStack">
+                ${relevant.map(t => `
+                    <div class="ltb-banner">
+                        <div class="ltb-left">
+                            <div>
+                                <div class="ltb-title">${escapeHtml(t.paper_title)}</div>
+                                <div class="ltb-sub">${escapeHtml(t.target_label)}</div>
+                            </div>
+                            <div class="ltb-code">${escapeHtml(t.access_code)}</div>
+                            <div class="ltb-stats">
+                                <div class="ltb-stat"><div class="n">${t.finished_count}/${t.assigned_count}</div><div class="k">Completed</div></div>
+                                <div class="ltb-stat"><div class="n" data-deadline="${t.latest_deadline_iso || ''}">${formatRemaining(t.latest_deadline_iso)}</div><div class="k">Time remaining</div></div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+                            <a class="ltb-manage-link" href="/assessment">Manage →</a>
+                            <a class="ltb-present-link" href="/assessment/test-assignments/${t.assignment_id}/present" target="_blank">📽 Present on board →</a>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        document.getElementById('ltbSummaryToggle')?.addEventListener('click', toggleExpanded);
+    }
+
+    function tickCountdowns() {
+        document.querySelectorAll('.ltb-stat .n[data-deadline]').forEach(el => {
+            const deadline = el.dataset.deadline;
+            if (deadline) el.textContent = formatRemaining(deadline);
+        });
+    }
+
+    async function loadLiveTests() {
+        try {
+            const res = await fetch('/admin/api/assessment/live-tests');
+            if (!res.ok) return;
+            const data = await res.json();
+            liveTests = data.live_tests || [];
+            render();
+        } catch (e) { /* quietly skip — this banner is a convenience, not critical path */ }
+    }
+
+    loadLiveTests();
+    setInterval(loadLiveTests, 6000);
+    setInterval(tickCountdowns, 1000);
+})();
+</script>

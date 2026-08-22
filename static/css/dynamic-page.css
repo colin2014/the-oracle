@@ -1,0 +1,1007 @@
+/* ═══════════════════════════════════════════════════════════════
+   Dynamic page modules — shared shell
+   ───────────────────────────────────────────────────────────────
+   An interactive "run it" module that mounts underneath a reading
+   page's normal content. The shell (chrome, controls, narration,
+   trace log, stats, markscheme payoff) is shared; each topic
+   supplies its own stage and step generator.
+
+   Everything is `dp-` prefixed and scoped inside `.dp-module`, so
+   it cannot collide with book_page.html's existing CSS. Tokens
+   come from style.css, so light/dark follow the app.
+   ═══════════════════════════════════════════════════════════════ */
+
+.dp-module {
+    --dp-tint: rgba(131, 102, 232, .08);
+    --dp-tint-strong: rgba(131, 102, 232, .16);
+    --dp-chip: #f1f2f6;
+    --dp-stage-bg: #fbfbfd;
+    --dp-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --dp-ease: cubic-bezier(.16, 1, .3, 1);
+
+    /* Spacing is owned by the host section, so the module drops cleanly into
+       a page's card stack without doubling margins. */
+    margin: 0;
+    padding: 2rem 2.25rem;
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    clear: both;
+}
+
+[data-theme="dark"] .dp-module {
+    --dp-tint: rgba(157, 132, 255, .12);
+    --dp-tint-strong: rgba(157, 132, 255, .22);
+    --dp-chip: #20222c;
+    --dp-stage-bg: #121319;
+}
+
+.dp-module *,
+.dp-module *::before,
+.dp-module *::after {
+    box-sizing: border-box;
+}
+
+.dp-module button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+/* ── header ─────────────────────────────────────────────────── */
+.dp-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.dp-head-txt {
+    max-width: 62ch;
+}
+
+.dp-expand {
+    flex: none;
+}
+
+.dp-head h3 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    margin: 0 0 .5rem;
+    color: var(--text-dark);
+}
+
+.dp-head p {
+    margin: 0;
+    color: var(--text-light);
+    font-size: .95rem;
+    line-height: 1.6;
+}
+
+/* ── stage ──────────────────────────────────────────────────── */
+.dp-stage-wrap {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--dp-stage-bg);
+    padding: .75rem;
+    overflow: hidden;
+}
+
+.dp-stage {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+/* On narrow screens the diagram would shrink until its labels are
+   unreadable. Let it keep a legible size and scroll inside its own
+   container instead — the page itself never scrolls sideways. */
+@media (max-width: 860px) {
+    .dp-stage-wrap {
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .dp-stage {
+        width: 780px;
+        max-width: none;
+    }
+}
+
+/* ── generic stage vocabulary (used by every module's SVG) ──── */
+.dp-chassis {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 1.5;
+}
+
+.dp-chassis-fill {
+    fill: var(--bg-white);
+}
+
+.dp-blk {
+    fill: var(--bg-white);
+    stroke: var(--border);
+    stroke-width: 1.5;
+}
+
+.dp-blk-label {
+    font-size: 13px;
+    font-weight: 600;
+    fill: var(--text-dark);
+}
+
+.dp-blk-sub {
+    font-size: 10px;
+    fill: var(--text-light);
+}
+
+.dp-zone {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .09em;
+    fill: var(--text-light);
+    text-transform: uppercase;
+}
+
+.dp-slot {
+    fill: var(--dp-chip);
+    stroke: var(--border);
+    stroke-width: 1;
+}
+
+.dp-slot-name {
+    font-size: 12px;
+    font-weight: 600;
+    fill: var(--text-dark);
+}
+
+.dp-slot-desc {
+    font-size: 9.5px;
+    fill: var(--text-light);
+}
+
+.dp-val {
+    font-family: var(--dp-mono);
+    font-size: 13px;
+    font-weight: 600;
+    fill: var(--text-dark);
+    text-anchor: middle;
+    dominant-baseline: middle;
+}
+
+.dp-wire {
+    stroke: var(--border);
+    stroke-width: 1.5;
+    fill: none;
+}
+
+.dp-wire-ctl {
+    stroke: var(--border);
+    stroke-width: 1.5;
+    fill: none;
+    stroke-dasharray: 4 4;
+}
+
+.dp-bus {
+    stroke: var(--border);
+    stroke-width: 1.25;
+    fill: none;
+}
+
+.dp-cell {
+    fill: var(--dp-chip);
+    stroke: var(--border);
+    stroke-width: 1;
+}
+
+.dp-cell-k {
+    font-family: var(--dp-mono);
+    font-size: 11px;
+    fill: var(--text-light);
+}
+
+.dp-cell-v {
+    font-family: var(--dp-mono);
+    font-size: 11.5px;
+    font-weight: 600;
+    fill: var(--text-dark);
+}
+
+.dp-mini {
+    font-family: var(--dp-mono);
+    font-size: 10px;
+    fill: var(--text-light);
+}
+
+.dp-badge {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-anchor: middle;
+}
+
+/* ── active states: the only things that move ───────────────── */
+.dp-blk.is-active {
+    stroke: var(--primary);
+    stroke-width: 2.5;
+    fill: var(--dp-tint);
+}
+
+.dp-blk-label.is-active {
+    fill: var(--primary);
+}
+
+.dp-slot.is-active {
+    stroke: var(--primary);
+    stroke-width: 2;
+}
+
+.dp-slot.is-changed {
+    animation: dp-flash .75s var(--dp-ease);
+}
+
+@keyframes dp-flash {
+    0% {
+        fill: var(--dp-tint-strong);
+        stroke: var(--primary);
+        stroke-width: 2.5;
+    }
+
+    100% {
+        fill: var(--dp-chip);
+        stroke: var(--border);
+        stroke-width: 1;
+    }
+}
+
+.dp-wire.is-hot,
+.dp-bus.is-hot {
+    stroke: var(--primary);
+    stroke-width: 2.5;
+}
+
+.dp-wire-ctl.is-hot {
+    stroke: var(--primary);
+    stroke-width: 2.5;
+    animation: dp-dash .6s linear infinite;
+}
+
+@keyframes dp-dash {
+    to {
+        stroke-dashoffset: -16;
+    }
+}
+
+.dp-cell.is-active {
+    fill: var(--dp-tint-strong);
+    stroke: var(--primary);
+    stroke-width: 2;
+}
+
+.dp-blk.is-miss {
+    stroke: var(--warning);
+    stroke-width: 2.5;
+    fill: rgba(245, 158, 11, .10);
+}
+
+.dp-blk.is-hit {
+    stroke: var(--success);
+    stroke-width: 2.5;
+    fill: rgba(16, 185, 129, .12);
+}
+
+.dp-wave {
+    stroke: var(--primary);
+    stroke-width: 2;
+    fill: none;
+    opacity: .35;
+}
+
+.dp-wave.is-ticking {
+    opacity: 1;
+    animation: dp-wave .9s linear infinite;
+}
+
+@keyframes dp-wave {
+    to {
+        stroke-dashoffset: -32;
+    }
+}
+
+.dp-packet-txt {
+    font-family: var(--dp-mono);
+    font-size: 11.5px;
+    font-weight: 700;
+    text-anchor: middle;
+    dominant-baseline: middle;
+}
+
+/* ── narration ──────────────────────────────────────────────────
+   This is the thing the reader is actually meant to follow, so it
+   is the one place the accent is spent: tinted surface, accent
+   hairline, named label, and the largest body type in the module.
+   ─────────────────────────────────────────────────────────────── */
+.dp-narration {
+    display: flex;
+    align-items: stretch;
+    gap: 1rem;
+    margin-top: 1.1rem;
+    padding: 1.1rem 1.25rem;
+    border: 1px solid var(--border);
+    border-color: color-mix(in srgb, var(--primary) 32%, var(--border));
+    border-radius: var(--radius-sm);
+    background: var(--dp-tint);
+    min-height: 92px;
+}
+
+.dp-phase {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .25rem;
+    min-width: 104px;
+    padding: .45rem .5rem;
+    border: 1px solid var(--border);
+    border-color: color-mix(in srgb, var(--primary) 26%, var(--border));
+    border-radius: 6px;
+    background: var(--bg-white);
+}
+
+.dp-phase-name {
+    font-size: .74rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--primary);
+}
+
+.dp-phase-n {
+    font-family: var(--dp-mono);
+    font-size: .74rem;
+    color: var(--text-light);
+}
+
+.dp-narr-wrap {
+    min-width: 0;
+}
+
+.dp-narr-label {
+    margin-bottom: .35rem;
+    font-size: .65rem;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--primary);
+}
+
+.dp-narr {
+    font-size: 1.02rem;
+    line-height: 1.55;
+    color: var(--text-dark);
+}
+
+.dp-narr .dp-op {
+    font-family: var(--dp-mono);
+    font-weight: 600;
+    font-size: .9em;
+    background: var(--dp-chip);
+    padding: .08rem .35rem;
+    border-radius: 6px;
+}
+
+.dp-note {
+    display: block;
+    font-size: .83rem;
+    color: var(--text-light);
+    margin-top: .35rem;
+}
+
+/* ── controls ───────────────────────────────────────────────── */
+.dp-controls {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    margin-top: 1.1rem;
+    flex-wrap: wrap;
+}
+
+.dp-controls .dp-spacer {
+    margin-left: auto;
+}
+
+.dp-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .55rem 1.1rem;
+    border-radius: 6px;
+    font-size: .88rem;
+    font-weight: 600;
+    transition: background .15s, border-color .15s, color .15s;
+}
+
+.dp-btn svg {
+    flex: none;
+}
+
+.dp-btn-primary {
+    background: var(--primary);
+    color: #fff;
+    border: 1px solid var(--primary);
+}
+
+.dp-btn-primary:hover {
+    background: var(--primary-dark);
+    border-color: var(--primary-dark);
+}
+
+.dp-btn-ghost {
+    background: transparent;
+    color: var(--text-dark);
+    border: 1px solid var(--primary-light);
+}
+
+.dp-btn-ghost:hover {
+    background: var(--dp-tint);
+}
+
+.dp-btn:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+.dp-btn-ghost:disabled:hover {
+    background: transparent;
+}
+
+.dp-btn-primary:disabled:hover {
+    background: var(--primary);
+}
+
+.dp-seg {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.dp-seg button {
+    padding: .5rem .8rem;
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--text-light);
+}
+
+.dp-seg button+button {
+    border-left: 1px solid var(--border);
+}
+
+.dp-seg button[aria-pressed="true"] {
+    background: var(--dp-tint);
+    color: var(--primary);
+}
+
+.dp-seg-label {
+    font-size: .78rem;
+    color: var(--text-light);
+}
+
+/* ── readout panels ─────────────────────────────────────────── */
+.dp-readouts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 1rem;
+    margin-top: 1.25rem;
+}
+
+.dp-panel {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-light);
+    overflow: hidden;
+}
+
+.dp-panel-h {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .65rem .9rem;
+    border-bottom: 1px solid var(--border);
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--text-light);
+}
+
+.dp-panel-h .dp-count {
+    margin-left: auto;
+    font-family: var(--dp-mono);
+    font-size: .75rem;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.dp-panel-b {
+    padding: .5rem .55rem;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.dp-log-row {
+    display: flex;
+    gap: .6rem;
+    padding: .35rem .4rem;
+    border-radius: 6px;
+    font-size: .82rem;
+    line-height: 1.45;
+}
+
+.dp-log-row .dp-c {
+    flex: none;
+    width: 2.1rem;
+    text-align: right;
+    font-family: var(--dp-mono);
+    font-size: .76rem;
+    color: var(--text-light);
+}
+
+.dp-log-row .dp-t {
+    font-family: var(--dp-mono);
+    font-size: .79rem;
+}
+
+.dp-log-row.is-now {
+    background: var(--dp-tint);
+}
+
+.dp-empty {
+    padding: .6rem .4rem;
+    font-size: .83rem;
+    color: var(--text-light);
+}
+
+.dp-list-row {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    padding: .35rem .5rem;
+    border-radius: 6px;
+    font-family: var(--dp-mono);
+    font-size: .82rem;
+}
+
+.dp-list-row .dp-a {
+    color: var(--text-light);
+    font-size: .76rem;
+}
+
+.dp-list-row.is-now {
+    background: var(--dp-tint);
+    font-weight: 700;
+}
+
+.dp-panel-note {
+    padding: .5rem .5rem 0;
+    font-size: .78rem;
+    color: var(--text-light);
+    line-height: 1.5;
+}
+
+.dp-stat {
+    padding: .75rem .9rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.dp-stat:last-child {
+    border-bottom: none;
+}
+
+.dp-stat-k {
+    font-size: .72rem;
+    color: var(--text-light);
+}
+
+.dp-stat-v {
+    margin-top: .1rem;
+    font-family: var(--dp-mono);
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.dp-stat-n {
+    margin-top: .2rem;
+    font-size: .76rem;
+    color: var(--text-light);
+    line-height: 1.5;
+}
+
+/* ── markscheme payoff ──────────────────────────────────────── */
+.dp-payoff {
+    margin-top: 1.5rem;
+    padding: 1.25rem 1.4rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-light);
+}
+
+.dp-payoff h4 {
+    margin: 0 0 .35rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.dp-payoff .dp-lead {
+    margin: 0 0 1rem;
+    max-width: 70ch;
+    font-size: .9rem;
+    color: var(--text-light);
+    line-height: 1.6;
+}
+
+.dp-marks {
+    display: grid;
+    gap: .6rem;
+}
+
+.dp-mark {
+    display: grid;
+    grid-template-columns: 26px 1fr;
+    gap: .75rem;
+    align-items: start;
+    padding: .75rem .9rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-white);
+    opacity: .5;
+    transition: opacity .3s var(--dp-ease), border-color .3s;
+}
+
+.dp-mark.is-earned {
+    opacity: 1;
+    border-color: var(--success);
+}
+
+.dp-tick {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    color: var(--text-light);
+}
+
+.dp-mark.is-earned .dp-tick {
+    border-color: var(--success);
+    color: var(--success);
+    background: rgba(16, 185, 129, .1);
+}
+
+.dp-mark-t {
+    font-size: .88rem;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.dp-mark-d {
+    margin-top: .15rem;
+    font-size: .84rem;
+    color: var(--text-light);
+    line-height: 1.55;
+}
+
+.dp-mark-cy {
+    margin-top: .3rem;
+    font-family: var(--dp-mono);
+    font-size: .76rem;
+    color: var(--primary);
+}
+
+.dp-closing {
+    margin-top: 1.25rem;
+    max-width: 78ch;
+    font-size: .85rem;
+    color: var(--text-light);
+    line-height: 1.6;
+}
+
+/* ── side by side ───────────────────────────────────────────────
+   Once there is width for it, the diagram and the running commentary
+   sit next to each other so you can watch and read at the same time.
+   ─────────────────────────────────────────────────────────────── */
+@media (min-width: 1100px) {
+    .dp-module {
+        display: grid;
+        grid-template-columns: minmax(0, 1.45fr) minmax(360px, 1fr);
+        column-gap: 1.5rem;
+        row-gap: 1.25rem;
+        align-items: start;
+    }
+
+    .dp-module > .dp-head {
+        grid-column: 1 / -1;
+        margin-bottom: 0;
+    }
+
+    .dp-side > *:first-child {
+        margin-top: 0;
+    }
+}
+
+/* ── full screen ────────────────────────────────────────────────
+   Sized to fit one 16:9 screen with nothing scrolling but the trace
+   itself, which has to scroll inside its own panel because it grows
+   a row per cycle. Everything else is laid out to fit the viewport.
+   ─────────────────────────────────────────────────────────────── */
+.dp-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: var(--bg-light);
+    padding: 1rem 1.25rem;
+    overflow: hidden;
+}
+
+.dp-module.dp-fs {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(380px, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    column-gap: 1.25rem;
+    row-gap: .85rem;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+}
+
+.dp-fs .dp-head {
+    grid-column: 1 / -1;
+    align-items: center;
+    margin: 0;
+}
+
+.dp-fs .dp-head h3 {
+    font-size: 1.15rem;
+    margin: 0;
+}
+
+/* the intro has been read by the time anyone opens this */
+.dp-fs .dp-head p {
+    display: none;
+}
+
+/* letterbox the diagram into whatever height is left */
+.dp-fs .dp-stage-wrap {
+    display: flex;
+    min-height: 0;
+    background: var(--bg-white);
+}
+
+.dp-fs .dp-stage {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+}
+
+.dp-fs .dp-side {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    gap: .75rem;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.dp-fs .dp-narration,
+.dp-fs .dp-controls,
+.dp-fs .dp-readouts,
+.dp-fs .dp-payoff {
+    margin-top: 0;
+}
+
+.dp-fs .dp-narr {
+    font-size: 1.1rem;
+}
+
+/* trace takes the slack; program and stats share the row beneath it */
+.dp-fs .dp-readouts {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: .75rem;
+    min-height: 0;
+}
+
+.dp-fs .dp-readouts > .dp-panel:first-child {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.dp-fs .dp-readouts > .dp-panel:first-child .dp-panel-b {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+}
+
+.dp-fs .dp-panel-b {
+    max-height: 190px;
+}
+
+/* marks compress to a row of three chips rather than a stack of cards */
+.dp-fs .dp-payoff {
+    padding: .8rem .9rem;
+}
+
+.dp-fs .dp-payoff h4 {
+    font-size: .78rem;
+    margin-bottom: .5rem;
+}
+
+.dp-fs .dp-payoff .dp-lead,
+.dp-fs .dp-mark-d,
+.dp-fs .dp-closing {
+    display: none;
+}
+
+.dp-fs .dp-marks {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .5rem;
+}
+
+.dp-fs .dp-mark {
+    grid-template-columns: 20px 1fr;
+    gap: .5rem;
+    padding: .5rem .6rem;
+}
+
+.dp-fs .dp-tick {
+    width: 20px;
+    height: 20px;
+}
+
+.dp-fs .dp-mark-t {
+    font-size: .74rem;
+    line-height: 1.3;
+}
+
+.dp-fs .dp-mark-cy {
+    margin-top: .15rem;
+    font-size: .66rem;
+}
+
+/* shorter 16:9 panels (≈768p): trim the fixed rows further */
+@media (max-height: 820px) {
+    .dp-fs .dp-narration {
+        min-height: 0;
+        padding: .8rem .95rem;
+    }
+
+    .dp-fs .dp-narr {
+        font-size: 1rem;
+    }
+
+    .dp-fs .dp-panel-b {
+        max-height: 132px;
+    }
+
+    .dp-fs .dp-btn {
+        padding: .45rem .85rem;
+    }
+}
+
+/* too narrow to sit side by side — stack and allow the overlay to scroll */
+@media (max-width: 1000px) {
+    .dp-overlay {
+        overflow-y: auto;
+    }
+
+    .dp-module.dp-fs {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
+        height: auto;
+    }
+
+    .dp-fs .dp-side {
+        grid-template-rows: none;
+        overflow: visible;
+    }
+
+    .dp-fs .dp-stage {
+        height: auto;
+    }
+}
+
+/* keep the diagram legible rather than letting it shrink to nothing */
+@media (max-width: 860px) {
+    .dp-fs .dp-stage-wrap {
+        overflow-x: auto;
+    }
+
+    .dp-fs .dp-stage {
+        width: 780px;
+        min-width: 780px;
+    }
+}
+
+/* ── spotlight (jumped to from a vocabulary term) ───────────── */
+.dp-spotlight {
+    animation: dp-spot 1.6s var(--dp-ease);
+}
+
+@keyframes dp-spot {
+
+    0%,
+    100% {
+        filter: none;
+    }
+
+    25%,
+    60% {
+        filter: drop-shadow(0 0 10px var(--primary));
+    }
+}
+
+/* ── responsive ─────────────────────────────────────────────── */
+@media (max-width: 760px) {
+    .dp-module {
+        padding: 1.15rem;
+        margin: 1.75rem 0 1rem;
+    }
+
+    .dp-head h3 {
+        font-size: 1.15rem;
+    }
+
+    .dp-narration {
+        flex-direction: column;
+        gap: .7rem;
+    }
+
+    .dp-controls .dp-spacer {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .dp-readouts {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── reduced motion: values still change, nothing travels ───── */
+@media (prefers-reduced-motion: reduce) {
+    .dp-slot.is-changed {
+        animation: none;
+        fill: var(--dp-tint-strong);
+        stroke: var(--primary);
+    }
+
+    .dp-wire-ctl.is-hot,
+    .dp-spotlight {
+        animation: none;
+    }
+
+    .dp-wave.is-ticking {
+        animation: none;
+        opacity: 1;
+    }
+
+    .dp-module * {
+        transition-duration: .01ms !important;
+    }
+}

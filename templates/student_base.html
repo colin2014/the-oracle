@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}The Oracle{% endblock %}</title>
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.svg') }}" type="image/svg+xml">
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon-32.png') }}" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/apple-touch-icon.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* Unified design system matching admin */
+        :root {
+            --primary: #c77dff;
+            --primary-dark: #a84fd4;
+            --text-dark: #1a1a1a;
+            --text-light: #6b7280;
+            --bg-light: #f3f4f6;
+            --bg-white: #ffffff;
+            --border: #e5e7eb;
+            --radius: 8px;
+        }
+
+        [data-theme="dark"] {
+            --primary: #b592ff;
+            --primary-dark: #9d84ff;
+            --bg-light: #0f1014;
+            --bg-white: #17181f;
+            --text-dark: #ececf1;
+            --text-light: #9a9aa8;
+            --border: #262833;
+            color-scheme: dark;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-light);
+            color: var(--text-dark);
+            line-height: 1.5;
+            margin: 0;
+            padding: 0;
+        }
+
+        .student-shell {
+            display: flex;
+            min-height: 100vh;
+            flex-direction: column;
+        }
+
+        .student-content {
+            display: flex;
+            flex: 1;
+        }
+
+        /* Student Sidebar */
+        .student-sidebar {
+            width: 80px;
+            background: var(--bg-white);
+            border-right: 1px solid var(--border);
+            padding: 1.5rem 0;
+            flex-shrink: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            transition: width 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            height: 100vh;
+            z-index: 50;
+        }
+
+        .student-sidebar:hover,
+        .student-sidebar.expanded {
+            width: 240px;
+            padding: 1.5rem 1rem;
+        }
+
+        .sidebar-section {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 2rem;
+        }
+
+        .sidebar-section h3 {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-light);
+            font-weight: 700;
+            margin: 0 0 1rem 0;
+            padding: 0 0.8rem;
+            display: none;
+        }
+
+        .student-sidebar:hover .sidebar-section h3,
+        .student-sidebar.expanded .sidebar-section h3 {
+            display: block;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.8rem;
+            border-radius: 6px;
+            color: var(--text-dark);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            position: relative;
+            justify-content: center;
+        }
+
+        .student-sidebar.expanded .sidebar-item {
+            justify-content: flex-start;
+        }
+
+        .sidebar-item svg {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+            stroke: currentColor;
+        }
+
+        .sidebar-item span {
+            display: none;
+            white-space: nowrap;
+        }
+
+        .student-sidebar:hover .sidebar-item span,
+        .student-sidebar.expanded .sidebar-item span {
+            display: inline;
+        }
+
+        .sidebar-item:hover {
+            background: rgba(157, 132, 255, 0.12);
+            color: var(--primary);
+        }
+
+        .sidebar-item.active {
+            background: rgba(157, 132, 255, 0.2);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .sidebar-toggle {
+            width: 40px;
+            height: 40px;
+            background: none;
+            border: none;
+            cursor: default;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-dark);
+            margin: 0 auto 2rem;
+            border-radius: 6px;
+            opacity: 0.3;
+        }
+
+        .sidebar-toggle svg {
+            width: 20px;
+            height: 20px;
+        }
+
+
+        /* Top Navigation */
+        .student-nav {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 2rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            text-decoration: none;
+            flex-shrink: 0;
+        }
+
+        .nav-brand svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--primary);
+        }
+
+        .nav-links {
+            display: none;
+        }
+
+        .nav-link {
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            color: var(--text-dark);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            white-space: nowrap;
+        }
+
+        .nav-link:hover {
+            background: rgba(157, 132, 255, 0.1);
+            color: var(--primary);
+        }
+
+        .nav-link.active {
+            background: rgba(157, 132, 255, 0.15);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .nav-link svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-left: auto;
+        }
+
+        .user-menu {
+            position: relative;
+        }
+
+        .user-menu-btn {
+            background: none;
+            border: none;
+            padding: 0.4rem 0.6rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-radius: 6px;
+            transition: background 0.2s ease;
+            color: var(--text-dark);
+        }
+
+        .user-menu-btn:hover {
+            background: var(--bg-light);
+        }
+
+        .menu-chevron {
+            width: 16px;
+            height: 16px;
+            transition: transform 0.2s ease;
+            color: var(--text-light);
+        }
+
+        .user-menu-btn[aria-expanded="true"] .menu-chevron {
+            transform: rotate(180deg);
+        }
+
+        .user-menu-dropdown {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 0.5rem);
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            min-width: 200px;
+            display: none;
+            z-index: 1000;
+            overflow: hidden;
+        }
+
+        .user-menu-dropdown.open {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: none;
+            border: none;
+            color: var(--text-dark);
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            font-size: 0.95rem;
+            font-weight: 500;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+        }
+
+        .menu-item:hover {
+            background: var(--bg-light);
+        }
+
+        .menu-icon {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            color: var(--primary);
+        }
+
+        .logout-item {
+            color: #dc3545;
+        }
+
+        .logout-item .menu-icon {
+            color: #dc3545;
+        }
+
+        .logout-item:hover {
+            background: rgba(220, 53, 69, 0.1);
+        }
+
+        .menu-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 0;
+        }
+
+        .theme-label {
+            flex: 1;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            background: var(--bg-light);
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #c77dff 0%, #a84fd4 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+
+        .user-name {
+            font-size: 0.9rem;
+            color: var(--text-dark);
+            font-weight: 500;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .user-menu {
+            position: relative;
+        }
+
+        .user-menu-btn {
+            background: none;
+            border: none;
+            padding: 0.4rem 0.6rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-radius: 6px;
+            transition: background 0.2s ease;
+            color: var(--text-dark);
+        }
+
+        .user-menu-btn:hover {
+            background: var(--bg-light);
+        }
+
+        .menu-chevron {
+            width: 16px;
+            height: 16px;
+            transition: transform 0.2s ease;
+            color: var(--text-light);
+        }
+
+        .user-menu-btn[aria-expanded="true"] .menu-chevron {
+            transform: rotate(180deg);
+        }
+
+        .user-menu-dropdown {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 0.5rem);
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            min-width: 200px;
+            display: none;
+            z-index: 1000;
+            overflow: hidden;
+        }
+
+        .user-menu-dropdown.open {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: none;
+            border: none;
+            color: var(--text-dark);
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            font-size: 0.95rem;
+            font-weight: 500;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+        }
+
+        .menu-item:hover {
+            background: var(--bg-light);
+        }
+
+        .menu-icon {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            color: var(--primary);
+        }
+
+        .logout-item {
+            color: #dc3545;
+        }
+
+        .logout-item .menu-icon {
+            color: #dc3545;
+        }
+
+        .logout-item:hover {
+            background: rgba(220, 53, 69, 0.1);
+        }
+
+        .menu-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 0;
+        }
+
+        .theme-label {
+            flex: 1;
+        }
+
+        /* Main Content */
+        .student-main {
+            flex: 1;
+            padding: 2rem;
+            width: 100%;
+            overflow-y: auto;
+        }
+
+        @media (min-width: 1024px) {
+            .student-main {
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+        }
+
+        /* Cards and Containers */
+        .student-card {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            margin-bottom: 1.5rem;
+        }
+
+        .student-card h1,
+        .student-card h2 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            color: var(--text-dark);
+        }
+
+        /* Grid Layouts */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        /* Tables */
+        .student-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .student-table th,
+        .student-table td {
+            text-align: left;
+            padding: 0.9rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+
+        .student-table th {
+            background: var(--bg-light);
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .student-table tr:hover {
+            background: rgba(157, 132, 255, 0.05);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-block;
+            padding: 0.6rem 1.2rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #c77dff 0%, #a84fd4 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 4px 12px rgba(157, 132, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: var(--bg-light);
+            color: var(--text-dark);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(157, 132, 255, 0.1);
+            border-color: var(--primary);
+        }
+
+        .btn-sm {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 0.9rem;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="date"],
+        input[type="time"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 0.7rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-white);
+            color: var(--text-dark);
+            font-size: 0.9rem;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="password"]:focus,
+        input[type="date"]:focus,
+        input[type="time"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(157, 132, 255, 0.1);
+        }
+
+        /* Badges and Tags */
+        .badge {
+            display: inline-block;
+            padding: 0.35rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: rgba(10, 157, 88, 0.15);
+            color: #10b981;
+        }
+
+        .badge-warning {
+            background: rgba(217, 119, 6, 0.15);
+            color: #d97706;
+        }
+
+        .badge-danger {
+            background: rgba(217, 41, 22, 0.15);
+            color: #d92916;
+        }
+
+        .badge-info {
+            background: rgba(59, 130, 246, 0.15);
+            color: #3b82f6;
+        }
+
+        /* Alert/Messages */
+        .alert {
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid;
+        }
+
+        .alert-success {
+            background: rgba(10, 157, 88, 0.1);
+            border-left-color: #10b981;
+            color: #10b981;
+        }
+
+        .alert-error {
+            background: rgba(217, 41, 22, 0.1);
+            border-left-color: #d92916;
+            color: #d92916;
+        }
+
+        .alert-info {
+            background: rgba(59, 130, 246, 0.1);
+            border-left-color: #3b82f6;
+            color: #3b82f6;
+        }
+
+        /* Responsive - Mobile */
+        @media (max-width: 768px) {
+            .student-nav {
+                padding: 0.75rem 1rem;
+                gap: 0.5rem;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 100;
+                height: auto;
+            }
+
+            .nav-brand span {
+                display: none;
+            }
+
+            .nav-title {
+                display: none !important;
+            }
+
+            .student-shell {
+                flex-direction: column;
+            }
+
+            .student-content {
+                flex-direction: column;
+                padding-top: 60px;
+                padding-bottom: 70px;
+            }
+
+            .student-sidebar {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                top: auto;
+                width: 100% !important;
+                height: auto;
+                padding: 0.75rem 0;
+                border-right: none;
+                border-top: 1px solid var(--border);
+                flex-direction: row;
+                overflow-x: auto;
+                overflow-y: hidden;
+                z-index: 40;
+            }
+
+            .student-sidebar:hover,
+            .student-sidebar.expanded {
+                width: 100% !important;
+                padding: 0.75rem 0;
+            }
+
+            .sidebar-section {
+                display: flex;
+                flex-direction: row;
+                margin-bottom: 0;
+                flex: 1;
+            }
+
+            .sidebar-section h3 {
+                display: none;
+            }
+
+            .student-sidebar:hover .sidebar-section h3,
+            .student-sidebar.expanded .sidebar-section h3 {
+                display: none;
+            }
+
+            .sidebar-item {
+                flex-direction: column;
+                justify-content: center;
+                padding: 0.6rem 1rem;
+                font-size: 0.75rem;
+                white-space: nowrap;
+            }
+
+            .student-sidebar.expanded .sidebar-item {
+                justify-content: center;
+            }
+
+            .sidebar-item span {
+                display: block !important;
+                font-size: 0.7rem;
+                margin-top: 0.2rem;
+                white-space: normal;
+            }
+
+            .student-sidebar:hover .sidebar-item span,
+            .student-sidebar.expanded .sidebar-item span {
+                display: block;
+            }
+
+            .sidebar-toggle {
+                display: none;
+            }
+
+            .sidebar-footer {
+                display: none;
+            }
+
+            .student-main {
+                padding: 1rem 0.75rem;
+                width: 100%;
+                max-width: 100%;
+                margin: 0;
+            }
+
+            .grid-2,
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
+
+        }
+
+        /* Very small screens */
+        @media (max-width: 480px) {
+            .student-main {
+                padding: 0.75rem 0.5rem;
+            }
+
+            .student-nav {
+                padding: 0.5rem 0.5rem;
+            }
+
+            .nav-brand {
+                font-size: 1rem;
+            }
+
+            .student-content {
+                padding-top: 55px;
+                padding-bottom: 75px;
+            }
+        }
+
+        /* Sidebar Footer User Menu */
+        .sidebar-footer {
+            border-top: 1px solid var(--border);
+            padding-top: 1rem;
+            margin-top: auto;
+        }
+
+        .sidebar-user-btn {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.6rem 0.8rem;
+            background: none;
+            border: none;
+            border-radius: 6px;
+            color: var(--text-dark);
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            justify-content: center;
+            position: relative;
+            width: 100%;
+        }
+
+        .student-sidebar:hover .sidebar-user-btn,
+        .student-sidebar.expanded .sidebar-user-btn {
+            justify-content: flex-start;
+        }
+
+        .sidebar-user-btn:hover {
+            background: rgba(157, 132, 255, 0.12);
+        }
+
+        .sidebar-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #c77dff 0%, #a84fd4 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar-user-info {
+            display: none;
+            flex-direction: column;
+            min-width: 0;
+            flex: 1;
+            text-align: left;
+        }
+
+        .student-sidebar:hover .sidebar-user-info,
+        .student-sidebar.expanded .sidebar-user-info {
+            display: flex;
+        }
+
+        .sidebar-user-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-dark);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .sidebar-user-role {
+            font-size: 0.7rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar-menu-chevron {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+            transition: transform 0.2s;
+            display: none;
+        }
+
+        .student-sidebar:hover .sidebar-menu-chevron,
+        .student-sidebar.expanded .sidebar-menu-chevron {
+            display: block;
+        }
+
+        .sidebar-user-btn[aria-expanded="true"] .sidebar-menu-chevron {
+            transform: rotate(180deg);
+        }
+
+        .sidebar-user-dropdown {
+            position: fixed;
+            left: 80px;
+            bottom: 110px;
+            width: 160px;
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: none;
+            flex-direction: column;
+            z-index: 1001;
+            overflow: hidden;
+        }
+
+        .student-shell.sidebar-expanded .sidebar-user-dropdown {
+            width: 208px;
+            left: 240px;
+        }
+
+        .sidebar-user-dropdown.open {
+            display: flex;
+        }
+
+        .sidebar-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: none;
+            border: none;
+            color: var(--text-dark);
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            font-size: 0.9rem;
+            font-weight: 500;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+        }
+
+        .sidebar-menu-item:hover {
+            background: var(--bg-light);
+        }
+
+        .sidebar-menu-item svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+            stroke: currentColor;
+        }
+
+        .sidebar-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 0;
+        }
+
+        .sidebar-logout {
+            color: #dc3545;
+        }
+
+        .sidebar-logout:hover {
+            background: rgba(220, 53, 69, 0.1);
+        }
+
+        .sidebar-logout svg {
+            stroke: #dc3545;
+        }
+    </style>
+    {% include '_pwa_head.html' %}
+</head>
+<body>
+    <div class="student-shell">
+        <!-- Top Navigation -->
+        <nav class="student-nav">
+            <a href="{{ url_for('dashboard') }}" class="nav-brand">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                </svg>
+                <span>The Oracle</span>
+            </a>
+
+            <div class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3h7v7H3z"></path>
+                        <path d="M14 3h7v7h-7z"></path>
+                        <path d="M14 14h7v7h-7z"></path>
+                        <path d="M3 14h7v7H3z"></path>
+                    </svg>
+                    Dashboard
+                </a>
+                <a href="{{ url_for('my_resources') }}" class="nav-link {% if request.endpoint == 'my_resources' %}active{% endif %}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"></path>
+                        <path d="M3 9h18"></path>
+                        <path d="M9 3v18"></path>
+                    </svg>
+                    Resources
+                </a>
+                <a href="{{ url_for('reading_analytics') }}" class="nav-link {% if request.endpoint == 'reading_analytics' %}active{% endif %}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3v18h18"></path>
+                        <path d="M18 17V9"></path>
+                        <path d="M13 17V5"></path>
+                        <path d="M8 17v-3"></path>
+                    </svg>
+                    Analytics
+                </a>
+            </div>
+
+            <div class="nav-right"></div>
+        </nav>
+
+        <!-- Sidebar + Main Content -->
+        <div class="student-content">
+            {% include "_sidebar.html" %}
+
+            <!-- Main Content -->
+            <main class="student-main">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category in ['success', 'error', 'info'] else 'info' }}">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+        </div>
+    </div>
+
+    <script>
+        // Theme is initialised and toggled by the shared sidebar (_sidebar.html).
+        // Kept as a global helper in case child templates call it.
+        function toggleTheme() {
+            const newTheme = (document.documentElement.dataset.theme || 'light') === 'light' ? 'dark' : 'light';
+            document.documentElement.dataset.theme = newTheme;
+            localStorage.setItem('theme', newTheme);
+        }
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

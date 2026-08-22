@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Home - Textbook</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .learn-body {
+            background: var(--bg-light);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        .learn-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        .learn-header {
+            text-align: center;
+            margin: 1rem 0 2.5rem;
+        }
+
+        .learn-header .eyebrow {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--primary);
+            background: var(--tint);
+            border-radius: 999px;
+            padding: 0.3rem 0.9rem;
+            margin-bottom: 0.9rem;
+        }
+
+        .learn-header h1 {
+            font-size: 2.1rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.4rem;
+            color: var(--text-dark);
+        }
+
+        .learn-header p {
+            font-size: 1.05rem;
+            color: var(--text-light);
+        }
+
+        .learn-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .theme-card {
+            position: relative;
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            padding-top: 1.75rem;
+            cursor: pointer;
+            transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        /* Colored accent bar, Khan-course style — cycles per card */
+        .theme-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 5px;
+            background: var(--card-accent, var(--primary));
+        }
+
+        .learn-grid > .theme-card:nth-of-type(6n+1) { --card-accent: #1865f2; }
+        .learn-grid > .theme-card:nth-of-type(6n+2) { --card-accent: #0a9d58; }
+        .learn-grid > .theme-card:nth-of-type(6n+3) { --card-accent: #7854f2; }
+        .learn-grid > .theme-card:nth-of-type(6n+4) { --card-accent: #e07c02; }
+        .learn-grid > .theme-card:nth-of-type(6n+5) { --card-accent: #d92672; }
+        .learn-grid > .theme-card:nth-of-type(6n+6) { --card-accent: #0e93a1; }
+
+        .theme-card:hover {
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-3px);
+        }
+
+        .theme-card-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            color: var(--text-dark);
+            margin-bottom: 0.4rem;
+        }
+
+        .theme-card-count {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--card-accent, var(--primary));
+            background: color-mix(in srgb, var(--card-accent, var(--primary)) 10%, transparent);
+            border-radius: 999px;
+            padding: 0.2rem 0.7rem;
+            margin-bottom: 1rem;
+        }
+
+        .theme-card-preview {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+
+        .theme-card-preview strong {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: var(--text-light);
+            margin-bottom: 0.35rem;
+        }
+
+        .theme-card-preview ul {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .theme-card-preview li {
+            position: relative;
+            padding-left: 1.1rem;
+            margin-bottom: 0.2rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .theme-card-preview li:before {
+            content: '›';
+            position: absolute;
+            left: 0.25rem;
+            color: var(--card-accent, var(--primary));
+            font-weight: 700;
+        }
+
+        .topic-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 0.5rem;
+        }
+
+        .topic-link {
+            background: var(--bg-light);
+            border: 1px solid var(--border);
+            padding: 0.6rem 0.8rem;
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text-dark);
+            font-size: 0.88rem;
+            font-weight: 500;
+            transition: background 0.15s, border-color 0.15s;
+            cursor: pointer;
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .topic-link:hover {
+            background: var(--tint);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .theme-card.card-expanded {
+            grid-column: 1 / -1;
+            padding: 2rem;
+            cursor: default;
+        }
+
+        .collapsed-preview {
+            display: block;
+        }
+
+        .expanded-preview {
+            display: none;
+        }
+
+        .theme-card.card-expanded .collapsed-preview {
+            display: none;
+        }
+
+        .theme-card.card-expanded .expanded-preview {
+            display: block;
+        }
+
+        .topic-nav-header {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            margin-bottom: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .close-expand-btn {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            cursor: pointer;
+            font-size: 1.2rem;
+            padding: 0;
+        }
+
+        .learn-nav {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: var(--bg-white);
+            padding: 0.8rem 1.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            flex-wrap: wrap;
+        }
+
+        .learn-nav a {
+            color: var(--text-dark);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.92rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 8px;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .learn-nav a:hover {
+            background: var(--tint);
+            color: var(--primary);
+        }
+
+        .learn-nav button {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-dark);
+            border-radius: 8px;
+            padding: 0.35rem 0.7rem;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: background 0.15s;
+            margin-left: auto;
+        }
+
+        .learn-nav button:hover {
+            background: var(--tint);
+        }
+    </style>
+</head>
+<body class="learn-body">
+    <div class="learn-nav">
+        <a href="/learn">🎓 Course Home</a>
+        <a href="/admin/scraper-hub" style="margin-left: 1rem;">📊 Content Manager</a>
+        <button id="themeToggle" title="Toggle dark mode">🌙</button>
+    </div>
+
+    <div class="learn-container">
+        <div class="learn-header">
+            <span class="eyebrow">Course companion</span>
+            <h1>Welcome to the Course</h1>
+            <p>Pick a theme below to start learning</p>
+        </div>
+
+        <div class="learn-grid" id="learnGrid">
+            <!-- Populated by JavaScript -->
+        </div>
+    </div>
+
+    <script>
+        // Initialize theme
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.dataset.theme = savedTheme;
+            updateThemeToggle();
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.dataset.theme || 'light';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.dataset.theme = newTheme;
+            localStorage.setItem('theme', newTheme);
+            updateThemeToggle();
+        }
+
+        function updateThemeToggle() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const isDark = document.documentElement.dataset.theme === 'dark';
+            toggleBtn.textContent = isDark ? '☀️' : '🌙';
+        }
+
+        // Wire up theme toggle
+        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+        // Load and render course
+        async function loadCourse() {
+            try {
+                const response = await fetch('/api/syllabus');
+                const data = await response.json();
+                const grid = document.getElementById('learnGrid');
+                grid.innerHTML = '';
+
+                if (!data.items || data.items.length === 0) {
+                    grid.innerHTML = '<p style="grid-column: 1 / -1; text-align: center; color: var(--text-light); padding: 2rem;">No courses available yet.</p>';
+                    return;
+                }
+
+                data.items.forEach(theme => {
+                    renderThemeCard(theme);
+                });
+            } catch (error) {
+                console.error('Failed to load course:', error);
+            }
+        }
+
+        function countPages(item) {
+            let count = 0;
+            const traverse = (node) => {
+                if (node.folder) count++;
+                if (node.children) node.children.forEach(child => traverse(child));
+            };
+            if (item.children) item.children.forEach(child => traverse(child));
+            return count;
+        }
+
+        function getTopicPreview(item, maxItems = 3) {
+            const topics = [];
+            const traverse = (node, depth = 0) => {
+                if (node.title && depth > 0) topics.push(node.title);
+                if (node.children && depth < 2) node.children.forEach(child => traverse(child, depth + 1));
+            };
+            if (item.children) item.children.forEach(child => traverse(child, 1));
+            return topics.slice(0, maxItems);
+        }
+
+        function renderThemeCard(theme) {
+            const grid = document.getElementById('learnGrid');
+            const card = document.createElement('div');
+            card.className = 'theme-card';
+
+            const pageCount = countPages(theme);
+            const preview = getTopicPreview(theme);
+
+            let html = `
+                <div class="theme-card-title">${theme.title}</div>
+                <div class="theme-card-count">${pageCount} pages</div>
+                <div class="theme-card-preview collapsed-preview">
+                    <strong>Topics:</strong>
+                    <ul>
+            `;
+
+            preview.forEach(topic => {
+                html += `<li>${topic}</li>`;
+            });
+
+            html += `
+                    </ul>
+                </div>
+                <div class="expanded-preview" style="display: none;">
+            `;
+
+            if (theme.children && theme.children.length > 0) {
+                html += `<div class="topic-nav-header">
+                    Topics
+                    <button class="close-expand-btn" onclick="event.stopPropagation(); collapseCard(this.closest('.theme-card'))">✕</button>
+                </div>`;
+                html += `<div class="topic-grid">`;
+                theme.children.forEach(child => {
+                    if (child.folder) {
+                        html += `<a class="topic-link" href="/editor/${encodeURIComponent(child.folder)}">${child.title}</a>`;
+                    } else if (child.children) {
+                        child.children.forEach(grandchild => {
+                            if (grandchild.folder) {
+                                html += `<a class="topic-link" href="/editor/${encodeURIComponent(grandchild.folder)}">${grandchild.title}</a>`;
+                            }
+                        });
+                    }
+                });
+                html += `</div>`;
+            }
+
+            html += `</div>`;
+
+            card.innerHTML = html;
+            card.addEventListener('click', function(e) {
+                if (e.target.closest('.topic-link') || e.target.closest('.close-expand-btn')) return;
+                expandCard(this);
+            });
+
+            grid.appendChild(card);
+        }
+
+        function expandCard(cardEl) {
+            // Close any other expanded cards
+            document.querySelectorAll('.theme-card.card-expanded').forEach(c => {
+                if (c !== cardEl) c.classList.remove('card-expanded');
+            });
+
+            // Toggle this card
+            cardEl.classList.toggle('card-expanded');
+        }
+
+        function collapseCard(cardEl) {
+            cardEl.classList.remove('card-expanded');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            loadCourse();
+        });
+    </script>
+</body>
+</html>

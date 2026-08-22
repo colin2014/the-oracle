@@ -1,0 +1,516 @@
+{% extends "admin_base.html" %}
+{% block title %}Reset Student Data{% endblock %}
+{% block content %}
+
+<style>
+    .data-section {
+        background: var(--bg-light);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .data-section h2 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .data-count {
+        display: inline-block;
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 0.25rem 0.6rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+
+    .data-list {
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--bg-white);
+        margin-bottom: 1rem;
+    }
+
+    .data-item {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.9rem;
+    }
+
+    .data-item:last-child {
+        border-bottom: none;
+    }
+
+    .data-item-info {
+        flex: 1;
+        overflow: hidden;
+    }
+
+    .data-item-text {
+        color: var(--text-dark);
+        margin-bottom: 0.25rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .data-item-meta {
+        color: var(--text-light);
+        font-size: 0.8rem;
+    }
+
+    .delete-btn-small {
+        background: rgba(220, 38, 38, 0.1);
+        color: #dc2626;
+        border: none;
+        padding: 0.4rem 0.8rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-left: 0.5rem;
+        flex-shrink: 0;
+        transition: all 0.2s;
+    }
+
+    .delete-btn-small:hover {
+        background: rgba(220, 38, 38, 0.2);
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .delete-all-btn {
+        background: #dc2626;
+        color: white;
+        border: none;
+        padding: 0.6rem 1.2rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+
+    .delete-all-btn:hover {
+        background: #b91c1c;
+    }
+
+    .delete-all-btn:disabled {
+        background: var(--text-light);
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    .loading {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+
+    .empty-state {
+        color: var(--text-light);
+        text-align: center;
+        padding: 2rem;
+        font-size: 0.9rem;
+    }
+
+    .success-msg {
+        background: rgba(34, 197, 94, 0.1);
+        color: #16a34a;
+        padding: 1rem;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+    }
+
+    .error-msg {
+        background: rgba(220, 38, 38, 0.1);
+        color: #dc2626;
+        padding: 1rem;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+    }
+
+    .back-link {
+        display: inline-block;
+        margin-bottom: 1.5rem;
+        color: var(--link-color);
+        text-decoration: none;
+        font-size: 0.9rem;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+
+    .student-header {
+        background: var(--bg-light);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .student-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .student-name {
+        font-size: 1.3rem;
+        font-weight: 700;
+    }
+</style>
+
+<a href="{{ url_for('admin.students') }}" class="back-link">← Back to Students</a>
+
+<div class="student-header">
+    <div class="student-info">
+        <div>
+            <div class="student-name">{{ student.name }}</div>
+            <div style="color: var(--text-light); font-size: 0.9rem; margin-top: 0.3rem;">{{ student.email or 'No email' }}</div>
+        </div>
+        <div style="text-align: right; color: var(--text-light); font-size: 0.9rem;">
+            ID: {{ student.id }}
+        </div>
+    </div>
+</div>
+
+<div id="message-container"></div>
+
+<!-- Quiz Data Section -->
+<div class="data-section">
+    <h2>
+        📝 Quiz Answers
+        <span class="data-count" id="quiz-count">Loading…</span>
+    </h2>
+    <div id="quiz-list" class="data-list">
+        <div class="empty-state">Loading quiz data…</div>
+    </div>
+    <div class="action-buttons">
+        <button id="delete-all-quiz-btn" class="delete-all-btn" disabled>Delete All Quiz Answers</button>
+    </div>
+</div>
+
+<!-- Reading Data Section -->
+<div class="data-section">
+    <h2>
+        📖 Reading Activity
+        <span class="data-count" id="reading-count">Loading…</span>
+    </h2>
+    <div id="reading-list" class="data-list">
+        <div class="empty-state">Loading reading data…</div>
+    </div>
+    <div class="action-buttons">
+        <button id="delete-all-reading-btn" class="delete-all-btn" disabled>Delete All Reading Activity</button>
+    </div>
+</div>
+
+<!-- Confidence Data Section -->
+<div class="data-section">
+    <h2>
+        ⭐ Confidence Ratings
+        <span class="data-count" id="confidence-count">Loading…</span>
+    </h2>
+    <div id="confidence-list" class="data-list">
+        <div class="empty-state">Loading confidence data…</div>
+    </div>
+    <div class="action-buttons">
+        <button id="delete-all-confidence-btn" class="delete-all-btn" disabled>Delete All Confidence Ratings</button>
+    </div>
+</div>
+
+<!-- Flashcard Data Section -->
+<div class="data-section">
+    <h2>
+        🎴 Flashcard Progress
+        <span class="data-count" id="flashcard-count">Loading…</span>
+    </h2>
+    <div id="flashcard-list" class="data-list">
+        <div class="empty-state">Loading flashcard data…</div>
+    </div>
+    <div class="action-buttons">
+        <button id="delete-all-flashcard-btn" class="delete-all-btn" disabled>Delete All Flashcard Progress</button>
+    </div>
+</div>
+
+<script>
+const studentId = {{ student.id }};
+
+async function loadQuizData() {
+    try {
+        const res = await fetch(`/admin/api/students/${studentId}/quiz-data`);
+        const data = await res.json();
+
+        const count = data.quiz_answers_count;
+        document.getElementById('quiz-count').textContent = count;
+
+        const listDiv = document.getElementById('quiz-list');
+        if (count === 0) {
+            listDiv.innerHTML = '<div class="empty-state">No quiz answers yet</div>';
+            document.getElementById('delete-all-quiz-btn').disabled = true;
+        } else {
+            listDiv.innerHTML = data.quiz_answers.map(answer => `
+                <div class="data-item">
+                    <div class="data-item-info">
+                        <div class="data-item-text">${escapeHtml(answer.question_text)}</div>
+                        <div class="data-item-meta">${answer.book_folder}/${answer.page_id} • Attempt ${answer.attempt_number}</div>
+                        <div class="data-item-meta">Submitted: ${new Date(answer.submitted_at).toLocaleString()}</div>
+                    </div>
+                    <button class="delete-btn-small" onclick="deleteQuizAnswer(${answer.answer_id})">Delete</button>
+                </div>
+            `).join('');
+            document.getElementById('delete-all-quiz-btn').disabled = false;
+        }
+    } catch (err) {
+        console.error(err);
+        document.getElementById('quiz-list').innerHTML = '<div class="empty-state error">Failed to load quiz data</div>';
+    }
+}
+
+async function loadReadingData() {
+    try {
+        const res = await fetch(`/admin/api/students/${studentId}/reading-data`);
+        const data = await res.json();
+
+        const count = data.reading_activities_count;
+        document.getElementById('reading-count').textContent = count;
+
+        const listDiv = document.getElementById('reading-list');
+        if (count === 0) {
+            listDiv.innerHTML = '<div class="empty-state">No reading activity yet</div>';
+            document.getElementById('delete-all-reading-btn').disabled = true;
+        } else {
+            listDiv.innerHTML = data.reading_activities.map(activity => `
+                <div class="data-item">
+                    <div class="data-item-info">
+                        <div class="data-item-text">${activity.book_folder}/${activity.page_id}</div>
+                        <div class="data-item-meta">${(activity.total_seconds / 60).toFixed(1)} min • ${activity.completed ? '✓ Completed' : 'Incomplete'}</div>
+                        <div class="data-item-meta">Opened: ${new Date(activity.first_opened_at).toLocaleString()}</div>
+                    </div>
+                    <button class="delete-btn-small" onclick="deleteReadingActivity(${activity.activity_id})">Delete</button>
+                </div>
+            `).join('');
+            document.getElementById('delete-all-reading-btn').disabled = false;
+        }
+    } catch (err) {
+        console.error(err);
+        document.getElementById('reading-list').innerHTML = '<div class="empty-state error">Failed to load reading data</div>';
+    }
+}
+
+async function loadConfidenceData() {
+    try {
+        const res = await fetch(`/admin/api/students/${studentId}/confidence-data`);
+        const data = await res.json();
+
+        const count = data.confidence_records_count;
+        document.getElementById('confidence-count').textContent = count;
+
+        const listDiv = document.getElementById('confidence-list');
+        if (count === 0) {
+            listDiv.innerHTML = '<div class="empty-state">No confidence ratings yet</div>';
+            document.getElementById('delete-all-confidence-btn').disabled = true;
+        } else {
+            const levels = ['', '🔴', '🟠', '🟡', '🟢', '🔵'];
+            listDiv.innerHTML = data.confidence_records.map(conf => `
+                <div class="data-item">
+                    <div class="data-item-info">
+                        <div class="data-item-text">${conf.book_folder}/${conf.page_id}</div>
+                        <div class="data-item-meta">${levels[conf.confidence_level]} Level ${conf.confidence_level}/5 • Recorded: ${new Date(conf.recorded_at).toLocaleString()}</div>
+                    </div>
+                    <button class="delete-btn-small" onclick="deleteConfidenceEntry(${conf.confidence_id})">Delete</button>
+                </div>
+            `).join('');
+            document.getElementById('delete-all-confidence-btn').disabled = false;
+        }
+    } catch (err) {
+        console.error(err);
+        document.getElementById('confidence-list').innerHTML = '<div class="empty-state error">Failed to load confidence data</div>';
+    }
+}
+
+async function loadFlashcardData() {
+    try {
+        const res = await fetch(`/admin/api/students/${studentId}/flashcard-data`);
+        const data = await res.json();
+
+        const count = data.flashcard_sessions_count + data.flashcard_progress_count;
+        document.getElementById('flashcard-count').textContent = count;
+
+        const listDiv = document.getElementById('flashcard-list');
+        if (count === 0) {
+            listDiv.innerHTML = '<div class="empty-state">No flashcard activity yet</div>';
+            document.getElementById('delete-all-flashcard-btn').disabled = true;
+        } else {
+            let html = '';
+            if (data.flashcard_sessions_count > 0) {
+                html += '<div style="padding: 0.75rem 1rem; font-weight: 600; color: var(--text-muted); background: var(--bg-light); border-bottom: 1px solid var(--border);">Study Sessions</div>';
+                html += data.flashcard_sessions.map(session => `
+                    <div class="data-item">
+                        <div class="data-item-info">
+                            <div class="data-item-text">${escapeHtml(session.set_title)}</div>
+                            <div class="data-item-meta">${session.mode} • ${(session.duration_seconds / 60).toFixed(1)} min • ${session.completed ? '✓ Completed' : 'Incomplete'}</div>
+                            <div class="data-item-meta">Started: ${new Date(session.started_at).toLocaleString()}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            if (data.flashcard_progress_count > 0) {
+                if (data.flashcard_sessions_count > 0) {
+                    html += '<div style="padding: 0.75rem 1rem; font-weight: 600; color: var(--text-muted); background: var(--bg-light); border-bottom: 1px solid var(--border);">Card Progress</div>';
+                }
+                html += '<div style="color: var(--text-light); padding: 0.75rem 1rem; font-size: 0.85rem;">' + data.flashcard_progress_count + ' card(s) with progress data</div>';
+            }
+            listDiv.innerHTML = html;
+            document.getElementById('delete-all-flashcard-btn').disabled = false;
+        }
+    } catch (err) {
+        console.error(err);
+        document.getElementById('flashcard-list').innerHTML = '<div class="empty-state error">Failed to load flashcard data</div>';
+    }
+}
+
+async function deleteQuizAnswer(answerId) {
+    if (!confirm('Delete this quiz answer?')) return;
+    try {
+        const res = await fetch(`/admin/api/students/${studentId}/quiz-answer/${answerId}`, { method: 'DELETE' });
+        const data = await res.json();
+        showMessage(data.message, 'success');
+        loadQuizData();
+    } catch (err) {
+        showMessage('Failed to delete quiz answer', 'error');
+    }
+}
+
+async function deleteReadingActivity(activityId) {
+    if (!confirm('Delete this reading activity record?')) return;
+    try {
+        const res = await fetch(`/admin/api/students/${studentId}/reading-activity/${activityId}`, { method: 'DELETE' });
+        const data = await res.json();
+        showMessage(data.message, 'success');
+        loadReadingData();
+    } catch (err) {
+        showMessage('Failed to delete reading activity', 'error');
+    }
+}
+
+async function deleteConfidenceEntry(confId) {
+    if (!confirm('Delete this confidence rating?')) return;
+    try {
+        const res = await fetch(`/admin/api/students/${studentId}/confidence/${confId}`, { method: 'DELETE' });
+        const data = await res.json();
+        showMessage(data.message, 'success');
+        loadConfidenceData();
+    } catch (err) {
+        showMessage('Failed to delete confidence rating', 'error');
+    }
+}
+
+function showMessage(msg, type) {
+    const container = document.getElementById('message-container');
+    const div = document.createElement('div');
+    div.className = type === 'success' ? 'success-msg' : 'error-msg';
+    div.textContent = msg;
+    container.innerHTML = '';
+    container.appendChild(div);
+    setTimeout(() => div.remove(), 5000);
+}
+
+function escapeHtml(text) {
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+document.getElementById('delete-all-quiz-btn').addEventListener('click', async () => {
+    if (!confirm('Delete ALL quiz answers for this student? This cannot be undone.')) return;
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = 'Deleting…';
+    try {
+        const res = await fetch(`/admin/api/students/${studentId}/quiz-answers/all`, { method: 'DELETE' });
+        const data = await res.json();
+        showMessage(data.message, 'success');
+        await loadQuizData();
+    } catch (err) {
+        showMessage('Failed to delete quiz data', 'error');
+    }
+    btn.disabled = false;
+    btn.textContent = 'Delete All Quiz Answers';
+});
+
+document.getElementById('delete-all-reading-btn').addEventListener('click', async () => {
+    if (!confirm('Delete ALL reading activity for this student? This cannot be undone.')) return;
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = 'Deleting…';
+    try {
+        const res = await fetch(`/admin/api/students/${studentId}/reading-activities/all`, { method: 'DELETE' });
+        const data = await res.json();
+        showMessage(data.message, 'success');
+        await loadReadingData();
+    } catch (err) {
+        showMessage('Failed to delete reading data', 'error');
+    }
+    btn.disabled = false;
+    btn.textContent = 'Delete All Reading Activity';
+});
+
+document.getElementById('delete-all-confidence-btn').addEventListener('click', async () => {
+    if (!confirm('Delete ALL confidence ratings for this student? This cannot be undone.')) return;
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = 'Deleting…';
+    try {
+        const res = await fetch(`/admin/api/students/${studentId}/confidence-ratings/all`, { method: 'DELETE' });
+        const data = await res.json();
+        showMessage(data.message, 'success');
+        await loadConfidenceData();
+    } catch (err) {
+        showMessage('Failed to delete confidence data', 'error');
+    }
+    btn.disabled = false;
+    btn.textContent = 'Delete All Confidence Ratings';
+});
+
+document.getElementById('delete-all-flashcard-btn').addEventListener('click', async () => {
+    if (!confirm('Delete ALL flashcard progress for this student? This cannot be undone.')) return;
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = 'Deleting…';
+    try {
+        const res = await fetch(`/admin/api/students/${studentId}/flashcard-progress/all`, { method: 'DELETE' });
+        const data = await res.json();
+        showMessage(data.message, 'success');
+        await loadFlashcardData();
+    } catch (err) {
+        showMessage('Failed to delete flashcard data', 'error');
+    }
+    btn.disabled = false;
+    btn.textContent = 'Delete All Flashcard Progress';
+});
+
+// Load all data on page load
+window.addEventListener('DOMContentLoaded', () => {
+    loadQuizData();
+    loadReadingData();
+    loadConfidenceData();
+    loadFlashcardData();
+});
+</script>
+
+{% endblock %}

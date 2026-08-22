@@ -1,0 +1,525 @@
+{% extends 'admin_base.html' %}
+
+{% block title %}View as Student{% endblock %}
+
+{% block content %}
+<style>
+    .view-as-student-container {
+        padding: 2rem;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .view-as-student-header {
+        margin-bottom: 2rem;
+    }
+
+    .view-as-student-header h1 {
+        font-size: 1.8rem;
+        margin: 0 0 0.5rem;
+        color: var(--text-dark);
+    }
+
+    .view-as-student-header p {
+        color: var(--text-light);
+        margin: 0;
+        font-size: 0.95rem;
+    }
+
+    .accordion-wrapper {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .accordion-header {
+        background: var(--bg-light, #f9fafb);
+        border-bottom: 1px solid var(--border);
+        padding: 1rem 1.5rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: background 0.2s ease;
+        font-weight: 600;
+        color: var(--text-dark);
+    }
+
+    .accordion-header:hover {
+        background: var(--bg-hover, #f3f4f6);
+    }
+
+    .accordion-header.open {
+        background: var(--primary, #9d84ff);
+        color: white;
+        border-bottom-color: var(--primary, #9d84ff);
+    }
+
+    .accordion-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        transition: transform 0.2s ease;
+    }
+
+    .accordion-header.open .accordion-toggle {
+        transform: rotate(180deg);
+    }
+
+    .accordion-content {
+        display: none;
+        padding: 0;
+    }
+
+    .accordion-content.open {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1rem;
+        padding: 1rem;
+        animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media (max-width: 600px) {
+        .accordion-content {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .student-card {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.5rem;
+        transition: all 0.2s ease;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .student-card:hover {
+        border-color: var(--primary);
+        box-shadow: 0 2px 8px rgba(157, 132, 255, 0.15);
+    }
+
+    .student-name {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-dark);
+        margin: 0 0 0.5rem;
+    }
+
+    .student-email {
+        font-size: 0.85rem;
+        color: var(--text-light);
+        margin: 0 0 1rem;
+        word-break: break-all;
+    }
+
+    .view-btn {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 0.6rem 1rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        text-align: center;
+        display: inline-block;
+    }
+
+    .view-btn:hover {
+        background: var(--primary-hover, #8b5fef);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(157, 132, 255, 0.3);
+    }
+
+    .view-btn:active {
+        transform: translateY(0);
+    }
+
+    .no-students {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: var(--text-light);
+    }
+
+    .no-students svg {
+        width: 48px;
+        height: 48px;
+        opacity: 0.3;
+        margin-bottom: 1rem;
+    }
+
+    /* Modal/iframe overlay */
+    .student-view-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 2000;
+        animation: fadeIn 0.2s ease;
+    }
+
+    .student-view-modal.open {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .student-view-window {
+        background: var(--bg-white);
+        border-radius: 12px;
+        width: 80%;
+        height: 80%;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: scale(0.95);
+            opacity: 0;
+        }
+        to {
+            transform: scale(1);
+            opacity: 1;
+        }
+    }
+
+    .student-view-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+        flex-shrink: 0;
+    }
+
+    .student-view-title {
+        margin: 0;
+        font-size: 1rem;
+        color: var(--text-dark);
+    }
+
+    .student-view-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .student-view-timer {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-light);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .student-view-timer.ending-soon {
+        color: #e53e3e;
+    }
+
+    .student-view-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: var(--text-light);
+        padding: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+    }
+
+    .student-view-close:hover {
+        color: var(--text-dark);
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 6px;
+    }
+
+    .student-view-content {
+        flex: 1;
+        overflow: hidden;
+    }
+
+    .student-view-iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+
+    .student-view-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: var(--text-light);
+        font-size: 0.9rem;
+    }
+
+    .spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(157, 132, 255, 0.2);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-right: 0.5rem;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+
+<div class="view-as-student-container">
+    <div class="view-as-student-header">
+        <h1>View as Student</h1>
+        <p>Select a student to view the app from their perspective. For testing and demonstrations.</p>
+    </div>
+
+    {% if students_by_class %}
+        <div id="accordionContainer">
+            {% for class_id, class_data in students_by_class.items() %}
+                <div class="accordion-wrapper">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <span>{{ class_data.class.name }} ({{ class_data.students|length }})</span>
+                        <span class="accordion-toggle">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </span>
+                    </div>
+                    <div class="accordion-content">
+                        {% for student in class_data.students %}
+                            <div class="student-card">
+                                <div class="student-name">{{ student.name }}</div>
+                                {% if student.email %}
+                                    <div class="student-email">{{ student.email }}</div>
+                                {% endif %}
+                                <button class="view-btn" onclick="openStudentView({{ student.id }}, '{{ student.name }}')">
+                                    View as This Student
+                                </button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="no-students">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <p>No students found. <a href="{{ url_for('admin.students') }}">Create some students first.</a></p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Hidden CSRF token for fetch requests -->
+<input type="hidden" name="csrf_token" id="csrf_token" value="{{ csrf_token() }}">
+
+<!-- Modal for viewing student dashboard -->
+<div class="student-view-modal" id="studentViewModal">
+    <div class="student-view-window">
+        <div class="student-view-header">
+            <h2 class="student-view-title">Viewing as: <span id="modalStudentName"></span></h2>
+            <div class="student-view-header-actions">
+                <span class="student-view-timer" id="studentViewTimer" style="display:none;"></span>
+                <button class="student-view-close" onclick="closeStudentView()">&times;</button>
+            </div>
+        </div>
+        <div class="student-view-content">
+            <div class="student-view-loading">
+                <div class="spinner"></div>
+                Loading student view...
+            </div>
+            <iframe class="student-view-iframe" id="studentViewIframe" style="display: none;"></iframe>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleAccordion(header) {
+    const content = header.nextElementSibling;
+    const isOpen = header.classList.contains('open');
+
+    if (isOpen) {
+        header.classList.remove('open');
+        content.classList.remove('open');
+    } else {
+        header.classList.add('open');
+        content.classList.add('open');
+    }
+}
+
+// Re-parent the modal to <body> so its fixed positioning is always relative to
+// the real viewport, never clipped by .admin-main or any transformed ancestor.
+document.body.appendChild(document.getElementById('studentViewModal'));
+
+// The token this modal loads is server-enforced to expire 1 hour after
+// creation (see generate_student_token's max_age=3600) — this countdown
+// reflects that real constraint, not an arbitrary display value.
+const STUDENT_TOKEN_LIFETIME_SECONDS = 3600;
+let studentViewCountdownInterval = null;
+let studentViewExpiresAt = null;
+
+function formatCountdown(secondsLeft) {
+    const clamped = Math.max(0, Math.round(secondsLeft));
+    const mins = Math.floor(clamped / 60);
+    const secs = clamped % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+function startStudentViewCountdown() {
+    const timerEl = document.getElementById('studentViewTimer');
+    studentViewExpiresAt = Date.now() + STUDENT_TOKEN_LIFETIME_SECONDS * 1000;
+    timerEl.style.display = 'inline';
+
+    function tick() {
+        const secondsLeft = (studentViewExpiresAt - Date.now()) / 1000;
+        timerEl.textContent = `Expires in ${formatCountdown(secondsLeft)}`;
+        timerEl.classList.toggle('ending-soon', secondsLeft <= 60);
+        if (secondsLeft <= 0) {
+            clearInterval(studentViewCountdownInterval);
+            studentViewCountdownInterval = null;
+            closeStudentView();
+        }
+    }
+
+    stopStudentViewCountdown();
+    tick();
+    studentViewCountdownInterval = setInterval(tick, 1000);
+}
+
+function stopStudentViewCountdown() {
+    if (studentViewCountdownInterval) {
+        clearInterval(studentViewCountdownInterval);
+        studentViewCountdownInterval = null;
+    }
+    const timerEl = document.getElementById('studentViewTimer');
+    timerEl.style.display = 'none';
+    timerEl.classList.remove('ending-soon');
+}
+
+function openStudentView(studentId, studentName) {
+    const modal = document.getElementById('studentViewModal');
+    const iframe = document.getElementById('studentViewIframe');
+    const loading = iframe.previousElementSibling;
+    const nameSpan = document.getElementById('modalStudentName');
+
+    nameSpan.textContent = studentName;
+    modal.classList.add('open');
+    loading.style.display = 'flex';
+    iframe.style.display = 'none';
+
+    // Get CSRF token from meta tag or form
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
+                      document.querySelector('[name="csrf_token"]')?.value || '';
+
+    // Generate a temporary token for this student
+    fetch('/admin/view-as-student/token', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({
+            student_id: studentId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Load the dashboard with the token
+            const iframeUrl = `/admin/view-as-student/embed/${studentId}?token=${data.token}`;
+            iframe.src = iframeUrl;
+            startStudentViewCountdown();
+
+            // Show iframe when it loads
+            iframe.onload = () => {
+                loading.style.display = 'none';
+                iframe.style.display = 'block';
+            };
+        } else {
+            loading.innerHTML = `<p style="color: var(--error, #e53e3e);">Failed to load: ${data.error}</p>`;
+        }
+    })
+    .catch(error => {
+        loading.innerHTML = `<p style="color: var(--error, #e53e3e);">Error: ${error.message}</p>`;
+    });
+}
+
+function closeStudentView() {
+    const modal = document.getElementById('studentViewModal');
+    const iframe = document.getElementById('studentViewIframe');
+    stopStudentViewCountdown();
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
+                      document.querySelector('[name="csrf_token"]')?.value || '';
+
+    // Clear the impersonation by fetching a logout-like endpoint
+    fetch('/admin/clear-impersonation', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken,
+        }
+    }).then(() => {
+        // After clearing, reload the page to ensure we're back to the admin view
+        location.reload();
+    }).catch(() => {
+        // If it fails, still reload
+        location.reload();
+    });
+
+    modal.classList.remove('open');
+    iframe.src = '';
+}
+
+// Close modal when clicking outside
+document.getElementById('studentViewModal').addEventListener('click', (e) => {
+    if (e.target.id === 'studentViewModal') {
+        closeStudentView();
+    }
+});
+
+// Close with Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.getElementById('studentViewModal').classList.contains('open')) {
+        closeStudentView();
+    }
+});
+</script>
+{% endblock %}

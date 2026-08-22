@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Internal Assessment Resource</title>
+    <style>
+        :root {
+            --primary: #1865f2;
+            --primary-dark: #1452c4;
+            --secondary: #6366f1;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-light: #f5f7fa;
+            --bg-white: #ffffff;
+            --text-dark: #1f2937;
+            --text-light: #6b7280;
+            --border: #e5e7eb;
+            --header-bg: #1f2937;
+            --radius: 8px;
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+            --tint: #f0f6ff;
+        }
+
+        [data-theme="dark"] {
+            --bg-light: #0f1014;
+            --bg-white: #17181f;
+            --text-dark: #ececf1;
+            --text-light: #9a9aa8;
+            --border: #262833;
+            --header-bg: #12141a;
+            --tint: rgba(110, 162, 255, 0.1);
+            color-scheme: dark;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg-light);
+            color: var(--text-dark);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+        }
+
+        /* Layout */
+        .reader-layout-container {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+            background: var(--bg-light);
+        }
+
+        .reader-sidebar {
+            background: var(--bg-white);
+            border-right: 1px solid var(--border);
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .sidebar-menu {
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .sidebar-menu-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            color: var(--text-dark);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .sidebar-menu-item:hover {
+            background: var(--bg-light);
+            color: var(--primary);
+        }
+
+        .sidebar-menu-item.active {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+        }
+
+        /* Header */
+        .book-page-header {
+            background: var(--header-bg);
+            color: white;
+            height: 52px;
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .book-page-header h1 {
+            font-size: 1.05rem;
+            margin: 0;
+            font-weight: 700;
+            flex: 1;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .header-nav a {
+            color: white;
+            text-decoration: none;
+            font-size: 0.9rem;
+            opacity: 0.9;
+            transition: opacity 0.2s;
+        }
+
+        .header-nav a:hover {
+            opacity: 1;
+        }
+
+        .header-nav button {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .header-nav button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Main Content Area */
+        .reader-main-area {
+            overflow-y: auto;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .page-container {
+            max-width: 70rem;
+            margin: 0 auto;
+            padding: 2rem 1.25rem;
+            flex: 1;
+        }
+
+        .page-content {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2.25rem 2.5rem;
+            box-shadow: var(--shadow);
+        }
+
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.25;
+            color: #e63946;
+            margin: 0 0 1.5rem 0;
+        }
+
+        .criterion-badge {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .page-body {
+            line-height: 1.8;
+            color: var(--text-dark);
+        }
+
+        .page-body h2 {
+            font-size: 1.35rem;
+            color: #e63946;
+            margin-top: 1.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .page-body h3 {
+            font-size: 1.15rem;
+            color: var(--text-dark);
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .page-body p {
+            margin-bottom: 1rem;
+            font-size: 1.0625rem;
+            line-height: 1.7;
+        }
+
+        .page-body ul {
+            margin-bottom: 1rem;
+            margin-left: 1.5rem;
+        }
+
+        .page-body li {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Sidebar Components */
+        .sidebar-section {
+            border-left: 4px solid var(--primary);
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            background: var(--bg-light);
+            border-radius: 0 8px 8px 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .sidebar-section.key-points { border-color: #10b981; background: #ecfdf5; }
+        .sidebar-section.example { border-color: #3b82f6; background: #eff6ff; }
+        .sidebar-section.tip { border-color: #f59e0b; background: #fffbeb; }
+        .sidebar-section.important { border-color: #ef4444; background: #fee2e2; }
+        .sidebar-section.requirement { border-color: #8b5cf6; background: #f5f3ff; }
+
+        [data-theme="dark"] .sidebar-section { background: rgba(148, 163, 184, 0.08); }
+        [data-theme="dark"] .sidebar-section.key-points { background: rgba(16, 185, 129, 0.1); color: #6ee7b7; }
+        [data-theme="dark"] .sidebar-section.example { background: rgba(59, 130, 246, 0.12); color: #93c5fd; }
+        [data-theme="dark"] .sidebar-section.tip { background: rgba(245, 158, 11, 0.1); color: #fcd34d; }
+        [data-theme="dark"] .sidebar-section.important { background: rgba(239, 68, 68, 0.1); color: #fca5a5; }
+        [data-theme="dark"] .sidebar-section.requirement { background: rgba(139, 92, 246, 0.12); color: #c4b5fd; }
+
+        .sidebar-section h4 {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            opacity: 0.75;
+            margin: 0 0 0.75rem 0;
+        }
+
+        .sidebar-section p {
+            margin: 0;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        /* Grid Layout */
+        #pageContentGrid {
+            display: grid;
+            gap: 2rem;
+            align-items: start;
+            margin-bottom: 1.5rem;
+        }
+
+        .page-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        /* Marks Table */
+        .marks-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .marks-table th {
+            background: var(--primary);
+            color: white;
+            padding: 0.75rem 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .marks-table td {
+            padding: 0.75rem 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .marks-table tr:hover {
+            background: var(--bg-light);
+        }
+
+        [data-theme="dark"] .marks-table tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Word Count Info */
+        .word-count-box {
+            background: var(--tint);
+            border: 1px solid var(--primary);
+            border-radius: var(--radius);
+            padding: 1rem 1.25rem;
+            margin: 1.5rem 0;
+        }
+
+        [data-theme="dark"] .word-count-box {
+            background: rgba(24, 101, 242, 0.1);
+            border-color: var(--primary);
+        }
+
+        /* Buttons */
+        .complete-btn {
+            margin-top: 1.5rem;
+            padding: 0.7rem 1.4rem;
+            border: none;
+            border-radius: 999px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.15s, box-shadow 0.15s;
+            background: var(--primary);
+            color: white;
+        }
+
+        .complete-btn:hover {
+            background: var(--primary-dark);
+            box-shadow: 0 2px 8px rgba(24, 101, 242, 0.35);
+        }
+
+        /* Pager */
+        .pager {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            margin: 2rem 0 1rem;
+        }
+
+        .pager-card {
+            flex: 1;
+            padding: 1rem 1.25rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+            background: var(--bg-white);
+        }
+
+        .pager-card:hover {
+            border-color: var(--primary);
+            background: var(--tint);
+            box-shadow: var(--shadow);
+        }
+
+        .pager-card-label {
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
+        .pager-card-title {
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-top: 0.25rem;
+        }
+
+        .pager-card.right {
+            text-align: right;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .reader-layout-container {
+                grid-template-columns: 1fr;
+            }
+            .reader-sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 280px;
+                transform: translateX(-100%);
+                box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+                transition: transform 0.3s ease;
+            }
+            .reader-sidebar.open {
+                transform: translateX(0);
+            }
+            #pageContentGrid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <div class="reader-layout-container">
+        <!-- Left Sidebar Navigation -->
+        <aside class="reader-sidebar" id="readerSidebar">
+            <div class="sidebar-header">
+                <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-dark);">📖 Criteria</h3>
+                <button id="closeSidebarBtn" style="display: none; border: none; background: transparent; cursor: pointer; font-size: 1.2rem;">✕</button>
+            </div>
+            <div class="sidebar-menu" id="sidebarMenu">
+                <a class="sidebar-menu-item active" onclick="switchSection('intro')">Introduction</a>
+                <a class="sidebar-menu-item" onclick="switchSection('a')">Criterion A</a>
+                <a class="sidebar-menu-item" onclick="switchSection('b')">Criterion B</a>
+                <a class="sidebar-menu-item" onclick="switchSection('c')">Criterion C</a>
+                <a class="sidebar-menu-item" onclick="switchSection('d')">Criterion D</a>
+                <a class="sidebar-menu-item" onclick="switchSection('e')">Criterion E</a>
+                <a class="sidebar-menu-item" onclick="switchSection('skills')">Technical Skills</a>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="reader-main-area">
+            <header class="book-page-header">
+                <button id="toggleNavBtn" style="background: transparent; border: none; color: white; font-size: 1.2rem; cursor: pointer; margin-right: 0.5rem;" title="Toggle Sidebar">☰</button>
+                <h1 id="pageTitle">Internal Assessment Resource</h1>
+                <div class="header-nav">
+                    <button id="themeToggle" title="Toggle dark mode" style="background: transparent; border: none; color: white; cursor: pointer; font-size: 1.2rem;">🌙</button>
+                </div>
+            </header>
+
+            <div class="page-container">
+                <div class="page-content">
+                    <div id="pageBody">
+                        <!-- Content loaded dynamically -->
+                    </div>
+
+                    <div id="pageContentGrid" style="display: grid; gap: 2rem; align-items: start; margin-bottom: 1.5rem;">
+                        <!-- Main Column -->
+                        <div class="page-body" id="mainContent" style="min-width: 0;">
+                        </div>
+                        <!-- Sidebar Column -->
+                        <div class="page-sidebar" id="pageSidebar" style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        </div>
+                    </div>
+
+                    <div class="pager" id="pager"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Theme Toggle
+        function initTheme() {
+            const savedTheme = localStorage.getItem('iaTheme') || 'light';
+            document.documentElement.dataset.theme = savedTheme;
+            updateThemeToggle();
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.dataset.theme || 'light';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.dataset.theme = newTheme;
+            localStorage.setItem('iaTheme', newTheme);
+            updateThemeToggle();
+        }
+
+        function updateThemeToggle() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const isDark = document.documentElement.dataset.theme === 'dark';
+            toggleBtn.textContent = isDark ? '☀️' : '🌙';
+        }
+
+        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+        // Content Sections
+        const content = {
+            intro: {
+                title: 'Internal Assessment Resource',
+                mainContent: `
+                    <p style="font-size: 1.1rem; margin-bottom: 1.5rem;">
+                        This guide provides comprehensive guidance for the IB Computer Science Internal Assessment. It covers all five evaluation criteria and outlines the technical skills expected for a successful computational solution.
+                    </p>
+                    <h3>What is the Internal Assessment?</h3>
+                    <p>The Internal Assessment (IA) is a culminating project where students develop a computational solution to a real-world problem. The solution is assessed across five criteria that evaluate the problem definition, planning, design, development, and evaluation of the solution.</p>
+                    <h3>Key Information</h3>
+                    <ul>
+                        <li><strong>Duration:</strong> Students work on the IA throughout the course</li>
+                        <li><strong>Word Count:</strong> Maximum 2,000 words (excluding code, diagrams, and comments)</li>
+                        <li><strong>Format:</strong> Single PDF file with five sections (one per criterion)</li>
+                        <li><strong>Documentation:</strong> Must include code excerpts, system overviews, and testing evidence</li>
+                    </ul>
+                `,
+                sidebar: `
+                    <div class="sidebar-section important">
+                        <h4>⚠️ Important Note</h4>
+                        <p>Students no longer require a client. The IA is now for the student's own interest, allowing greater flexibility in project selection and better alignment with individual strengths.</p>
+                    </div>
+                    <div class="sidebar-section key-points">
+                        <h4>✓ Marks Breakdown</h4>
+                        <p><strong>Criterion A:</strong> 4 marks<br>
+                        <strong>Criterion B:</strong> 4 marks<br>
+                        <strong>Criterion C:</strong> 6 marks<br>
+                        <strong>Criterion D:</strong> 12 marks<br>
+                        <strong>Criterion E:</strong> 4 marks<br>
+                        <strong>Total:</strong> 30 marks</p>
+                    </div>
+                `
+            },
+            a: {
+                title: 'Criterion A: Problem Specification',
+                mainContent: `
+                    <span class="criterion-badge">4 MARKS</span>
+                    <h2>Criterion A: Problem Specification</h2>
+                    <p>The problem specification is the starting point of the solution and must be used as a basis for the development of the product.</p>
+
+                    <h3>What You Need to Do</h3>
+                    <ul>
+                        <li>Have the necessary technical skills, access to appropriate hardware and software, and availability of relevant data</li>
+                        <li>Define your problem scenario, success criteria, and computational context clearly</li>
+                        <li>Demonstrate sufficient complexity requiring computational thinking</li>
+                        <li>Show that the solution is demonstrably your own work</li>
+                    </ul>
+
+                    <h3>Problem Scenario Guidelines</h3>
+                    <p>Your problem can come from:</p>
+                    <ul>
+                        <li>The outside world (real-world problems)</li>
+                        <li>A different subject in your DP studies</li>
+                        <li>A computational context</li>
+                    </ul>
+
+                    <h3>Questions to Consider</h3>
+                    <ul>
+                        <li>What is the current situation?</li>
+                        <li>What causes the problem?</li>
+                        <li>Who is affected by the problem?</li>
+                        <li>What are the objectives or general requirements for the solution?</li>
+                        <li>Are there any constraints associated with the problem?</li>
+                        <li>Are there existing computational solutions, and if so, why are they not effective?</li>
+                        <li>Why is it valuable to construct a computational solution?</li>
+                        <li>Are there any time, resource, or specific condition limitations?</li>
+                    </ul>
+
+                    <h3>Success Criteria Requirements</h3>
+                    <p>Your success criteria must be:</p>
+                    <ul>
+                        <li><strong>Relevant:</strong> Directly related to the problem</li>
+                        <li><strong>Clear:</strong> Easy to understand and unambiguous</li>
+                        <li><strong>Achievable:</strong> Realistic within your timeframe</li>
+                        <li><strong>Testable:</strong> Measurable and demonstrable</li>
+                    </ul>
+
+                    <h3>Computational Context</h3>
+                    <p>Explain why your chosen programming language/environment is appropriate for solving this problem:</p>
+                    <ul>
+                        <li><strong>Web-based solutions:</strong> HTML, CSS, JavaScript, etc.</li>
+                        <li><strong>Database solutions:</strong> Appropriate languages for data operations</li>
+                        <li><strong>Stand-alone/mobile:</strong> C#, Java, Python, etc.</li>
+                    </ul>
+
+                    <table class="marks-table">
+                        <thead>
+                            <tr>
+                                <th>Marks</th>
+                                <th>Level Descriptor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>0</strong></td>
+                                <td>The response does not reach a standard described by the descriptors below.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>1–2</strong></td>
+                                <td>• Outlines a problem scenario<br>• States limited success criteria<br>• Outlines the nature of the solution in a computational context</td>
+                            </tr>
+                            <tr>
+                                <td><strong>3–4</strong></td>
+                                <td>• Describes the problem scenario in terms of its measurable solution requirements<br>• States appropriate success criteria<br>• Explains the choice of computational context for the solution</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3>Examples of Good Success Criteria</h3>
+                    <ul>
+                        <li>The solution will allow for the input, editing and deletion of customer records from the database.</li>
+                        <li>The solution will give appropriate warning messages in case of extreme or invalid inputs.</li>
+                        <li>The solution will be menu-driven with eight menu choices (including an indication of the choices).</li>
+                    </ul>
+
+                    <h3>Examples of Inadequate Success Criteria</h3>
+                    <ul>
+                        <li>The code will compile.</li>
+                        <li>The code will run without crashing.</li>
+                        <li>The code will use loops.</li>
+                        <li>The program will be aesthetically pleasing.</li>
+                    </ul>
+                `,
+                sidebar: `
+                    <div class="sidebar-section requirement">
+                        <h4>📋 Recommended Word Count</h4>
+                        <p>Approximately 300 words for Criterion A</p>
+                    </div>
+                    <div class="sidebar-section example">
+                        <h4>💡 Example Problem Scenarios</h4>
+                        <p>• Inventory management systems<br>
+                        • Student databases<br>
+                        • Library management systems<br>
+                        • Appointment scheduling tools<br>
+                        • Encryption/decryption utilities</p>
+                    </div>
+                    <div class="sidebar-section tip">
+                        <h4>⭐ Pro Tips</h4>
+                        <p>Choose a problem that genuinely interests you. This will make the entire project more enjoyable and result in a better solution.</p>
+                    </div>
+                `
+            },
+            b: {
+                title: 'Criterion B: Planning',
+                mainContent: `
+                    <span class="criterion-badge">4 MARKS</span>
+                    <h2>Criterion B: Planning</h2>
+                    <p>The planning of the product must be consistent with the problem specification in Criterion A.</p>
+
+                    <h3>What This Criterion Assesses</h3>
+                    <ul>
+                        <li>How the problem scenario has been decomposed into component parts</li>
+                        <li>Whether your plan addresses the requirements of the solution in terms of success criteria</li>
+                        <li>Whether you include a proposed chronology for the steps involved in planning, designing, developing, testing and evaluating</li>
+                    </ul>
+
+                    <h3>Decomposing Problems</h3>
+                    <p>This is a fundamental step in computational thinking. Break down your complex problem into:</p>
+                    <ul>
+                        <li>Main components of the solution</li>
+                        <li>Functional parts</li>
+                        <li>Smaller, more specific tasks</li>
+                    </ul>
+
+                    <h3>Tools for Decomposition</h3>
+                    <ul>
+                        <li><strong>Use case diagrams</strong> with flow charts and data flow diagrams</li>
+                        <li><strong>Flow-charting tools</strong> to break down complex tasks into modules (procedural coding)</li>
+                        <li><strong>Object identification</strong> and description (object-oriented coding)</li>
+                        <li><strong>Data identification</strong> and processing requirements (database projects)</li>
+                    </ul>
+
+                    <h3>Creating Your Plan</h3>
+                    <p>After decomposing your problem, create a detailed chronological plan considering:</p>
+                    <ul>
+                        <li><strong>Task order and dependencies:</strong> Ensure efficient task execution</li>
+                        <li><strong>Success criteria:</strong> Address all requirements</li>
+                        <li><strong>Subtasks:</strong> Break down major activities into steps for all five stages</li>
+                        <li><strong>Time, limitations and resources:</strong> Allocate realistic timeframes and identify resource needs</li>
+                        <li><strong>Planning of research:</strong> Integrate necessary research activities</li>
+                    </ul>
+
+                    <h3>Using GANTT or AGILE Charts</h3>
+                    <p>A GANTT chart can map out your plan timeline. Maintain an AGILE approach so documentation matches your actual development. A generic chart will not meet this criterion.</p>
+
+                    <p><strong>Important:</strong> The plan is not a process journal. Write it beforehand—it guides development, not documents it after the fact.</p>
+
+                    <table class="marks-table">
+                        <thead>
+                            <tr>
+                                <th>Marks</th>
+                                <th>Level Descriptor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>0</strong></td>
+                                <td>The response does not reach a standard described by the descriptors below.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>1–2</strong></td>
+                                <td>• Constructs a partial decomposition of the problem scenario<br>• Constructs a plan that addresses some of the success criteria of the solution</td>
+                            </tr>
+                            <tr>
+                                <td><strong>3–4</strong></td>
+                                <td>• Constructs a reasonable decomposition of the problem scenario<br>• Constructs a plan that addresses the success criteria of the solution</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                `,
+                sidebar: `
+                    <div class="sidebar-section requirement">
+                        <h4>📋 Recommended Word Count</h4>
+                        <p>Approximately 150 words for Criterion B</p>
+                    </div>
+                    <div class="sidebar-section key-points">
+                        <h4>✓ Key Planning Elements</h4>
+                        <p>• Task dependencies<br>
+                        • Timeline with milestones<br>
+                        • Resource allocation<br>
+                        • Risk identification<br>
+                        • Testing schedule</p>
+                    </div>
+                    <div class="sidebar-section tip">
+                        <h4>⭐ Pro Tips</h4>
+                        <p>Be realistic about timelines. Include buffer time for unexpected challenges and revision cycles.</p>
+                    </div>
+                `
+            },
+            c: {
+                title: 'Criterion C: System Overview',
+                mainContent: `
+                    <span class="criterion-badge">6 MARKS</span>
+                    <h2>Criterion C: System Overview</h2>
+                    <p>The system overview of the product must be consistent with the problem specification in Criterion A and the planning in Criterion B.</p>
+
+                    <h3>System Model Components</h3>
+                    <p>Your system overview should include:</p>
+                    <ul>
+                        <li>A system model with key components, their relationships, and interaction rules</li>
+                        <li>The design of the user interface</li>
+                        <li>Algorithms required by components and the user interface</li>
+                        <li>Sufficient clarity for a third party to recreate your product</li>
+                        <li>Information that provides a viable testing strategy</li>
+                    </ul>
+
+                    <h3>Appropriate Diagram Types</h3>
+                    <p>Choose diagrams suitable for your computational context:</p>
+                    <ul>
+                        <li><strong>Procedural coding:</strong> Flow-charting tools or bulleted lists with indentations</li>
+                        <li><strong>Object-oriented coding:</strong> UML diagrams showing dependencies between objects</li>
+                        <li><strong>Database projects:</strong> Table design with proper normalization and data dictionaries</li>
+                    </ul>
+
+                    <h3>Algorithms as Components</h3>
+                    <p>Each component in your system model is made up of algorithms. Present them as:</p>
+                    <ul>
+                        <li>Pseudocode</li>
+                        <li>Flow charts</li>
+                        <li>Bulleted lists with indentations</li>
+                    </ul>
+
+                    <h3>Testing Strategies</h3>
+                    <p>Consider both functional and structural testing:</p>
+                    <ul>
+                        <li><strong>Functional testing:</strong> Create a table listing success criteria and how each will be tested</li>
+                        <li><strong>Structural testing:</strong> Focus on major algorithms using valid, extreme, and invalid data</li>
+                    </ul>
+
+                    <h3>UI Design Sketches</h3>
+                    <p>Include annotated design sketches of your user interface as part of your system design.</p>
+
+                    <table class="marks-table">
+                        <thead>
+                            <tr>
+                                <th>Marks</th>
+                                <th>Level Descriptor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>0</strong></td>
+                                <td>The response does not reach a standard described by the descriptors below.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>1–2</strong></td>
+                                <td>• Outlines a limited system model<br>• Identifies algorithms for components<br>• Identifies a testing strategy for at least one success criterion</td>
+                            </tr>
+                            <tr>
+                                <td><strong>3–4</strong></td>
+                                <td>• Constructs a system model that is not complete<br>• Constructs algorithms for components leading to partial functionality<br>• Outlines a testing strategy that aligns with at least three success criteria</td>
+                            </tr>
+                            <tr>
+                                <td><strong>5–6</strong></td>
+                                <td>• Constructs a complete system model<br>• Constructs algorithms for components that enable the product to perform<br>• Describes a testing strategy that aligns with the success criteria</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                `,
+                sidebar: `
+                    <div class="sidebar-section requirement">
+                        <h4>📋 Recommended Word Count</h4>
+                        <p>Approximately 150 words for Criterion C</p>
+                    </div>
+                    <div class="sidebar-section important">
+                        <h4>⚠️ System Model Clarity</h4>
+                        <p>Your system model should be detailed enough that another programmer could understand and implement your design without additional explanation.</p>
+                    </div>
+                    <div class="sidebar-section example">
+                        <h4>💡 Testing Examples</h4>
+                        <p>Valid data: correct format inputs<br>
+                        Extreme data: boundary values<br>
+                        Invalid data: wrong type or format</p>
+                    </div>
+                `
+            },
+            d: {
+                title: 'Criterion D: Development',
+                mainContent: `
+                    <span class="criterion-badge">12 MARKS</span>
+                    <h2>Criterion D: Development</h2>
+                    <p>The development of the product must be consistent with the problem specification in Criterion A, the planning in Criterion B and the system overview developed in Criterion C.</p>
+
+                    <h3>What This Criterion Assesses</h3>
+                    <ul>
+                        <li>Evidence of the functionality and testing of the product</li>
+                        <li>The structure of the product and appropriateness of techniques</li>
+                        <li>Testing for correctness, reliability and efficiency</li>
+                        <li>Your knowledge and understanding of tools and techniques</li>
+                    </ul>
+
+                    <h3>Functionality</h3>
+                    <p>Functionality refers to how well your product works. To demonstrate functionality:</p>
+                    <ul>
+                        <li>Include a single test-run showing the solution's performance</li>
+                        <li>Follow the testing strategies developed in your system overview</li>
+                        <li>Address the problem specification in Criterion A</li>
+                    </ul>
+
+                    <p><strong>Important:</strong> A product that doesn't address the problem specification cannot achieve more than limited functionality.</p>
+
+                    <h3>Algorithms and Techniques</h3>
+                    <p>Show your algorithmic thinking through:</p>
+                    <ul>
+                        <li>Code excerpts with clear explanations</li>
+                        <li>Justifications for technique choices</li>
+                        <li>Discussion of why certain techniques were most appropriate</li>
+                        <li>Comments explaining code purpose</li>
+                    </ul>
+
+                    <h3>Using LLMs in Development</h3>
+                    <p>You may use LLMs like ChatGPT to improve your code, but you <strong>must</strong> acknowledge this:</p>
+                    <ul>
+                        <li>Include comments in your code indicating LLM use</li>
+                        <li>Document where and how the LLM was used</li>
+                        <li>Explain how the LLM's suggestion improved your solution</li>
+                    </ul>
+
+                    <h3>Testing Evidence</h3>
+                    <p>Document and discuss your testing:</p>
+                    <ul>
+                        <li>Show at least three separate test cases</li>
+                        <li>Include both functional and structural testing</li>
+                        <li>Copy test tables from your system overview and add observed results</li>
+                        <li>Address valid, extreme, and invalid data</li>
+                        <li>Reference evidence from your test-run video</li>
+                    </ul>
+
+                    <table class="marks-table">
+                        <thead>
+                            <tr>
+                                <th>Marks</th>
+                                <th>Level Descriptor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>0</strong></td>
+                                <td>The response does not reach a standard described by the descriptors below.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>1–3</strong></td>
+                                <td>• Constructs a product with very limited functionality<br>• Constructs a product using no appropriate techniques<br>• States the choices made to implement the algorithms<br>• States the testing strategy used</td>
+                            </tr>
+                            <tr>
+                                <td><strong>4–6</strong></td>
+                                <td>• Constructs a product that has limited functionality<br>• Constructs a product using at least one appropriate technique<br>• Outlines the choices made to implement the algorithms<br>• States the effectiveness of the testing strategy</td>
+                            </tr>
+                            <tr>
+                                <td><strong>7–9</strong></td>
+                                <td>• Constructs a product that has partial functionality<br>• Constructs a product using some appropriate techniques<br>• Explains the choices made to implement the algorithms<br>• Describes the effectiveness of the testing strategy</td>
+                            </tr>
+                            <tr>
+                                <td><strong>10–12</strong></td>
+                                <td>• Constructs a fully functional product<br>• Constructs a product using appropriate techniques<br>• Evaluates the choices made to implement the algorithms<br>• Justifies the effectiveness of the testing strategy</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                `,
+                sidebar: `
+                    <div class="sidebar-section requirement">
+                        <h4>📋 Recommended Word Count</h4>
+                        <p>Approximately 1,000 words for Criterion D</p>
+                    </div>
+                    <div class="sidebar-section key-points">
+                        <h4>✓ Key Development Elements</h4>
+                        <p>• Code structure and organization<br>
+                        • Algorithm implementation<br>
+                        • Error handling<br>
+                        • Code efficiency<br>
+                        • Testing methodology</p>
+                    </div>
+                    <div class="sidebar-section important">
+                        <h4>⚠️ LLM Acknowledgment</h4>
+                        <p>Failure to acknowledge LLM use may result in academic integrity issues. Always be transparent about external assistance.</p>
+                    </div>
+                `
+            },
+            e: {
+                title: 'Criterion E: Evaluation',
+                mainContent: `
+                    <span class="criterion-badge">4 MARKS</span>
+                    <h2>Criterion E: Evaluation</h2>
+                    <p>The evaluation of the product must be consistent with the problem specification and success criteria in Criterion A.</p>
+
+                    <h3>Meeting Success Criteria</h3>
+                    <p>Create a table listing all success criteria with an in-depth evaluation:</p>
+                    <ul>
+                        <li>Address the extent to which each criterion was achieved</li>
+                        <li>Refer to evidence of testing in your video and documentation</li>
+                        <li>Provide specific examples demonstrating achievement</li>
+                    </ul>
+
+                    <h3>Suggesting Improvements</h3>
+                    <p>Identify issues that came to light during testing and suggest improvements:</p>
+                    <ul>
+                        <li>Be specific about what needs improvement</li>
+                        <li>Explain how the improvement addresses the identified issue</li>
+                        <li>Consider feasibility and time constraints</li>
+                    </ul>
+
+                    <h3>Examples of Inadequate Suggestions</h3>
+                    <ul>
+                        <li>Merely add more colour, data, calculations, or functionality (unless specifically justified)</li>
+                        <li>Add functionality for unmet success criteria</li>
+                        <li>Add a GUI if you developed a CLI (or vice versa)</li>
+                        <li>Add essential features that should have been included initially</li>
+                    </ul>
+
+                    <h3>Examples of Good Suggestions</h3>
+                    <ul>
+                        <li>"Implement caching to reduce database queries by 50%, addressing the performance bottleneck identified during testing."</li>
+                        <li>"Add input validation regex patterns to prevent 95% of invalid entries currently causing errors."</li>
+                        <li>"Refactor the sorting algorithm from O(n²) to O(n log n) to handle datasets exceeding 10,000 records."</li>
+                    </ul>
+
+                    <table class="marks-table">
+                        <thead>
+                            <tr>
+                                <th>Marks</th>
+                                <th>Level Descriptor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>0</strong></td>
+                                <td>The response does not reach a standard described by the descriptors below.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>1–2</strong></td>
+                                <td>• States the extent to which the success criteria were met<br>• Describes improvements to the product</td>
+                            </tr>
+                            <tr>
+                                <td><strong>3–4</strong></td>
+                                <td>• Evaluates the extent to which the success criteria were met<br>• Justifies improvements to the product</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                `,
+                sidebar: `
+                    <div class="sidebar-section requirement">
+                        <h4>📋 Recommended Word Count</h4>
+                        <p>Approximately 400 words for Criterion E</p>
+                    </div>
+                    <div class="sidebar-section tip">
+                        <h4>⭐ Pro Tips</h4>
+                        <p>Be honest about what worked well and what didn't. Evaluators respect self-awareness and critical thinking.</p>
+                    </div>
+                    <div class="sidebar-section example">
+                        <h4>💡 Evaluation Structure</h4>
+                        <p>1. Success criteria table<br>
+                        2. Achievement analysis<br>
+                        3. Identified limitations<br>
+                        4. Suggested improvements</p>
+                    </div>
+                `
+            },
+            skills: {
+                title: 'Technical Skills Guide',
+                mainContent: `
+                    <span class="criterion-badge">REFERENCE</span>
+                    <h2>Technical Skills for the IA</h2>
+                    <p>Your project should demonstrate mastery of computational skills appropriate to your problem. The following categories represent common technical approaches for successful IAs:</p>
+
+                    <h3>Data Structures & Algorithms</h3>
+                    <p><strong>Stacks/Queues:</strong> Managing LIFO/FIFO operations (undo/redo features, print job scheduling)</p>
+                    <p><strong>Binary Search Trees:</strong> Fast lookup and insertion (student databases, autocomplete systems)</p>
+                    <p><strong>Hash Tables:</strong> Key-value storage (caching, password managers)</p>
+
+                    <h3>Searching & Sorting</h3>
+                    <p><strong>Binary Search:</strong> Efficient searching in sorted data (O(log n))</p>
+                    <p><strong>Merge Sort/Quick Sort:</strong> Efficient general-purpose sorting</p>
+                    <p><strong>Timsort:</strong> Hybrid sorting used in Python and Java</p>
+
+                    <h3>Object-Oriented Programming</h3>
+                    <p>Design classes representing real-world entities (e.g., User, Product, Transaction) with:</p>
+                    <ul>
+                        <li>Inheritance for shared functionality</li>
+                        <li>Polymorphism for flexible implementations</li>
+                        <li>Encapsulation for data protection</li>
+                    </ul>
+
+                    <h3>Recursion & Backtracking</h3>
+                    <p>Solve problems through self-referential logic:</p>
+                    <ul>
+                        <li>Tree/graph traversal</li>
+                        <li>Factorial/Fibonacci calculation</li>
+                        <li>Maze solving algorithms</li>
+                    </ul>
+
+                    <h3>Graph & Tree Algorithms</h3>
+                    <p><strong>Depth-First Search (DFS):</strong> Explore deeply before backtracking</p>
+                    <p><strong>Breadth-First Search (BFS):</strong> Explore level-by-level</p>
+                    <p><strong>Dijkstra's Algorithm:</strong> Find shortest paths</p>
+
+                    <h3>Dynamic Programming</h3>
+                    <p>Optimize solutions by breaking problems into overlapping subproblems:</p>
+                    <ul>
+                        <li>Knapsack problem (optimization)</li>
+                        <li>Edit distance (string similarity)</li>
+                        <li>Longest common subsequence</li>
+                    </ul>
+
+                    <h3>Cryptography & Security</h3>
+                    <p>Implement security features:</p>
+                    <ul>
+                        <li>Password hashing (SHA-256 with salting)</li>
+                        <li>Encryption/decryption (Caesar cipher, RSA)</li>
+                        <li>Digital signatures</li>
+                    </ul>
+
+                    <h3>Database Design</h3>
+                    <p>If using databases:</p>
+                    <ul>
+                        <li>Proper normalization (1NF, 2NF, 3NF)</li>
+                        <li>Entity-relationship diagrams</li>
+                        <li>Efficient queries and indexing</li>
+                    </ul>
+
+                    <h3>Machine Learning Basics</h3>
+                    <p>For data science projects:</p>
+                    <ul>
+                        <li>Linear regression</li>
+                        <li>Classification algorithms (k-NN, Naive Bayes)</li>
+                        <li>Clustering (k-means)</li>
+                    </ul>
+
+                    <h3>Computer Vision</h3>
+                    <p>Image processing and recognition:</p>
+                    <ul>
+                        <li>Image filtering and transformation</li>
+                        <li>Object detection</li>
+                        <li>Optical character recognition (OCR)</li>
+                    </ul>
+                `,
+                sidebar: `
+                    <div class="sidebar-section key-points">
+                        <h4>✓ Skill Selection Tips</h4>
+                        <p>• Choose skills that naturally solve your problem<br>
+                        • Don't force advanced techniques unnecessarily<br>
+                        • Demonstrate mastery, not just awareness</p>
+                    </div>
+                    <div class="sidebar-section example">
+                        <h4>💡 Real-World Applications</h4>
+                        <p><strong>Social Network:</strong> Graph algorithms, databases<br>
+                        <strong>Recommendation Engine:</strong> Machine learning<br>
+                        <strong>File Encryption:</strong> Cryptography<br>
+                        <strong>Game:</strong> Recursion, pathfinding</p>
+                    </div>
+                `
+            }
+        };
+
+        let currentSection = 'intro';
+
+        function switchSection(section) {
+            currentSection = section;
+
+            // Update active menu item
+            document.querySelectorAll('.sidebar-menu-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Load content
+            const data = content[section];
+            document.getElementById('pageTitle').textContent = data.title;
+
+            const mainContent = document.getElementById('mainContent');
+            const pageSidebar = document.getElementById('pageSidebar');
+            const pageContentGrid = document.getElementById('pageContentGrid');
+
+            mainContent.innerHTML = data.mainContent;
+            pageSidebar.innerHTML = data.sidebar;
+
+            // Adjust grid layout
+            if (data.sidebar) {
+                pageContentGrid.style.gridTemplateColumns = '2fr 1fr';
+                pageSidebar.style.display = 'flex';
+            } else {
+                pageContentGrid.style.gridTemplateColumns = '1fr';
+                pageSidebar.style.display = 'none';
+            }
+
+            window.scrollTo(0, 0);
+        }
+
+        // Sidebar Toggle
+        document.getElementById('toggleNavBtn').addEventListener('click', () => {
+            document.getElementById('readerSidebar').classList.toggle('open');
+        });
+
+        document.getElementById('closeSidebarBtn').addEventListener('click', () => {
+            document.getElementById('readerSidebar').classList.remove('open');
+        });
+
+        // Initialize immediately
+        initTheme();
+
+        // Load initial content on page load
+        window.addEventListener('load', () => {
+            switchSection('intro');
+        });
+
+        // Also try to load if DOM is already ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                switchSection('intro');
+            });
+        } else {
+            switchSection('intro');
+        }
+    </script>
+</body>
+</html>

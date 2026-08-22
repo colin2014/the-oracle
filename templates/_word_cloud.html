@@ -1,0 +1,282 @@
+{# Animated word cloud for flashcard difficulty.
+   Include once per page, then call:
+     renderWordCloud(containerEl, cards, { limit: 60, controls: true })
+   where cards = [{ term, difficulty (0-100), correct_count, incorrect_count, total_attempts }] #}
+<style>
+    .wc-cloud {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: center;
+        gap: 0.35rem 1.1rem;
+        padding: 1.75rem 0.5rem;
+        min-height: 140px;
+    }
+
+    .wc-word {
+        position: relative;
+        cursor: default;
+        user-select: none;
+        line-height: 1.25;
+        white-space: nowrap;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s;
+        animation:
+            wcIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) var(--wc-delay, 0s) backwards,
+            wcFloat var(--wc-dur, 5s) ease-in-out var(--wc-fdelay, 0s) infinite alternate;
+    }
+    .wc-word:hover {
+        transform: scale(1.18);
+        filter: brightness(1.15);
+        z-index: 5;
+        animation-play-state: paused, paused;
+    }
+    .wc-word.easy   { color: #10b981; }
+    .wc-word.medium { color: #f59e0b; }
+    .wc-word.hard   { color: #ef4444; text-shadow: 0 0 18px rgba(239, 68, 68, 0.35); }
+
+    @keyframes wcIn {
+        from { opacity: 0; transform: scale(0.3) translateY(14px); }
+        to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    @keyframes wcFloat {
+        from { translate: 0 calc(var(--wc-amp, 3px) * -1); }
+        to   { translate: 0 var(--wc-amp, 3px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .wc-word { animation: none; }
+    }
+
+    /* Controls */
+    .wc-controls {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-bottom: 0.25rem;
+    }
+    .wc-chip {
+        border: 1px solid var(--border, #e5e7eb);
+        background: var(--bg-white, #fff);
+        color: var(--text-dark, #1a1a1a);
+        border-radius: 999px;
+        padding: 0.35rem 0.9rem;
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+        font-family: inherit;
+    }
+    .wc-chip:hover { border-color: var(--primary, #a84fd4); }
+    .wc-chip.active { background: rgba(157, 132, 255, 0.18); border-color: var(--primary, #a84fd4); color: var(--primary, #a84fd4); }
+    .wc-search {
+        border: 1px solid var(--border, #e5e7eb);
+        background: var(--bg-white, #fff);
+        color: var(--text-dark, #1a1a1a);
+        border-radius: 999px;
+        padding: 0.35rem 0.9rem;
+        font-size: 0.82rem;
+        width: 160px;
+        font-family: inherit;
+    }
+    .wc-search:focus { outline: none; border-color: var(--primary, #a84fd4); }
+
+    .wc-more {
+        display: block;
+        margin: 0.25rem auto 0;
+        border: none;
+        background: var(--bg-light, #f3f4f6);
+        color: var(--primary, #a84fd4);
+        border-radius: 8px;
+        padding: 0.55rem 1.3rem;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.15s;
+        font-family: inherit;
+    }
+    .wc-more:hover { background: rgba(157, 132, 255, 0.18); }
+    .wc-none { text-align: center; color: var(--text-light, #6b7280); padding: 1.5rem 0; font-size: 0.9rem; }
+
+    /* Tooltip */
+    .wc-tip {
+        position: fixed;
+        z-index: 3000;
+        pointer-events: none;
+        background: var(--bg-white, #fff);
+        color: var(--text-dark, #1a1a1a);
+        border: 1px solid var(--border, #e5e7eb);
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+        padding: 0.5rem 0.8rem;
+        font-size: 0.8rem;
+        line-height: 1.45;
+        max-width: 260px;
+        opacity: 0;
+        transition: opacity 0.12s;
+    }
+    .wc-tip.show { opacity: 1; }
+    .wc-tip b { font-size: 0.9rem; }
+</style>
+
+<script>
+(function () {
+    let tip = null;
+    function getTip() {
+        if (!tip) {
+            tip = document.createElement('div');
+            tip.className = 'wc-tip';
+            document.body.appendChild(tip);
+        }
+        return tip;
+    }
+
+    // Stable pseudo-random from a string, so the cloud arrangement and float
+    // rhythm of each word stay consistent across renders
+    function hash(str) {
+        let h = 2166136261;
+        for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+        return (h >>> 0) / 4294967295;
+    }
+
+    // Mastered cards count as easy no matter what their lifetime error rate says
+    function bucket(c) { return c.mastered ? 'easy' : c.difficulty < 33 ? 'easy' : c.difficulty < 66 ? 'medium' : 'hard'; }
+    function effDifficulty(c) { return c.mastered ? Math.min(c.difficulty, 15) : c.difficulty; }
+
+    window.renderWordCloud = function (container, cards, opts = {}) {
+        const limit = opts.limit || 60;
+        let filter = 'all';
+        let query = '';
+        let expanded = false;
+
+        container.innerHTML = '';
+
+        const counts = { hard: 0, medium: 0, easy: 0 };
+        cards.forEach(c => counts[bucket(c)]++);
+
+        let controlsEl = null, searchEl = null;
+        if (opts.controls !== false && cards.length > 12) {
+            controlsEl = document.createElement('div');
+            controlsEl.className = 'wc-controls';
+            const chips = [
+                ['all', `All ${cards.length}`],
+                ['hard', `🔴 Hard ${counts.hard}`],
+                ['medium', `🟡 Medium ${counts.medium}`],
+                ['easy', `🟢 Easy ${counts.easy}`],
+            ];
+            chips.forEach(([key, label]) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'wc-chip' + (key === 'all' ? ' active' : '');
+                b.textContent = label;
+                b.addEventListener('click', () => {
+                    filter = key;
+                    expanded = false;
+                    controlsEl.querySelectorAll('.wc-chip').forEach(x => x.classList.remove('active'));
+                    b.classList.add('active');
+                    draw();
+                });
+                controlsEl.appendChild(b);
+            });
+            if (cards.length > 30) {
+                searchEl = document.createElement('input');
+                searchEl.className = 'wc-search';
+                searchEl.type = 'search';
+                searchEl.placeholder = '🔍 Find a word…';
+                searchEl.addEventListener('input', () => { query = searchEl.value.trim().toLowerCase(); expanded = false; draw(); });
+                controlsEl.appendChild(searchEl);
+            }
+            container.appendChild(controlsEl);
+        }
+
+        const cloudEl = document.createElement('div');
+        cloudEl.className = 'wc-cloud';
+        container.appendChild(cloudEl);
+
+        const moreBtn = document.createElement('button');
+        moreBtn.type = 'button';
+        moreBtn.className = 'wc-more';
+        moreBtn.style.display = 'none';
+        moreBtn.addEventListener('click', () => { expanded = true; draw(); });
+        container.appendChild(moreBtn);
+
+        function makeWord(c, i) {
+            const el = document.createElement('span');
+            const b = bucket(c);
+            el.className = `wc-word ${b}` + (c.mastered ? ' mastered' : '');
+            el.textContent = (c.mastered ? '⭐' : '') + c.term;
+            // Harder words render bigger and bolder so problems stand out
+            const eff = effDifficulty(c);
+            const size = 0.82 + (eff / 100) * 1.5;
+            el.style.fontSize = size.toFixed(2) + 'rem';
+            el.style.fontWeight = eff >= 66 ? 800 : eff >= 33 ? 700 : 600;
+            const r = hash(c.term);
+            el.style.setProperty('--wc-delay', Math.min(i * 0.022, 1.4).toFixed(2) + 's');
+            el.style.setProperty('--wc-dur', (3.5 + r * 3).toFixed(2) + 's');
+            el.style.setProperty('--wc-fdelay', (-r * 4).toFixed(2) + 's');
+            el.style.setProperty('--wc-amp', (2 + r * 3).toFixed(1) + 'px');
+
+            el.addEventListener('mouseenter', () => {
+                const t = getTip();
+                t.innerHTML = `<b>${escapeWc(c.term)}</b><br>` + (opts.tooltip
+                    ? opts.tooltip(c)
+                    : (c.mastered ? '⭐ Mastered — you\'ve got this now!<br>' : '') +
+                      `${c.difficulty}% hard · ${c.correct_count}✓ ${c.incorrect_count}✗` +
+                      (c.total_attempts ? ` · ${c.total_attempts} attempts` : '') +
+                      (c.correct_streak >= 2 ? ` · 🔥 ${c.correct_streak} in a row` : ''));
+                const rect = el.getBoundingClientRect();
+                t.classList.add('show');
+                const tw = t.offsetWidth;
+                t.style.left = Math.max(8, Math.min(rect.left + rect.width / 2 - tw / 2, window.innerWidth - tw - 8)) + 'px';
+                t.style.top = Math.max(8, rect.top - t.offsetHeight - 10) + 'px';
+            });
+            el.addEventListener('mouseleave', () => getTip().classList.remove('show'));
+            return el;
+        }
+
+        function escapeWc(s) {
+            const d = document.createElement('div');
+            d.textContent = s || '';
+            return d.innerHTML;
+        }
+
+        function draw() {
+            let list = cards.filter(c =>
+                (filter === 'all' || bucket(c) === filter) &&
+                (!query || (c.term || '').toLowerCase().includes(query))
+            );
+            // Hardest words first, so the cap keeps what matters most
+            // (mastered words sort as easy regardless of their lifetime %)
+            list.sort((a, b) => effDifficulty(b) - effDifficulty(a) || (b.total_attempts || 0) - (a.total_attempts || 0));
+            const capped = expanded ? list : list.slice(0, limit);
+            // Organic arrangement: stable shuffle so big words scatter through the cloud
+            const arranged = [...capped].sort((a, b) => hash(a.term) - hash(b.term));
+
+            cloudEl.innerHTML = '';
+            if (!arranged.length) {
+                cloudEl.innerHTML = '<div class="wc-none">No words match.</div>';
+            } else if (arranged.length <= 150) {
+                arranged.forEach((c, i) => cloudEl.appendChild(makeWord(c, i)));
+            } else {
+                // Hundreds of words: append in frames so the page never freezes
+                let i = 0;
+                (function batch() {
+                    const frag = document.createDocumentFragment();
+                    for (let n = 0; n < 120 && i < arranged.length; n++, i++) frag.appendChild(makeWord(arranged[i], i));
+                    cloudEl.appendChild(frag);
+                    if (i < arranged.length) requestAnimationFrame(batch);
+                })();
+            }
+
+            const hidden = list.length - capped.length;
+            moreBtn.style.display = hidden > 0 ? 'block' : 'none';
+            moreBtn.textContent = `Show all ${list.length} words (${hidden} more)`;
+        }
+
+        draw();
+    };
+})();
+</script>

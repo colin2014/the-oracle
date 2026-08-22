@@ -1,0 +1,154 @@
+{% extends "admin_base.html" %}
+{% block title %}Confidence Matrix{% endblock %}
+{% block content %}
+<style>
+    .confidence-badge {
+        display: inline-block;
+        padding: 0.25rem 0.6rem;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 0.8rem;
+        text-align: center;
+        min-width: 40px;
+    }
+    .confidence-1 { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
+    .confidence-2 { background: rgba(249, 115, 22, 0.15); color: #ea580c; }
+    .confidence-3 { background: rgba(251, 146, 60, 0.15); color: #d97706; }
+    .confidence-4 { background: rgba(34, 197, 94, 0.15); color: #16a34a; }
+    .confidence-5 { background: rgba(34, 197, 94, 0.15); color: #15803d; }
+    .matrix-filters {
+        display: flex;
+        align-items: flex-end;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 1.5rem;
+    }
+    .matrix-filters label {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-light);
+        margin-bottom: 0.4rem;
+    }
+    .matrix-filters select {
+        padding: 0.6rem 0.8rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--bg-light);
+        color: var(--text-dark);
+        font-size: 0.9rem;
+    }
+    th.sortable {
+        cursor: pointer;
+        user-select: none;
+    }
+    th.sortable:hover {
+        color: var(--primary);
+    }
+    th.sortable .sort-arrow {
+        display: inline-block;
+        width: 1em;
+        color: var(--primary);
+    }
+</style>
+
+<div class="admin-page-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+    <div>
+        <h1>Confidence Matrix</h1>
+        <p class="page-description">Confidence per assignment — assignments down, students across.</p>
+    </div>
+    <a href="{{ url_for('admin.confidence_analytics') }}" class="admin-btn">← Confidence Analytics</a>
+</div>
+
+<form method="GET" class="matrix-filters">
+    <div>
+        <label for="class-filter">Class</label>
+        <select id="class-filter" name="class" onchange="this.form.submit()">
+            <option value="">All Classes</option>
+            {% for c in all_classes %}
+            <option value="{{ c.id }}" {% if selected_class and selected_class.id == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</form>
+
+<div class="analytics-table-wrap">
+<table class="analytics-table" id="confidence-matrix">
+    <thead>
+        <tr>
+            <th>Assignment</th>
+            <th class="sortable" title="Sort by average confidence">Avg <span class="sort-arrow"></span></th>
+            {% for s in students %}
+            <th class="sortable" title="Sort by {{ s.name }}'s confidence"><a href="{{ url_for('admin.analytics_student', student_id=s.id) }}">{{ s.name }}</a> <span class="sort-arrow"></span></th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for a in assignments %}
+        <tr>
+            <td>{{ a.title }}</td>
+            {% set avg = avg_by_assignment.get((a.book_folder, a.page_id)) %}
+            <td data-v="{{ avg if avg is not none else '' }}">
+                {% if avg is not none %}
+                <span class="confidence-badge confidence-{{ avg | round(0) | int }}">{{ "%.2f" | format(avg) }}</span>
+                {% else %}
+                <span style="color: var(--text-light);">—</span>
+                {% endif %}
+            </td>
+            {% for s in students %}
+            {% set conf = confidence_by_key.get((s.id, a.book_folder, a.page_id)) %}
+            <td data-v="{{ conf.confidence_level if conf else '' }}">
+                {% if conf %}
+                <span class="confidence-badge confidence-{{ conf.confidence_level }}">{{ conf.confidence_level }}/5</span>
+                {% else %}
+                <span style="color: var(--text-light);">—</span>
+                {% endif %}
+            </td>
+            {% endfor %}
+        </tr>
+        {% else %}
+        <tr><td colspan="{{ students|length + 2 }}">No assignments found{% if selected_class %} for this class{% endif %}.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<script>
+    // Sort matrix rows by a confidence column (Avg or any student).
+    // First click: descending; second: ascending. Blank cells always sort last.
+    (function () {
+        const table = document.getElementById('confidence-matrix');
+        if (!table) return;
+        const tbody = table.querySelector('tbody');
+        const headers = table.querySelectorAll('th.sortable');
+
+        headers.forEach(th => {
+            th.addEventListener('click', e => {
+                if (e.target.closest('a')) return; // student name link still navigates
+
+                const idx = th.cellIndex;
+                const desc = th.dataset.dir !== 'desc';
+                headers.forEach(h => {
+                    delete h.dataset.dir;
+                    h.querySelector('.sort-arrow').textContent = '';
+                });
+                th.dataset.dir = desc ? 'desc' : 'asc';
+                th.querySelector('.sort-arrow').textContent = desc ? '▼' : '▲';
+
+                const rows = Array.from(tbody.rows).filter(r => r.cells.length > 2);
+                rows.sort((a, b) => {
+                    const av = a.cells[idx].dataset.v;
+                    const bv = b.cells[idx].dataset.v;
+                    if (av === '' && bv === '') return 0;
+                    if (av === '') return 1;
+                    if (bv === '') return -1;
+                    return desc ? bv - av : av - bv;
+                });
+                rows.forEach(r => tbody.appendChild(r));
+            });
+        });
+    })();
+</script>
+{% endblock %}

@@ -1,0 +1,579 @@
+{% extends "admin_base.html" %}
+{% block title %}Assessment{% endblock %}
+
+{% block content %}
+<style>
+    .hub-container { max-width: 1100px; margin: 0 auto; }
+    .hub-header h1 { font-size: 1.5rem; margin: 0 0 1rem 0; }
+
+    .hub-pills { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .hub-pill { padding: 0.4rem 1rem; border-radius: 999px; border: 1px solid var(--border); background: var(--bg-white); color: var(--text-dark); font-size: 0.85rem; font-weight: 600; text-decoration: none; cursor: pointer; }
+    .hub-pill:hover { border-color: var(--primary); color: var(--primary); }
+    .hub-pill.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .hub-pill .pill-count { display: inline-block; margin-left: 0.35rem; padding: 0.05rem 0.4rem; border-radius: 999px; background: rgba(220,38,38,0.14); color: #dc2626; font-size: 0.7rem; font-weight: 800; }
+    .hub-pill.active .pill-count { background: rgba(255,255,255,0.25); color: #fff; }
+
+    .hub-section[hidden] { display: none; }
+    .hub-section { animation: hubFadeIn 0.22s ease; }
+    @keyframes hubFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .hub-section > h2 { font-size: 1.1rem; margin: 0 0 0.25rem 0; }
+    .hub-section .sub { font-size: 0.85rem; color: var(--text-light); margin: 0 0 1rem 0; }
+
+    .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
+    .stat-tile { background: var(--bg-white); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.1rem; }
+    .stat-tile .k { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-light); margin-bottom: 0.3rem; }
+    .stat-tile .v { font-size: 1.5rem; font-weight: 800; color: var(--text-dark); }
+
+    .hub-card { background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; }
+    .hub-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    .hub-empty { text-align: center; padding: 1.5rem; color: var(--text-light); }
+
+    /* ---- block heading shared by Live now / Test papers ---- */
+    .block-head { display: flex; align-items: baseline; gap: 0.6rem; margin: 1.75rem 0 0.75rem; }
+    .block-head:first-child { margin-top: 0; }
+    .block-head h3 { font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-light); margin: 0; }
+    .block-head .hint { font-size: 0.8rem; color: var(--text-light); }
+
+    /* ---- live test card ---- */
+    @property --lv-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+    @keyframes lvSweep { to { --lv-angle: 360deg; } }
+    .live-badge {
+        position: relative; display: inline-flex; align-items: center; font-size: 0.65rem; font-weight: 800;
+        letter-spacing: 0.05em; color: hsl(253deg 70% 55%);
+        background: color-mix(in srgb, hsl(253deg 70% 55%) 12%, transparent);
+        padding: 0.15rem 0.45rem; border-radius: 999px;
+    }
+    .live-badge::before {
+        content: ""; position: absolute; inset: -1.5px; border-radius: 999px; padding: 1.5px;
+        background: conic-gradient(from var(--lv-angle), transparent 0%, hsl(298deg 70% 60%) 12%, transparent 32%);
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor; mask-composite: exclude;
+        animation: lvSweep 2.4s linear infinite; pointer-events: none;
+    }
+    @media (prefers-reduced-motion: reduce) { .live-badge::before { animation: none; } }
+
+    .live-card { border: 1px solid var(--border); border-radius: 10px; background: var(--bg-white); margin-bottom: 0.6rem; overflow: hidden; }
+    .live-card.is-live { border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); }
+    .live-top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.9rem 1.1rem; flex-wrap: wrap; }
+    .live-id { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+    .live-title { font-weight: 700; font-size: 0.98rem; }
+    .live-target { font-size: 0.8rem; color: var(--text-light); }
+    .live-code {
+        font-family: ui-monospace, Consolas, monospace; font-size: 1.25rem; font-weight: 800;
+        letter-spacing: 0.12em; color: var(--primary); background: rgba(157,132,255,0.12);
+        padding: 0.2rem 0.65rem; border-radius: 8px;
+    }
+    .live-stats { display: flex; gap: 1.4rem; }
+    .live-stat .n { font-size: 1.1rem; font-weight: 800; color: var(--text-dark); font-variant-numeric: tabular-nums; }
+    .live-stat .k { font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-light); }
+    .live-buttons { display: flex; gap: 0.45rem; flex-wrap: wrap; }
+
+    .mini-btn {
+        font-size: 0.8rem; font-weight: 600; padding: 0.42rem 0.8rem; border-radius: 7px;
+        border: 1px solid var(--border); background: var(--bg-white); color: var(--text-dark);
+        cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem;
+    }
+    .mini-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .mini-btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .mini-btn.primary:hover { background: var(--primary-dark); color: #fff; }
+    .mini-btn.danger { color: #dc2626; border-color: rgba(220,38,38,0.35); }
+    .mini-btn.danger:hover { background: rgba(220,38,38,0.08); border-color: #dc2626; color: #dc2626; }
+    .mini-btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+
+    .orphan-note {
+        display: flex; gap: 0.5rem; align-items: flex-start;
+        font-size: 0.78rem; color: #92400e; background: rgba(245,158,11,0.12);
+        border-top: 1px solid rgba(245,158,11,0.25); padding: 0.55rem 1.1rem;
+    }
+
+    /* ---- expanded progress panel ---- */
+    .prog-panel { border-top: 1px solid var(--border); padding: 0.9rem 1.1rem 1rem; background: color-mix(in srgb, var(--bg-light) 55%, transparent); }
+    .prog-row { display: grid; grid-template-columns: 1.4fr auto 1fr auto; gap: 0.9rem; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+    .prog-row:last-child { border-bottom: none; }
+    .prog-name { font-size: 0.87rem; font-weight: 600; display: flex; align-items: center; gap: 0.45rem; }
+    /* The name is the handle for "show me this one student", but it stays plain
+       text — a button chrome on every row turned the roster into a wall of
+       controls. It only reveals itself as clickable on hover. */
+    .prog-open { cursor: pointer; }
+    .prog-open:hover { color: var(--primary); }
+    .prog-sim { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-light); border: 1px dashed var(--border); border-radius: 4px; padding: 0 0.3rem; }
+    .status-pill { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; padding: 0.18rem 0.5rem; border-radius: 999px; white-space: nowrap; }
+    .st-not_started { background: rgba(120,120,130,0.14); color: var(--text-light); }
+    .st-in_progress { background: rgba(157,132,255,0.16); color: hsl(253deg 60% 48%); }
+    .st-submitted   { background: rgba(16,185,129,0.15); color: #047857; }
+    .st-marked      { background: rgba(16,185,129,0.15); color: #047857; }
+    .st-reviewed    { background: rgba(16,185,129,0.15); color: #047857; }
+
+    .dots { display: flex; gap: 3px; flex-wrap: wrap; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--text-light) 45%, transparent); }
+    .dot.on { background: var(--primary); border-color: var(--primary); }
+    .prog-count { font-size: 0.78rem; color: var(--text-light); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+    /* ---- one student's answers, revealed under their row ---- */
+    .prog-line { border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+    .prog-line:last-child { border-bottom: none; }
+    .prog-line .prog-row { border-bottom: none; cursor: pointer; }
+    .prog-line.no-work .prog-row { cursor: default; }
+    .prog-answers { padding: 0.2rem 0 0.8rem; display: grid; gap: 0.5rem; }
+    .prog-answer { border: 1px solid var(--border); border-radius: 8px; padding: 0.55rem 0.75rem; background: var(--bg-white); }
+    .prog-answer-q { font-size: 0.78rem; font-weight: 600; margin-bottom: 0.3rem; }
+    .prog-answer-body { font-size: 0.84rem; white-space: pre-wrap; transition: background 0.4s ease; border-radius: 4px; }
+    .prog-answer-body.empty { color: var(--text-light); font-style: italic; }
+    .prog-answer-body.flash { background: rgba(157, 132, 255, 0.2); }
+    .prog-opt { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.78rem; background: var(--bg-light); margin: 0 0.2rem 0.2rem 0; }
+    .prog-opt.chosen { background: rgba(157,132,255,0.18); color: var(--primary); font-weight: 700; }
+
+    /* ---- paper rows ---- */
+    .paper-card { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 0.55rem; background: var(--bg-white); overflow: hidden; }
+    .paper-top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.8rem 1.05rem; }
+    .paper-title { font-weight: 600; }
+    .paper-meta { font-size: 0.8rem; color: var(--text-light); }
+    .tb-pill { font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 999px; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.03em; }
+    .asg-list { border-top: 1px solid var(--border); }
+    .asg-row { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; padding: 0.5rem 1.05rem; font-size: 0.83rem; border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent); }
+    .asg-row:last-child { border-bottom: none; }
+    .asg-left { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+    .asg-code { font-family: ui-monospace, Consolas, monospace; font-weight: 700; letter-spacing: 0.08em; color: var(--primary); }
+
+    @media (max-width: 720px) {
+        .live-top { flex-direction: column; align-items: stretch; }
+        .prog-row { grid-template-columns: 1fr auto; row-gap: 0.35rem; }
+    }
+</style>
+
+<div class="hub-container">
+    <div class="hub-header">
+        <h1>🎯 Assessment</h1>
+    </div>
+
+    <div class="hub-pills" role="tablist">
+        <a class="hub-pill active" data-tab="tests" href="#tests" role="tab" aria-selected="true">🧪 Tests <span class="pill-count" id="liveCount" hidden></span></a>
+        <a class="hub-pill" data-tab="quizzes" href="#quizzes" role="tab" aria-selected="false">📝 Quizzes</a>
+        <a class="hub-pill" data-tab="flashcards" href="#flashcards" role="tab" aria-selected="false">🃏 Flashcards</a>
+    </div>
+
+    <section class="hub-section" id="tests">
+        <h2>🧪 Tests</h2>
+        <p class="sub">Timed, single-attempt exams assembled from the question bank.</p>
+        <div class="stat-row" id="tbStats"></div>
+
+        <div class="hub-card">
+            <div class="hub-actions" style="margin-top:0; margin-bottom:0.25rem;">
+                <a href="{{ url_for('test_builder.test_builder_home') }}" class="admin-btn" style="text-decoration:none;">＋ New / edit papers →</a>
+                <a href="{{ url_for('test_builder.test_review_page') }}" class="admin-btn-ghost" style="text-decoration:none;">📝 Review written answers</a>
+                <a href="{{ url_for('test_builder.question_bank_page') }}" class="admin-btn-ghost" style="text-decoration:none;">🔍 Audit question bank</a>
+            </div>
+
+            <div id="liveBlock"></div>
+
+            <div class="block-head">
+                <h3>Test papers</h3>
+                <span class="hint">Click a paper to open its editor.</span>
+            </div>
+            <div id="papersList"><div class="hub-empty">Loading…</div></div>
+        </div>
+    </section>
+
+    <section class="hub-section" id="quizzes" hidden>
+        <h2>📝 Quizzes</h2>
+        <p class="sub">Practice questions attached to reading pages.</p>
+        <div class="stat-row" id="quizStats"></div>
+        <div class="hub-card">
+            <div class="hub-actions" style="margin-top:0;">
+                <a href="{{ url_for('quiz.quiz_review') }}" class="admin-btn" style="text-decoration:none;">Review queue →</a>
+                <a href="{{ url_for('admin.analytics_hub') }}#quiz" class="admin-btn-ghost" style="text-decoration:none;">📊 Quiz analytics →</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="hub-section" id="flashcards" hidden>
+        <h2>🃏 Flashcards</h2>
+        <p class="sub">Vocabulary and concept practice sets.</p>
+        <div class="stat-row" id="fcStats"></div>
+        <div class="hub-card">
+            <div class="hub-actions" style="margin-top:0;">
+                <a href="{{ url_for('flashcards.flashcards_home') }}" class="admin-btn" style="text-decoration:none;">Open Flashcards →</a>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s == null ? '' : s;
+    return d.innerHTML;
+}
+
+const STATUS_LABEL = {
+    not_started: 'Not started',
+    in_progress: 'Working',
+    submitted: 'Submitted',
+    marked: 'Marked',
+    reviewed: 'Reviewed',
+};
+
+// Assignment ids whose progress panel the teacher has opened. Kept across the
+// 6s refresh so a panel doesn't collapse under them mid-invigilation.
+const openPanels = new Set();
+// `${assignmentId}:${studentId}` for students whose answers the teacher has opened,
+// plus the last poll's data so opening one repaints instantly instead of refetching.
+const openStudents = new Set();
+const progressCache = {};
+let liveTests = [];
+
+function formatRemaining(deadlineIso) {
+    if (!deadlineIso) return '—';
+    const msLeft = new Date(deadlineIso) - new Date();
+    if (msLeft <= 0) return '00:00';
+    const total = Math.floor(msLeft / 1000);
+    return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+/* ------------------------------------------------------------------ live now */
+
+function renderLive() {
+    const block = document.getElementById('liveBlock');
+    const badge = document.getElementById('liveCount');
+
+    if (!liveTests.length) {
+        block.innerHTML = '';
+        badge.hidden = true;
+        return;
+    }
+
+    badge.hidden = false;
+    badge.textContent = liveTests.length;
+
+    if (!block.querySelector('.block-head')) {
+        block.innerHTML = `
+            <div class="block-head">
+                <h3>Live now</h3>
+                <span class="hint">Students can still join with these codes.</span>
+            </div>`;
+    }
+
+    // Cards are created once and thereafter only patched. Re-writing the block's
+    // innerHTML on every 6s refresh is what made the whole panel vanish and
+    // reappear — and it threw away any open progress panel with it.
+    const seen = new Set();
+    liveTests.forEach(t => {
+        seen.add(String(t.assignment_id));
+        let card = block.querySelector(`[data-assignment="${t.assignment_id}"]`);
+        if (!card) {
+            block.insertAdjacentHTML('beforeend', liveCardShell(t));
+            card = block.querySelector(`[data-assignment="${t.assignment_id}"]`);
+            card.querySelector('[data-toggle]').addEventListener('click', () => togglePanel(t.assignment_id));
+            card.querySelector('[data-close]').addEventListener('click', e => closeTest(t.assignment_id, e.currentTarget));
+        }
+        updateLiveCard(card, t);
+        block.appendChild(card);
+    });
+    block.querySelectorAll('[data-assignment]').forEach(card => {
+        if (!seen.has(card.dataset.assignment)) card.remove();
+    });
+
+    openPanels.forEach(id => loadProgress(id));
+}
+
+function liveCardShell(t) {
+    return `
+        <div class="live-card is-live" data-assignment="${t.assignment_id}">
+            <div class="live-top">
+                <div class="live-id">
+                    <span class="live-badge">Live</span>
+                    <div>
+                        <div class="live-title">${escapeHtml(t.paper_title)}</div>
+                        <div class="live-target">${escapeHtml(t.target_label)}</div>
+                    </div>
+                    <span class="live-code" data-role="code"></span>
+                </div>
+                <div class="live-stats">
+                    <div class="live-stat"><div class="n" data-role="done"></div><div class="k">Done</div></div>
+                    <div class="live-stat"><div class="n" data-role="working"></div><div class="k">Working</div></div>
+                    <div class="live-stat"><div class="n" data-role="left"></div><div class="k">Time left</div></div>
+                </div>
+                <div class="live-buttons">
+                    <button class="mini-btn" data-toggle="${t.assignment_id}"></button>
+                    <a class="mini-btn" href="/assessment/test-assignments/${t.assignment_id}/present" target="_blank">📽 Present</a>
+                    <button class="mini-btn danger" data-close="${t.assignment_id}">Close test</button>
+                </div>
+            </div>
+            <div data-role="orphan"></div>
+            <div class="prog-panel" id="panel-${t.assignment_id}" hidden></div>
+        </div>`;
+}
+
+function updateLiveCard(card, t) {
+    card.querySelector('[data-role="code"]').textContent = t.access_code || '';
+    card.querySelector('[data-role="done"]').textContent = `${t.finished_count}${t.assigned_count ? '/' + t.assigned_count : ''}`;
+    card.querySelector('[data-role="working"]').textContent = t.in_progress_count;
+
+    const left = card.querySelector('[data-role="left"]');
+    left.dataset.deadline = t.latest_deadline_iso || '';
+    left.textContent = formatRemaining(t.latest_deadline_iso);
+
+    const isOpen = openPanels.has(t.assignment_id);
+    card.querySelector('[data-toggle]').innerHTML = isOpen ? '▴ Hide' : '▾ Who\'s where';
+    card.querySelector(`#panel-${t.assignment_id}`).hidden = !isOpen;
+
+    const orphan = card.querySelector('[data-role="orphan"]');
+    const wantsOrphan = t.assigned_count === 0;
+    if (wantsOrphan && !orphan.innerHTML) {
+        orphan.innerHTML = `
+            <div class="orphan-note">
+                <span>⚠️</span>
+                <span>No students are enrolled in this target, so this test can never retire its own code. Close it manually when you're done.</span>
+            </div>`;
+    } else if (!wantsOrphan && orphan.innerHTML) {
+        orphan.innerHTML = '';
+    }
+}
+
+function togglePanel(assignmentId) {
+    if (openPanels.has(assignmentId)) {
+        openPanels.delete(assignmentId);
+    } else {
+        openPanels.add(assignmentId);
+        loadProgress(assignmentId);
+    }
+    renderLive();
+}
+
+/** The student's own live window. Named per submission so clicking the same name
+ *  again focuses the window already open rather than stacking duplicates. */
+function openStudentWindow(event, submissionId) {
+    event.stopPropagation();  // the row click expands inline; the name opens the window
+    const w = window.open(
+        `/assessment/test-submissions/${submissionId}/live`,
+        `student-live-${submissionId}`,
+        'width=880,height=940,noopener=no'
+    );
+    if (w) w.focus();
+}
+
+function toggleStudent(assignmentId, studentId) {
+    if (window.getSelection && String(window.getSelection())) return;  // don't collapse mid-selection
+    const key = `${assignmentId}:${studentId}`;
+    if (openStudents.has(key)) openStudents.delete(key); else openStudents.add(key);
+    const cached = progressCache[assignmentId];
+    if (cached) paintProgress(assignmentId, cached);
+}
+
+function answerBodyHtml(q) {
+    if (q.is_mcq) {
+        const opts = q.options || [];
+        if (!opts.length) return '<span class="prog-answer-body empty">No options</span>';
+        return opts.map((opt, i) =>
+            `<span class="prog-opt ${(q.selected_options || []).includes(i) ? 'chosen' : ''}">${escapeHtml(opt)}</span>`
+        ).join('');
+    }
+    const text = q.response_text || '';
+    return `<div class="prog-answer-body ${text ? '' : 'empty'}">${escapeHtml(text) || 'Nothing typed yet…'}</div>`;
+}
+
+function studentLineHtml(assignmentId, s, questionCount) {
+    const key = `${assignmentId}:${s.student_id}`;
+    const isOpen = openStudents.has(key);
+    const hasWork = s.status !== 'not_started' && s.questions.length;
+    return `
+        <div class="prog-line ${hasWork ? '' : 'no-work'}" data-student="${s.student_id}">
+            <div class="prog-row" ${hasWork ? `onclick="toggleStudent(${assignmentId}, ${s.student_id})"` : ''}>
+                <div class="prog-name">
+                    ${s.submission_id
+                        ? `<span class="prog-open" onclick="openStudentWindow(event, ${s.submission_id})" title="Open in its own window">${escapeHtml(s.student_name)}</span>`
+                        : escapeHtml(s.student_name)}
+                    ${s.is_simulated ? '<span class="prog-sim">simulated</span>' : ''}
+                    ${s.on_roster ? '' : '<span class="prog-sim">not enrolled</span>'}
+                </div>
+                <span class="status-pill st-${s.status}">${STATUS_LABEL[s.status] || s.status}</span>
+                <div class="dots">
+                    ${s.questions.length
+                        ? s.questions.map(q => `<span class="dot ${q.answered ? 'on' : ''}" title="${escapeHtml(q.text || '')}"></span>`).join('')
+                        : '<span class="prog-count">—</span>'}
+                </div>
+                <div class="prog-count">
+                    ${s.status === 'not_started'
+                        ? '—'
+                        : `${s.answered_count}/${questionCount}${s.deadline_iso ? ` · <span data-deadline="${s.deadline_iso}">${formatRemaining(s.deadline_iso)}</span>` : ''}`}
+                </div>
+            </div>
+            <div class="prog-answers" ${isOpen ? '' : 'hidden'}>
+                ${isOpen ? s.questions.map(q => `
+                    <div class="prog-answer" data-answer="${s.student_id}:${q.question_id}">
+                        <div class="prog-answer-q">${escapeHtml(q.text || '')}</div>
+                        ${answerBodyHtml(q)}
+                    </div>`).join('') : ''}
+            </div>
+        </div>`;
+}
+
+/** Repaints one assignment's panel from already-fetched data. Rows are replaced
+ *  only where their content actually changed, so an open student's answers don't
+ *  blink (or lose a selection) on every 6s poll. */
+function paintProgress(assignmentId, d) {
+    const panel = document.getElementById(`panel-${assignmentId}`);
+    if (!panel) return;
+
+    if (!d.students.length) {
+        panel.innerHTML = '<div class="hub-empty" style="padding:0.5rem;">Nobody has been assigned or started this test yet.</div>';
+        return;
+    }
+
+    const seen = new Set();
+    d.students.forEach(s => {
+        seen.add(String(s.student_id));
+        const html = studentLineHtml(assignmentId, s, d.question_count);
+        let line = panel.querySelector(`[data-student="${s.student_id}"]`);
+        if (!line) {
+            panel.insertAdjacentHTML('beforeend', html);
+            line = panel.querySelector(`[data-student="${s.student_id}"]`);
+        } else if (line.outerHTML !== html) {
+            line.outerHTML = html;
+            line = panel.querySelector(`[data-student="${s.student_id}"]`);
+        }
+        panel.appendChild(line);
+    });
+    panel.querySelectorAll('[data-student]').forEach(line => {
+        if (!seen.has(line.dataset.student)) line.remove();
+    });
+    const stale = panel.querySelector('.hub-empty');
+    if (stale) stale.remove();
+}
+
+async function loadProgress(assignmentId) {
+    // No "Loading…" placeholder: on every refresh it replaced a panel the teacher
+    // was reading with a spinner-word for a fraction of a second. A first open
+    // shows an empty strip briefly instead; a failed poll keeps the last picture.
+    try {
+        const res = await fetch(`/admin/api/test-assignments/${assignmentId}/progress`);
+        if (!res.ok) return;
+        const d = await res.json();
+        progressCache[assignmentId] = d;
+        paintProgress(assignmentId, d);
+    } catch (e) { /* keep showing the last poll */ }
+}
+
+async function closeTest(assignmentId, btn) {
+    const t = liveTests.find(x => x.assignment_id === assignmentId);
+    const working = t ? t.in_progress_count : 0;
+    const warning = working
+        ? `\n\n${working} student${working === 1 ? ' is' : 's are'} still working. They can finish and submit — closing only stops new joins.`
+        : '';
+    if (!confirm(`Close "${t ? t.paper_title : 'this test'}"?\n\nThe join code stops working immediately. Results stay available for review.${warning}`)) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Closing…';
+    try {
+        const res = await fetch(`/admin/api/test-assignments/${assignmentId}/close`, { method: 'POST' });
+        const d = await res.json();
+        if (!d.ok) {
+            alert(d.error || 'Could not close this test.');
+            btn.disabled = false;
+            btn.textContent = 'Close test';
+            return;
+        }
+        openPanels.delete(assignmentId);
+        await refresh();
+    } catch (e) {
+        alert('Could not close this test.');
+        btn.disabled = false;
+        btn.textContent = 'Close test';
+    }
+}
+
+/* ------------------------------------------------------------- papers + tabs */
+
+function renderSummary(d) {
+    document.getElementById('tbStats').innerHTML = `
+        <div class="stat-tile"><div class="k">Test papers</div><div class="v">${d.test_builder.papers.length}</div></div>
+        <div class="stat-tile"><div class="k">Live now</div><div class="v">${liveTests.length}</div></div>
+        <div class="stat-tile"><div class="k">Awaiting review</div><div class="v">${d.test_builder.pending_review_count}</div></div>`;
+
+    const papersList = document.getElementById('papersList');
+    if (!d.test_builder.papers.length) {
+        papersList.innerHTML = '<div class="hub-empty">No test papers yet — create one from the button above.</div>';
+    } else {
+        papersList.innerHTML = d.test_builder.papers.map(p => `
+            <div class="paper-card">
+                <div class="paper-top">
+                    <div>
+                        <div class="paper-title">${escapeHtml(p.title)}${p.has_hl_only_questions ? ' <span class="tb-pill" style="background:rgba(245,158,11,0.15); color:#b45309;">HL</span>' : ''}</div>
+                        <div class="paper-meta">${p.question_count} question${p.question_count === 1 ? '' : 's'} · ${p.total_marks} marks</div>
+                    </div>
+                    <div class="live-buttons">
+                        <a class="mini-btn" href="/assessment/test-builder/${p.id}/assign">Assign</a>
+                        <a class="mini-btn primary" href="/assessment/test-builder/${p.id}">Edit →</a>
+                    </div>
+                </div>
+                ${p.assignments.length ? `
+                    <div class="asg-list">
+                        ${p.assignments.map(a => `
+                            <div class="asg-row">
+                                <div class="asg-left">
+                                    ${a.is_live ? '<span class="live-badge">Live</span>' : ''}
+                                    <span>${escapeHtml(a.target_label)}</span>
+                                    ${a.access_code ? `<span class="asg-code">${escapeHtml(a.access_code)}</span>` : ''}
+                                    <span class="paper-meta">${a.submitted_count}${a.assigned_count ? '/' + a.assigned_count : ''} done${a.created_at ? ' · ' + escapeHtml(a.created_at) : ''}</span>
+                                </div>
+                                <a class="mini-btn" href="/assessment/test-assignments/${a.id}/results">Results →</a>
+                            </div>
+                        `).join('')}
+                    </div>` : ''}
+            </div>
+        `).join('');
+    }
+
+    document.getElementById('quizStats').innerHTML = `
+        <div class="stat-tile"><div class="k">Questions in bank</div><div class="v">${d.quiz.question_count}</div></div>`;
+    document.getElementById('fcStats').innerHTML = `
+        <div class="stat-tile"><div class="k">Flashcard sets</div><div class="v">${d.flashcards.set_count}</div></div>`;
+}
+
+async function refresh() {
+    const [liveRes, sumRes] = await Promise.all([
+        fetch('/admin/api/assessment/live-tests'),
+        fetch('/admin/api/assessment/summary'),
+    ]);
+    liveTests = (await liveRes.json()).live_tests || [];
+    renderLive();
+    renderSummary(await sumRes.json());
+}
+
+async function refreshLiveOnly() {
+    try {
+        const res = await fetch('/admin/api/assessment/live-tests');
+        if (!res.ok) return;
+        liveTests = (await res.json()).live_tests || [];
+        renderLive();
+    } catch (e) { /* transient — the next tick will retry */ }
+}
+
+function tickCountdowns() {
+    document.querySelectorAll('[data-deadline]').forEach(el => {
+        if (el.dataset.deadline) el.textContent = formatRemaining(el.dataset.deadline);
+    });
+}
+
+const TABS = ['tests', 'quizzes', 'flashcards'];
+function showTab(name) {
+    TABS.forEach(t => {
+        const section = document.getElementById(t);
+        const pill = document.querySelector(`.hub-pill[data-tab="${t}"]`);
+        section.hidden = (t !== name);
+        pill.classList.toggle('active', t === name);
+        pill.setAttribute('aria-selected', t === name ? 'true' : 'false');
+    });
+}
+document.querySelectorAll('.hub-pill').forEach(pill => {
+    pill.addEventListener('click', e => {
+        e.preventDefault();
+        showTab(pill.dataset.tab);
+    });
+});
+
+refresh();
+setInterval(refreshLiveOnly, 6000);
+setInterval(tickCountdowns, 1000);
+</script>
+{% endblock %}

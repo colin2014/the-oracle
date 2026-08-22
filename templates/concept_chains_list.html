@@ -1,0 +1,178 @@
+{% extends "student_base.html" %}
+
+{% block title %}Concept Chains - The Oracle{% endblock %}
+
+{% block content %}
+<div class="concept-chains-container">
+    <div class="page-header">
+        <h1>Concept Chains</h1>
+        <p class="subtitle">Build networks of connected ideas to deepen understanding</p>
+    </div>
+
+    <div class="chains-grid">
+        {% for chain in chains %}
+        <a href="{{ url_for('concept_chains.view_chain', chain_id=chain.id) }}" class="chain-card">
+            <div class="chain-header">
+                <h3>{{ chain.title }}</h3>
+                <span class="difficulty difficulty-{{ chain.difficulty }}">{{ chain.difficulty }}</span>
+            </div>
+            <p class="chain-description">{{ chain.description or "Build relationships between concepts" }}</p>
+            <div class="chain-meta">
+                <span class="domain">{{ chain.domain }}</span>
+                <span class="concept-count">{{ chain.nodes|length }} concepts</span>
+            </div>
+            {% if progress[chain.id] %}
+                {% if progress[chain.id].completed %}
+                <div class="chain-score">Score: {{ "%.0f"|format(progress[chain.id].score) }}%</div>
+                {% else %}
+                <div class="chain-status">In progress...</div>
+                {% endif %}
+            {% else %}
+            <div class="chain-status">Not started</div>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+.concept-chains-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.page-header {
+    margin-bottom: 3rem;
+}
+
+.page-header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0 0 0.5rem 0;
+}
+
+.subtitle {
+    color: var(--text-light);
+    margin: 0;
+    font-size: 1rem;
+}
+
+.chains-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.chain-card {
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.chain-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(199, 125, 255, 0.15);
+    border-color: var(--primary);
+}
+
+.chain-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.chain-header h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    flex: 1;
+}
+
+.difficulty {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    text-transform: capitalize;
+}
+
+.difficulty-basic {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.difficulty-intermediate {
+    background: #bfdbfe;
+    color: #1e40af;
+}
+
+.difficulty-advanced {
+    background: #fed7aa;
+    color: #9a3412;
+}
+
+[data-theme="dark"] .difficulty-basic {
+    background: #064e3b;
+    color: #86efac;
+}
+
+[data-theme="dark"] .difficulty-intermediate {
+    background: #0c2d6b;
+    color: #60a5fa;
+}
+
+[data-theme="dark"] .difficulty-advanced {
+    background: #7c2d12;
+    color: #fdba74;
+}
+
+.chain-description {
+    font-size: 0.95rem;
+    color: var(--text-light);
+    margin: 0 0 1rem 0;
+    flex: 1;
+}
+
+.chain-meta {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+}
+
+.domain, .concept-count {
+    color: var(--text-light);
+}
+
+.domain::before {
+    content: "📚 ";
+}
+
+.concept-count::before {
+    content: "◯ ";
+}
+
+.chain-status {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    font-style: italic;
+}
+
+.chain-score {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--primary);
+}
+</style>
+{% endblock %}

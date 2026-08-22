@@ -1,0 +1,516 @@
+{% extends "admin_base.html" %}
+
+{% block title %}{{ student.name }} - Reading Analytics{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+<style>
+    .admin-analytics-body {
+            background: var(--bg-light);
+            color: var(--text-dark);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .analytics-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .page-header h1 {
+            font-size: 2rem;
+            background: linear-gradient(135deg, #8366e8 0%, #6b52cc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .back-button {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            background: rgba(157, 132, 255, 0.1);
+            transition: background 0.2s;
+        }
+
+        .back-button:hover {
+            background: rgba(157, 132, 255, 0.2);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-white);
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid var(--primary);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
+        .chart-card {
+            background: var(--bg-white);
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            border: 1px solid var(--border);
+        }
+
+        .chart-card h3 {
+            margin-top: 0;
+            color: var(--text-dark);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 1rem;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 1rem;
+        }
+
+        .table-card {
+            background: var(--bg-white);
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            border: 1px solid var(--border);
+            overflow-x: auto;
+        }
+
+        .table-card h3 {
+            margin-top: 0;
+            color: var(--text-dark);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 1rem;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th {
+            background: rgba(157, 132, 255, 0.1);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .data-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table tr:hover {
+            background: rgba(157, 132, 255, 0.05);
+        }
+
+        @media (max-width: 768px) {
+            .admin-analytics-body {
+                padding: 1rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-container {
+                height: 200px;
+            }
+    }
+</style>
+
+<div class="analytics-container" style="max-width: 1200px; margin: 0 auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <a href="/admin/reading-analytics" class="back-button">← Back to All Analytics</a>
+            <div style="display: flex; gap: 0.75rem;">
+                <a href="{{ url_for('quiz.student_quiz_analytics', student_id=student.id) }}" class="back-button" style="background: rgba(157, 132, 255, 0.2); margin: 0;">📊 View Quiz Analytics →</a>
+                <a href="/admin/student/{{ student.id }}/resources" class="back-button" style="background: rgba(157, 132, 255, 0.2); margin: 0;">📌 View Resources →</a>
+            </div>
+        </div>
+
+        <div class="page-header">
+            <h1>📚 {{ student.name }}'s Reading Analytics</h1>
+            <p>Detailed reading activity and progress tracking</p>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalTime">0h</div>
+                <div class="stat-label">Total Reading Time</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="pagesRead">0</div>
+                <div class="stat-label">Pages Read</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="avgPerPage">0m</div>
+                <div class="stat-label">Average per Page</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="streak">0</div>
+                <div class="stat-label">Day Streak</div>
+            </div>
+        </div>
+
+        <!-- Reading Time Trend -->
+        <div class="chart-card">
+            <h3>📊 Reading Time Trend</h3>
+            <div class="chart-container">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Day of Week Activity -->
+        <div class="chart-card">
+            <h3>📅 Reading by Day of Week</h3>
+            <div class="chart-container">
+                <canvas id="dayOfWeekChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Top Pages -->
+        <div class="chart-card">
+            <h3>⭐ Top Pages Read</h3>
+            <div class="chart-container">
+                <canvas id="topPagesChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Reading Activity Table -->
+        <div class="table-card">
+            <h3>📖 All Reading Activity</h3>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Page Title</th>
+                        <th>Total Time</th>
+                        <th>First Read</th>
+                        <th>Last Read</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="activityTableBody">
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-light);">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Flashcard Analytics -->
+        <div class="table-card">
+            <h3>🃏 Flashcard Performance</h3>
+            <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Set</th>
+                        <th>Mastered</th>
+                        <th>Tries</th>
+                        <th>Completed</th>
+                        <th>Time Spent</th>
+                        <th>Avg Time</th>
+                        <th>Best Time</th>
+                        <th>Accuracy (first → latest)</th>
+                        <th>Improvement</th>
+                        <th>Last Studied</th>
+                    </tr>
+                </thead>
+                <tbody id="flashcardTableBody">
+                    <tr><td colspan="10" style="text-align: center; color: var(--text-light);">Loading...</td></tr>
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const studentId = {{ student.id }};
+        const charts = {};
+
+        function fmtDur(seconds) {
+            if (seconds === null || seconds === undefined) return '—';
+            if (seconds < 60) return Math.round(seconds) + 's';
+            const m = Math.floor(seconds / 60), s = Math.round(seconds % 60);
+            return `${m}m ${s}s`;
+        }
+
+        async function loadFlashcardAnalytics() {
+            const body = document.getElementById('flashcardTableBody');
+            try {
+                const res = await fetch(`/admin/api/flashcards/student/${studentId}/analytics`);
+                const data = await res.json();
+                const sets = data.sets || [];
+                if (!sets.length) {
+                    body.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--text-light);">No flashcard sets assigned to this student.</td></tr>';
+                    return;
+                }
+                body.innerHTML = sets.map(s => {
+                    const acc = (s.first_accuracy !== null && s.first_accuracy !== undefined)
+                        ? (s.last_accuracy !== null && s.last_accuracy !== s.first_accuracy
+                            ? `${s.first_accuracy}% → ${s.last_accuracy}%` : `${s.first_accuracy}%`)
+                        : '—';
+                    const imp = [];
+                    if (s.time_improvement) {
+                        const faster = s.time_improvement > 0;
+                        imp.push(`<span style="color:${faster ? '#10b981' : '#ef4444'}; font-weight:600;">${faster ? '▲' : '▼'} ${Math.abs(s.time_improvement).toFixed(0)}s ${faster ? 'faster' : 'slower'}</span>`);
+                    }
+                    if (s.accuracy_improvement) {
+                        const up = s.accuracy_improvement > 0;
+                        imp.push(`<span style="color:${up ? '#10b981' : '#ef4444'}; font-weight:600;">${up ? '▲' : '▼'} ${Math.abs(s.accuracy_improvement)}%</span>`);
+                    }
+                    const last = s.last_session_at ? new Date(s.last_session_at).toLocaleString([], {dateStyle:'medium', timeStyle:'short'}) : '—';
+                    return `<tr>
+                        <td><a href="/admin/flashcards/${s.set_id}" style="color:var(--primary); text-decoration:none;">${s.title}</a></td>
+                        <td>${s.mastered}/${s.card_count}</td>
+                        <td>${s.attempts}</td>
+                        <td>${s.completions}</td>
+                        <td>${fmtDur(s.total_seconds)}</td>
+                        <td>${fmtDur(s.avg_seconds)}</td>
+                        <td>${fmtDur(s.best_seconds)}</td>
+                        <td>${acc}</td>
+                        <td>${imp.length ? imp.join('<br>') : '—'}</td>
+                        <td>${last}</td>
+                    </tr>`;
+                }).join('');
+            } catch (e) {
+                body.innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--text-light);">Could not load flashcard analytics.</td></tr>';
+            }
+        }
+        loadFlashcardAnalytics();
+
+        async function loadStudentAnalytics() {
+            try {
+                const response = await fetch(`/admin/api/reading-analytics?student_id=${studentId}`);
+                const data = await response.json();
+
+                updateStats(data);
+                updateCharts(data);
+                updateActivityTable(data);
+            } catch (error) {
+                console.error('Failed to load analytics:', error);
+            }
+        }
+
+        function updateStats(data) {
+            document.getElementById('totalTime').textContent = formatTime(data.total_seconds);
+            document.getElementById('pagesRead').textContent = data.total_pages;
+            document.getElementById('avgPerPage').textContent = data.total_pages > 0
+                ? formatMinutes(data.total_seconds / data.total_pages)
+                : '0m';
+
+            // Calculate reading streak
+            const activityDates = Object.keys(data.activity_by_date || {}).sort().reverse();
+            let streak = 0;
+            if (activityDates.length > 0) {
+                const today = new Date().toISOString().split('T')[0];
+                const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+                let currentDate = today;
+                for (const date of activityDates) {
+                    if (date === currentDate) {
+                        streak++;
+                        currentDate = new Date(new Date(currentDate) - 86400000).toISOString().split('T')[0];
+                    } else {
+                        break;
+                    }
+                }
+            }
+            document.getElementById('streak').textContent = streak;
+        }
+
+        function updateCharts(data) {
+            updateTrendChart(data.activity_by_date);
+            updateDayOfWeekChart(data.activity_by_day);
+            updateTopPagesChart(data.top_pages);
+        }
+
+        function updateTrendChart(activityByDate) {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+
+            if (charts.trend) {
+                charts.trend.destroy();
+            }
+
+            const dates = Object.keys(activityByDate || {}).sort();
+            const data = dates.map(date => (activityByDate[date] || 0) / 3600);
+
+            charts.trend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates.slice(-30),
+                    datasets: [{
+                        label: 'Hours Read',
+                        data: data.slice(-30),
+                        borderColor: '#c77dff',
+                        backgroundColor: 'rgba(157, 132, 255, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function updateDayOfWeekChart(activityByDay) {
+            const ctx = document.getElementById('dayOfWeekChart').getContext('2d');
+
+            if (charts.dayOfWeek) {
+                charts.dayOfWeek.destroy();
+            }
+
+            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const data = days.map((day, i) => (activityByDay[i] || 0) / 3600);
+
+            charts.dayOfWeek = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: days,
+                    datasets: [{
+                        label: 'Hours Read',
+                        data: data,
+                        backgroundColor: 'rgba(157, 132, 255, 0.6)',
+                        borderColor: '#c77dff',
+                        borderWidth: 2,
+                        borderRadius: 6,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function updateTopPagesChart(topPages) {
+            const ctx = document.getElementById('topPagesChart').getContext('2d');
+
+            if (charts.topPages) {
+                charts.topPages.destroy();
+            }
+
+            const labels = topPages.slice(0, 10).map(p => p.title.substring(0, 40));
+            const data = topPages.slice(0, 10).map(p => p.total_minutes);
+
+            charts.topPages = new Chart(ctx, {
+                type: 'horizontalBar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Minutes Read',
+                        data: data,
+                        backgroundColor: 'rgba(157, 132, 255, 0.6)',
+                        borderColor: '#c77dff',
+                        borderWidth: 1,
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function updateActivityTable(data) {
+            const tbody = document.getElementById('activityTableBody');
+            tbody.innerHTML = '';
+
+            if (!data.students || data.students.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-light);">No reading activity</td></tr>';
+                return;
+            }
+
+            // For single student, data.students should have one entry
+            // But we need to get individual page activities - let me show from top_pages instead
+            const topPages = data.top_pages || [];
+
+            if (topPages.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-light);">No reading activity</td></tr>';
+                return;
+            }
+
+            topPages.forEach(page => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${page.title}</strong></td>
+                    <td>${page.total_minutes} min</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td><span style="background: #d1fae5; color: #065f46; padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600;">Read</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return `${hours}h ${minutes}m`;
+        }
+
+        function formatMinutes(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            return `${minutes}m`;
+        }
+
+        // Load on page load
+        document.addEventListener('DOMContentLoaded', loadStudentAnalytics);
+    </script>
+</div>
+{% endblock %}

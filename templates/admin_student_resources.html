@@ -1,0 +1,236 @@
+{% extends "admin_base.html" %}
+
+{% block title %}{{ student.name }} - Resources{% endblock %}
+
+{% block content %}
+<style>
+        .admin-res-body { background: var(--bg-light); color: var(--text-dark); margin: 0; min-height: 100vh; }
+        .admin-res-container { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; }
+        .admin-res-header { text-align: center; margin: 1.5rem 0 2rem; }
+        .admin-res-header h1 { font-size: 2rem; font-weight: 800; margin: 0 0 0.4rem; }
+        .admin-res-header p { color: var(--text-light); margin: 0; }
+
+        .back-nav {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .back-button {
+            display: inline-block;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            background: rgba(157, 132, 255, 0.1);
+            transition: background 0.2s;
+        }
+
+        .back-button:hover {
+            background: rgba(157, 132, 255, 0.2);
+        }
+
+        .analytics-section {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .analytics-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin: 0 0 1.25rem 0;
+            color: var(--text-dark);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 0.75rem;
+        }
+
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+        }
+
+        .analytics-stat {
+            background: rgba(157, 132, 255, 0.05);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(157, 132, 255, 0.2);
+            text-align: center;
+        }
+
+        .analytics-stat-value {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 0.4rem;
+        }
+
+        .analytics-stat-label {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            font-weight: 600;
+        }
+
+        .resources-section {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1.5rem;
+        }
+
+        .resources-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin: 0 0 1.25rem 0;
+            color: var(--text-dark);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 0.75rem;
+        }
+
+        .resource-item {
+            display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+            background: var(--bg-light); border: 1px solid var(--border); border-radius: 10px;
+            padding: 1rem 1.25rem; margin-bottom: 0.75rem; text-decoration: none; color: inherit;
+            transition: transform 0.15s;
+        }
+        .resource-item:hover { transform: translateY(-2px); background: rgba(157, 132, 255, 0.05); }
+        .resource-item.completed { border-left: 4px solid #10b981; }
+        .resource-icon { font-size: 1.5rem; flex-shrink: 0; }
+        .resource-main { min-width: 0; flex: 1; }
+        .resource-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .resource-meta { font-size: 0.8rem; color: var(--text-light); margin-top: 0.2rem; }
+        .resource-badge {
+            font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+            padding: 0.2rem 0.5rem; border-radius: 4px; background: var(--bg-light); color: var(--text-light);
+            flex-shrink: 0;
+        }
+        .resource-badge.complete { background: #d1fae5; color: #065f46; }
+        .confidence-badge {
+            font-size: 0.7rem; font-weight: 700;
+            padding: 0.3rem 0.6rem; border-radius: 4px;
+            flex-shrink: 0;
+        }
+        .confidence-1 { background: #fee2e2; color: #991b1b; }
+        .confidence-2 { background: #fed7aa; color: #92400e; }
+        .confidence-3 { background: #fef3c7; color: #92400e; }
+        .confidence-4 { background: #dcfce7; color: #166534; }
+        .confidence-5 { background: #d1fae5; color: #065f46; }
+        .resources-empty { text-align: center; padding: 3rem; color: var(--text-light); }
+</style>
+
+<div class="admin-res-container" style="max-width: 900px; margin: 0 auto; padding: 2rem 1rem;">
+        <div class="back-nav">
+            <a href="/admin/reading-analytics" class="back-button">← All Analytics</a>
+            <a href="/admin/analytics/student/{{ student.id }}" class="back-button">📈 View Analytics →</a>
+        </div>
+
+        <div class="admin-res-header">
+            <h1>{{ student.name }}'s Resources</h1>
+            <p>{{ student.email }}</p>
+        </div>
+
+        <!-- Reading Analytics Section -->
+        <div class="analytics-section">
+            <h3 class="analytics-title">📊 Reading Analytics</h3>
+            <div class="analytics-grid">
+                <div class="analytics-stat">
+                    <div class="analytics-stat-value" id="totalReadingTime">0h</div>
+                    <div class="analytics-stat-label">Total Time</div>
+                </div>
+                <div class="analytics-stat">
+                    <div class="analytics-stat-value" id="pagesRead">0</div>
+                    <div class="analytics-stat-label">Pages Read</div>
+                </div>
+                <div class="analytics-stat">
+                    <div class="analytics-stat-value" id="avgPerPage">0m</div>
+                    <div class="analytics-stat-label">Avg per Page</div>
+                </div>
+                <div class="analytics-stat">
+                    <div class="analytics-stat-value" id="completionPercent">0%</div>
+                    <div class="analytics-stat-label">Completion</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resources Section -->
+        <div class="resources-section">
+            <h3 class="resources-title">📌 Assigned Resources</h3>
+            <div id="resourcesList">
+                {% if assignments %}
+                    {% for a in assignments %}
+                    <a href="{{ a.link }}" class="resource-item {{ 'completed' if a.completed else '' }}">
+                        <span class="resource-icon">{{ '📄' if a.resource_type == 'exemplar' else '🗓️' if a.resource_type == 'unit_plan_week' else '📖' }}</span>
+                        <div class="resource-main">
+                            <div class="resource-title">{{ a.title }}</div>
+                            <div class="resource-meta">
+                                {{ a.class_name }} · {{ a.resource_label }}
+                                {% if a.due_date %} · Due {{ a.due_date }}{% endif %}
+                                {% if a.estimated_minutes %} · {{ a.estimated_minutes }} min read{% endif %}
+                                {% if a.total_minutes and a.total_minutes > 0 %} ({{ a.total_minutes }} spent){% endif %}
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            {% if a.confidence_level %}
+                            <span class="confidence-badge confidence-{{ a.confidence_level }}" title="Confidence: {{ a.confidence_level }}/5">
+                                {% if a.confidence_level == 1 %}Very Low{% elif a.confidence_level == 2 %}Low{% elif a.confidence_level == 3 %}Neutral{% elif a.confidence_level == 4 %}High{% else %}Very High{% endif %}
+                            </span>
+                            {% endif %}
+                            <span class="resource-badge {{ 'complete' if a.completed else '' }}">
+                                {{ '✓ Complete' if a.completed else 'Not started' }}
+                            </span>
+                        </div>
+                    </a>
+                    {% endfor %}
+                {% else %}
+                    <div class="resources-empty">
+                        <p>No resources assigned to this student.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load reading analytics for this student
+        async function loadStudentAnalytics() {
+            try {
+                const response = await fetch('/api/reading-stats');
+                const stats = await response.json();
+
+                const totalSeconds = stats.total_seconds || 0;
+                const totalHours = Math.floor(totalSeconds / 3600);
+                const totalMinutes = Math.floor((totalSeconds % 3600) / 60);
+
+                document.getElementById('totalReadingTime').textContent = totalHours > 0
+                    ? `${totalHours}h ${totalMinutes}m`
+                    : `${totalMinutes}m`;
+
+                document.getElementById('pagesRead').textContent = stats.total_pages || 0;
+
+                const avgMinutes = stats.total_pages > 0
+                    ? Math.round((totalSeconds / 60) / stats.total_pages)
+                    : 0;
+                document.getElementById('avgPerPage').textContent = `${avgMinutes}m`;
+
+                // Calculate completion percentage
+                const resourceItems = document.querySelectorAll('.resource-item');
+                const completedItems = document.querySelectorAll('.resource-item.completed');
+                const completionPercent = resourceItems.length > 0
+                    ? Math.round((completedItems.length / resourceItems.length) * 100)
+                    : 0;
+                document.getElementById('completionPercent').textContent = `${completionPercent}%`;
+            } catch (error) {
+                console.error('Failed to load analytics:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadStudentAnalytics);
+    </script>
+</div>
+{% endblock %}

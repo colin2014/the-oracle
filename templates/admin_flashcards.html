@@ -1,0 +1,211 @@
+{% extends "admin_base.html" %}
+{% block title %}Flashcards — Admin{% endblock %}
+
+{% block content %}
+<style>
+    .fc-container { max-width: 900px; margin: 0 auto; }
+    .fc-header h1 { font-size: 1.5rem; margin: 0 0 0.3rem 0; }
+    .fc-header p { color: var(--text-light); margin: 0 0 1.5rem 0; font-size: 0.9rem; }
+    .fc-card {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.25rem;
+        margin-bottom: 1.25rem;
+    }
+    .fc-set-row {
+        display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+        border: 1px solid var(--border); border-radius: 8px;
+        padding: 0.85rem 1.1rem; margin-bottom: 0.5rem;
+        text-decoration: none; color: var(--text-dark); transition: all 0.15s;
+    }
+    .fc-set-row:hover { border-color: var(--primary, #8366e8); transform: translateX(2px); }
+    .fc-set-title { font-weight: 600; }
+    .fc-set-meta { font-size: 0.8rem; color: var(--text-light); }
+    .fc-badge { font-size: 0.8rem; font-weight: 700; padding: 0.25rem 0.7rem; border-radius: 999px; white-space: nowrap;
+                background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    .fc-badge.muted { background: var(--bg-light); color: var(--text-light); font-weight: 400; }
+    .fc-empty { text-align: center; padding: 2rem; color: var(--text-light); }
+
+    .fc-form label { display: block; font-weight: 600; font-size: 0.9rem; margin: 0.75rem 0 0.25rem; }
+    .fc-form input[type=text], .fc-form select {
+        width: 100%; max-width: 480px; padding: 0.55rem 0.7rem;
+        border: 1px solid var(--border); border-radius: 6px;
+        background: var(--bg-white); color: var(--text-dark); font-size: 0.9rem;
+    }
+    .fc-page-row {
+        display: flex; align-items: center; gap: 0.6rem;
+        padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--border); font-size: 0.9rem;
+    }
+    .fc-page-row:last-child { border-bottom: none; }
+    .fc-page-row .count { margin-left: auto; font-size: 0.8rem; color: var(--text-light); white-space: nowrap; }
+    .fc-page-row.no-vocab { opacity: 0.45; }
+    #pagePicker { max-height: 380px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; margin-top: 0.5rem; max-width: 640px; }
+    .fc-actions { margin-top: 1rem; display: flex; gap: 0.75rem; align-items: center; }
+    .fc-status { font-size: 0.85rem; color: var(--text-light); }
+    .fc-select-links { font-size: 0.8rem; margin-top: 0.4rem; }
+    .fc-select-links a { color: var(--primary); cursor: pointer; margin-right: 0.75rem; }
+    .fc-type-selector { display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap; }
+    .fc-type-btn { padding: 0.4rem 0.8rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-white); color: var(--text-dark); cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
+    .fc-type-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+    .fc-badge.flashcard { background: rgba(167, 139, 250, 0.15); color: #a78bfa; }
+    .fc-badge.matching { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+    .fc-badge.learn { background: rgba(249, 115, 22, 0.15); color: #f97316; }
+</style>
+
+<div class="fc-container">
+    <div class="subnav-tabs">
+        <a href="{{ url_for('flashcards.flashcards_home') }}" class="subnav-tab active">🃏 Flashcard Sets</a>
+        <a href="{{ url_for('flashcards.vocabulary_management') }}" class="subnav-tab">📚 Vocabulary</a>
+    </div>
+    <div class="fc-header">
+        <h1>🃏 Flashcard Sets</h1>
+        <p>Build vocabulary flashcard sets from book pages, assign them to classes or students, and track performance.</p>
+    </div>
+
+    <div class="fc-card">
+        <h2 style="font-size:1.1rem; margin-top:0;">Your sets</h2>
+        {% if sets %}
+            {% for s in sets %}
+            <a class="fc-set-row" href="{{ url_for('flashcards.flashcard_detail', set_id=s.id) }}">
+                <span>
+                    <span class="fc-set-title">{{ s.title }}</span><br>
+                    <span class="fc-set-meta">{{ s.book_title }} · created {{ s.created_at }}</span>
+                </span>
+                <span style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+                    <span class="fc-badge {% if s.card_type == 'learn' %}learn{% elif s.card_type == 'matching' %}matching{% else %}flashcard{% endif %}">
+                        {% if s.card_type == 'learn' %}📚 Learn{% elif s.card_type == 'matching' %}🎯 Matching{% else %}🃏 Flashcard{% endif %}
+                    </span>
+                    <span class="fc-badge muted">{{ s.card_count }} card{{ '' if s.card_count == 1 else 's' }}</span>
+                    <span class="fc-badge {{ 'muted' if not s.assignment_count }}">{{ s.assignment_count }} assignment{{ '' if s.assignment_count == 1 else 's' }}</span>
+                </span>
+            </a>
+            {% endfor %}
+        {% else %}
+            <div class="fc-empty">No flashcard sets yet — create your first one below.</div>
+        {% endif %}
+    </div>
+
+    <div class="fc-card fc-form">
+        <h2 style="font-size:1.1rem; margin-top:0;">Create a new set</h2>
+
+        <label for="bookSelect">1. Choose a book</label>
+        <select id="bookSelect"><option value="">Loading books…</option></select>
+
+        <div id="pagesSection" style="display:none;">
+            <label>2. Select the pages the flashcards should cover</label>
+            <div class="fc-select-links">
+                <a onclick="setAllPages(true)">Select all with vocabulary</a>
+                <a onclick="setAllPages(false)">Clear selection</a>
+            </div>
+            <div id="pagePicker"><div class="fc-empty">Loading pages…</div></div>
+
+            <label for="setTitle">3. Name the set</label>
+            <input type="text" id="setTitle" placeholder="e.g. Theme A1 vocabulary" maxlength="200">
+
+            <label>4. Choose study mode</label>
+            <div class="fc-type-selector">
+                <button class="fc-type-btn active" data-type="flashcard" onclick="setCreateType(event)">🃏 Flashcard</button>
+                <button class="fc-type-btn" data-type="matching" onclick="setCreateType(event)">🎯 Matching</button>
+                <button class="fc-type-btn" data-type="learn" onclick="setCreateType(event)">📚 Learn</button>
+            </div>
+
+            <div class="fc-actions">
+                <button class="btn btn-primary" id="createBtn" onclick="createSet()">Create set</button>
+                <span class="fc-status" id="createStatus"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let vocabPages = [];
+let createCardType = 'flashcard';
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+}
+
+function setCreateType(e) {
+    createCardType = e.currentTarget.dataset.type;
+    document.querySelectorAll('.fc-type-btn').forEach(btn => btn.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+}
+
+async function loadBooks() {
+    const sel = document.getElementById('bookSelect');
+    try {
+        const res = await fetch('/api/books');
+        const books = (await res.json()).books || [];
+        sel.innerHTML = '<option value="">— choose a book —</option>' +
+            books.map(b => `<option value="${escapeHtml(b.folder)}">${escapeHtml(b.title || b.folder)}</option>`).join('');
+    } catch (e) {
+        sel.innerHTML = '<option value="">Could not load books</option>';
+    }
+}
+
+async function loadVocab(folder) {
+    const picker = document.getElementById('pagePicker');
+    document.getElementById('pagesSection').style.display = 'block';
+    picker.innerHTML = '<div class="fc-empty">Scanning pages for vocabulary…</div>';
+    try {
+        const res = await fetch(`/admin/api/flashcards/vocab/${encodeURIComponent(folder)}`);
+        vocabPages = (await res.json()).pages || [];
+        if (!vocabPages.length) {
+            picker.innerHTML = '<div class="fc-empty">This book has no pages.</div>';
+            return;
+        }
+        picker.innerHTML = vocabPages.map(p => `
+            <label class="fc-page-row ${p.terms.length ? '' : 'no-vocab'}">
+                <input type="checkbox" value="${escapeHtml(p.id)}" ${p.terms.length ? '' : 'disabled'}>
+                <span>${escapeHtml(p.title)}</span>
+                <span class="count">${p.terms.length ? p.terms.length + ' term' + (p.terms.length === 1 ? '' : 's') : 'no vocabulary'}</span>
+            </label>`).join('');
+    } catch (e) {
+        picker.innerHTML = '<div class="fc-empty">Could not load vocabulary.</div>';
+    }
+}
+
+function setAllPages(checked) {
+    document.querySelectorAll('#pagePicker input[type=checkbox]:not(:disabled)')
+        .forEach(cb => { cb.checked = checked; });
+}
+
+async function createSet() {
+    const status = document.getElementById('createStatus');
+    const folder = document.getElementById('bookSelect').value;
+    const title = document.getElementById('setTitle').value.trim();
+    const selected = [...document.querySelectorAll('#pagePicker input:checked')].map(cb => cb.value);
+    if (!folder) { status.textContent = 'Choose a book first.'; return; }
+    if (!selected.length) { status.textContent = 'Select at least one page with vocabulary.'; return; }
+    if (!title) { status.textContent = 'Give the set a name.'; return; }
+
+    const cards = [];
+    for (const p of vocabPages) {
+        if (!selected.includes(p.id)) continue;
+        for (const t of p.terms) cards.push({ page_id: p.id, term: t.term, definition: t.definition });
+    }
+    status.textContent = `Creating set with ${cards.length} cards…`;
+    try {
+        const res = await fetch('/admin/api/flashcards', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, book_folder: folder, card_type: createCardType, cards }),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Create failed');
+        window.location.href = `/admin/flashcards/${data.set_id}`;
+    } catch (e) {
+        status.textContent = '✗ ' + e.message;
+    }
+}
+
+document.getElementById('bookSelect').addEventListener('change', e => {
+    if (e.target.value) loadVocab(e.target.value);
+    else document.getElementById('pagesSection').style.display = 'none';
+});
+loadBooks();
+</script>
+{% endblock %}

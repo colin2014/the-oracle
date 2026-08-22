@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Error{% endblock %} · The Oracle</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .error-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(157, 132, 255, 0.05), rgba(168, 79, 212, 0.05));
+        }
+        .error-code {
+            font-size: 4rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0 0 1rem;
+            line-height: 1;
+        }
+        .error-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin: 0 0 0.5rem;
+        }
+        .error-message {
+            font-size: 1rem;
+            color: var(--text-light);
+            margin: 0 0 2rem;
+            max-width: 500px;
+        }
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .error-btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .error-btn-primary {
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);
+            color: white;
+        }
+        .error-btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(157, 132, 255, 0.3);
+        }
+        .error-btn-secondary {
+            background: var(--bg-white);
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+        .error-btn-secondary:hover {
+            background: rgba(157, 132, 255, 0.1);
+        }
+        .error-theme-toggle {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: transparent;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            padding: 0.5rem 0.65rem;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            font-size: 1rem;
+            color: var(--text-dark);
+        }
+        .error-theme-toggle:hover {
+            background: rgba(157, 132, 255, 0.12);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <button id="themeToggle" class="error-theme-toggle" title="Toggle dark mode">🌙</button>
+    <div class="error-container">
+        <div class="error-code">{{ code }}</div>
+        <h1 class="error-title">{{ title }}</h1>
+        <p class="error-message">{{ message }}</p>
+        <div class="error-actions">
+            <a href="/" class="error-btn error-btn-primary">Go to Home</a>
+            <button type="button" class="error-btn error-btn-secondary" onclick="history.back()">Go Back</button>
+        </div>
+    </div>
+    <script>
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.dataset.theme = savedTheme;
+            updateThemeToggle();
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.dataset.theme || 'light';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.dataset.theme = newTheme;
+            localStorage.setItem('theme', newTheme);
+            updateThemeToggle();
+        }
+
+        function updateThemeToggle() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const isDark = document.documentElement.dataset.theme === 'dark';
+            toggleBtn.textContent = isDark ? '☀️' : '🌙';
+        }
+
+        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+        document.addEventListener('DOMContentLoaded', initTheme);
+        initTheme();
+    </script>
+</body>
+</html>

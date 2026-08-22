@@ -1,0 +1,40 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Think of a Word — Setup{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto py-8">
+    <h1 class="text-3xl font-bold mb-6">Think of a Word Setup</h1>
+
+    <form method="POST" class="space-y-6 bg-white p-6 rounded-lg shadow">
+        <div>
+            <label for="class_id" class="block text-sm font-medium mb-2">Class</label>
+            <select name="class_id" id="class_id" required class="w-full border rounded px-3 py-2">
+                <option value="">—</option>
+                {% for c in classes %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="timer_seconds" class="block text-sm font-medium mb-2">Time per round (seconds)</label>
+            <input type="number" name="timer_seconds" id="timer_seconds" value="60" min="15" max="300" class="w-full border rounded px-3 py-2">
+        </div>
+
+        <div>
+            <label for="word_bank" class="block text-sm font-medium mb-2">Word bank (one per line)</label>
+            <textarea name="word_bank" id="word_bank" rows="8" class="w-full border rounded px-3 py-2 font-mono text-sm" placeholder="Leave blank to use default technology words"></textarea>
+        </div>
+
+        <div class="flex gap-4">
+            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                Start Game
+            </button>
+            <a href="{{ url_for('games.hub') }}" class="bg-gray-400 text-white px-6 py-2 rounded hover:bg-gray-500">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

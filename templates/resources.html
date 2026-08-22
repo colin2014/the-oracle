@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resources</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .resources-body { background: var(--bg-light); color: var(--text-dark); margin: 0; min-height: 100vh; }
+        .resources-container { max-width: 1000px; margin: 0 auto; padding: 2rem 1rem; }
+        .resources-header { text-align: center; margin: 1.5rem 0 2.5rem; }
+        .resources-header h1 { font-size: 2rem; font-weight: 800; margin: 0 0 0.4rem; }
+        .resources-header p { color: var(--text-light); margin: 0; }
+        .resources-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
+        .resource-card {
+            display: block; background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius, 10px);
+            padding: 1.75rem; text-decoration: none; color: inherit; box-shadow: var(--shadow, 0 2px 8px rgba(0,0,0,0.05));
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .resource-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.1); }
+        .resource-icon { font-size: 2.25rem; margin-bottom: 0.75rem; display: block; }
+        .resource-card h2 { font-size: 1.15rem; margin: 0 0 0.4rem; }
+        .resource-card p { font-size: 0.9rem; color: var(--text-light); margin: 0; }
+    </style>
+</head>
+<body class="resources-body">
+{% include "_sidebar.html" %}
+
+    <nav class="app-nav">
+        <div class="nav-brand">📚 The Oracle</div>
+        <div class="nav-links">
+            <a href="/dashboard" class="nav-link">🎓 Dashboard</a>
+            <a href="/my-resources" class="nav-link">📌 My Resources</a>
+            <a href="/resources" class="nav-link active">🗂 Resources</a>
+        </div>
+    </nav>
+
+    <div class="resources-container">
+        <div class="resources-header">
+            <h1>Resources</h1>
+            <p>Everything available for you to study from</p>
+        </div>
+
+        <!-- Books Section -->
+        <div style="margin-bottom: 3rem;">
+            <h2 style="font-size: 1.3rem; font-weight: 700; margin: 0 0 1.5rem 0; color: var(--text-dark);">📖 Study Materials</h2>
+            <div class="books-grid" id="booksGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 2rem;">
+                <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-light);">Loading books...</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Edit Modal (for admin book editing) -->
+    <div id="editModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+        <div class="modal-content" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:var(--bg-white); border-radius:10px; padding:2rem; max-width:500px; width:90%; box-shadow:0 10px 40px rgba(0,0,0,0.2);">
+            <h3>Edit Book</h3>
+            <div class="form-group">
+                <label>Book Name</label>
+                <input type="text" id="editTitle" placeholder="Book title" style="width:100%; padding:0.5rem; border:1px solid var(--border); border-radius:6px; font-family:inherit;">
+            </div>
+            <div class="form-group">
+                <label>Card Color</label>
+                <div class="color-preview" id="colorOptions" style="display:grid; grid-template-columns:repeat(3,1fr); gap:0.75rem;"></div>
+            </div>
+            <div class="modal-actions" style="display:flex; gap:1rem; margin-top:1.5rem; justify-content:flex-end;">
+                <button class="btn-cancel" onclick="closeEditModal()" style="padding:0.5rem 1rem; border:1px solid var(--border); border-radius:6px; background:var(--bg-light); cursor:pointer;">Cancel</button>
+                <button class="btn-save" onclick="saveBookEdit()" style="padding:0.5rem 1rem; border:none; border-radius:6px; background:var(--primary); color:white; cursor:pointer;">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const isAdmin = {% if current_user.is_authenticated and current_user.is_admin() %}true{% else %}false{% endif %};
+        // Teacher-only for now: /slides is admin-gated, so showing the card to a
+        // student would be a link straight to a 403.
+        const SLIDE_LIBRARY_VISIBLE = isAdmin;
+        const RESOURCE_COUNT = {{ resource_count | default(0) | tojson }};
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.dataset.theme = savedTheme;
+        }
+
+        // Book catalog loading
+        async function loadBooks() {
+            try {
+                const response = await fetch('/api/books');
+                const data = await response.json();
+                renderBooks(data.books || []);
+            } catch (error) {
+                console.error('Failed to load books:', error);
+                document.getElementById('booksGrid').innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-light);">
+                        Error loading books
+                    </div>
+                `;
+            }
+        }
+
+        function renderBooks(books) {
+            const grid = document.getElementById('booksGrid');
+            const noBooks = !books || books.length === 0;
+            if (noBooks && !SLIDE_LIBRARY_VISIBLE) {
+                grid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-light);">
+                        No books available
+                    </div>
+                `;
+                return;
+            }
+            books = books || [];
+
+            const defaultColors = [
+                { from: '#5b9bd5', to: '#2b5aa0' },
+                { from: '#e84c3d', to: '#c03a2e' },
+                { from: '#43a574', to: '#2d7a52' }
+            ];
+
+            // The slide library is a book in its own right, but it isn't a
+            // scraped Book_* folder, so it's prepended here rather than coming
+            // back from /api/books.
+            const slideCard = SLIDE_LIBRARY_VISIBLE ? `
+                <div class="book-item" style="background:var(--bg-white); border-radius:10px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.1); transition:all 0.3s;">
+                    <div style="background:linear-gradient(135deg, #8366e8 0%, #5b3fd6 100%); color:white; padding:2rem; text-align:center;">
+                        <h2 style="font-size:1.5rem; margin:0 0 0.5rem 0;">Lesson Library</h2>
+                    </div>
+                    <div style="padding:1.5rem;">
+                        <div style="margin-bottom:1rem;">
+                            <div style="font-size:0.75rem; color:var(--text-light); text-transform:uppercase; font-weight:600;">Resources</div>
+                            <div style="font-size:1.25rem; font-weight:700; color:var(--text-dark);">${RESOURCE_COUNT}</div>
+                        </div>
+                        <button onclick="window.location.href='/slides'" style="width:100%; padding:0.75rem; background:var(--primary); color:white; border:none; border-radius:6px; cursor:pointer; font-weight:600; transition:all 0.2s;">View</button>
+                    </div>
+                </div>` : '';
+
+            grid.innerHTML = slideCard + books.map((book, index) => {
+                const color = book.color_from && book.color_to
+                    ? { from: book.color_from, to: book.color_to }
+                    : defaultColors[index % defaultColors.length];
+                return `
+                <div class="book-item" data-book-id="${book.id}" style="background:var(--bg-white); border-radius:10px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.1); transition:all 0.3s;">
+                    <div style="background:linear-gradient(135deg, ${color.from} 0%, ${color.to} 100%); color:white; padding:2rem; text-align:center; position:relative;">
+                        <h2 style="font-size:1.5rem; margin:0 0 0.5rem 0;">${book.title}</h2>
+                        ${isAdmin ? `<button class="edit-btn" onclick="openEditModal('${book.id}', '${book.title}', '${color.from}', '${color.to}')" style="position:absolute; top:1rem; right:1rem; background:rgba(255,255,255,0.2); border:none; color:white; cursor:pointer; font-size:1rem; padding:0.5rem; border-radius:4px;">✏️</button>` : ''}
+                    </div>
+                    <div style="padding:1.5rem;">
+                        <div style="margin-bottom:1rem;">
+                            <div style="font-size:0.75rem; color:var(--text-light); text-transform:uppercase; font-weight:600;">Pages</div>
+                            <div style="font-size:1.25rem; font-weight:700; color:var(--text-dark);">${book.pages_count}</div>
+                        </div>
+                        <button onclick="window.location.href='/book/${book.folder}/learn'" style="width:100%; padding:0.75rem; background:var(--primary); color:white; border:none; border-radius:6px; cursor:pointer; font-weight:600; transition:all 0.2s;">📖 View</button>
+                        ${isAdmin && book.folder !== 'EE_Marxify' ? `<button onclick="window.location.href='/book/${book.folder}/quizzes'" style="width:100%; margin-top:0.5rem; padding:0.75rem; background:transparent; color:var(--primary); border:2px solid var(--primary); border-radius:6px; cursor:pointer; font-weight:600; transition:all 0.2s;">📝 Manage quizzes</button>` : ''}
+                    </div>
+                </div>
+            `;
+            }).join('');
+        }
+
+        let editingBook = null;
+        const colorPalette = [
+            { from: '#5b9bd5', to: '#2b5aa0' },
+            { from: '#e84c3d', to: '#c03a2e' },
+            { from: '#43a574', to: '#2d7a52' },
+            { from: '#f39c12', to: '#d68910' },
+            { from: '#9b59b6', to: '#7d3c98' },
+            { from: '#1abc9c', to: '#16a085' }
+        ];
+
+        function openEditModal(bookId, title, colorFrom, colorTo) {
+            if (!isAdmin) {
+                return;
+            }
+            editingBook = { id: bookId, title, colorFrom, colorTo };
+            document.getElementById('editTitle').value = title;
+            const colorOptions = document.getElementById('colorOptions');
+            colorOptions.innerHTML = colorPalette.map((color, idx) => `
+                <div class="color-option" style="width:100%; padding-top:100%; position:relative; background:linear-gradient(135deg, ${color.from} 0%, ${color.to} 100%); border-radius:8px; cursor:pointer; border:${color.from === colorFrom ? '3px' : '0px'} solid rgba(0,0,0,0.3); transition:all 0.2s;" onclick="selectColor(${idx})" data-from="${color.from}" data-to="${color.to}"></div>
+            `).join('');
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+            editingBook = null;
+        }
+
+        function selectColor(index) {
+            const color = colorPalette[index];
+            editingBook.colorFrom = color.from;
+            editingBook.colorTo = color.to;
+            const colorOptions = document.getElementById('colorOptions');
+            colorOptions.querySelectorAll('.color-option').forEach((opt, idx) => {
+                opt.style.borderWidth = idx === index ? '3px' : '0px';
+            });
+        }
+
+        async function saveBookEdit() {
+            if (!editingBook) return;
+            try {
+                const response = await fetch('/api/books/edit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: editingBook.id,
+                        title: document.getElementById('editTitle').value,
+                        colorFrom: editingBook.colorFrom,
+                        colorTo: editingBook.colorTo
+                    })
+                });
+                if (response.ok) {
+                    closeEditModal();
+                    loadBooks();
+                }
+            } catch (error) {
+                console.error('Failed to save book:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            loadBooks();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,277 @@
+{# Reusable quiz-analytics body: overview tiles, strengths/focus, and the
+   unit → section → page drill-down. Expects: books, totals, strengths,
+   focus_areas, and (optional) teacher_view + student for empty-state wording.
+   Shared by the standalone student page, the admin student page, and the
+   analytics hub. #}
+<style>
+    .qa-header { margin-bottom: 1.5rem; }
+    .qa-header h1 { font-size: 1.6rem; margin: 0 0 0.4rem 0; color: var(--text-dark); }
+    .qa-header p { color: var(--text-light); margin: 0; }
+
+    /* Overview tiles */
+    .qa-tiles {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+    .qa-tile {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1rem;
+        text-align: center;
+    }
+    .qa-tile-value { font-size: 1.7rem; font-weight: 700; color: var(--primary); }
+    .qa-tile-label { font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.2rem; }
+
+    /* Strengths / focus cards */
+    .qa-highlights {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin-bottom: 1.75rem;
+    }
+    @media (max-width: 640px) { .qa-highlights { grid-template-columns: 1fr; } }
+    .qa-highlight {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1rem 1.1rem;
+    }
+    .qa-highlight h2 { font-size: 0.95rem; margin: 0 0 0.75rem 0; }
+    .qa-highlight.strong { border-left: 4px solid #10b981; }
+    .qa-highlight.focus { border-left: 4px solid #d97706; }
+    .qa-highlight-row {
+        display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
+        padding: 0.4rem 0; font-size: 0.85rem;
+        border-bottom: 1px solid var(--border);
+    }
+    .qa-highlight-row:last-child { border-bottom: none; }
+    .qa-highlight-row .pct { font-weight: 700; white-space: nowrap; }
+    .qa-hl-name {
+        flex: 1; min-width: 0;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        font-weight: 600;
+    }
+    .qa-hl-name .qa-hl-title { font-weight: 400; color: var(--text-light); }
+    .qa-highlight.strong .pct { color: #10b981; }
+    .qa-highlight.focus .pct { color: #d97706; }
+    .qa-empty-note { color: var(--text-light); font-size: 0.85rem; }
+
+    /* Accuracy bar */
+    .qa-bar {
+        flex: 0 1 110px;
+        height: 8px;
+        min-width: 48px;
+        background: var(--bg-light);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .qa-bar-fill { height: 100%; border-radius: 4px; }
+    .qa-bar-fill.good { background: #10b981; }
+    .qa-bar-fill.mid { background: #d97706; }
+    .qa-bar-fill.low { background: #ef4444; }
+    .qa-bar-fill.none { background: var(--border); }
+
+    /* Drill-down accordions */
+    .qa-book-title { font-size: 1.1rem; margin: 1.5rem 0 0.75rem; color: var(--text-dark); }
+
+    details.qa-unit, details.qa-section {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin-bottom: 0.6rem;
+        overflow: hidden;
+    }
+    details.qa-section { border-radius: 8px; margin: 0.5rem 0.75rem; }
+
+    .qa-summary {
+        list-style: none;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.9rem 1rem;
+        cursor: pointer;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .qa-summary::-webkit-details-marker { display: none; }
+    .qa-summary .qa-code { font-weight: 700; font-size: 0.95rem; white-space: nowrap; }
+    .qa-summary .qa-title {
+        flex: 1; min-width: 0;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        font-size: 0.85rem; color: var(--text-dark);
+    }
+    .qa-summary .qa-meta { font-size: 0.75rem; color: var(--text-light); white-space: nowrap; }
+    .qa-summary .qa-chevron { transition: transform 0.2s; font-size: 0.8rem; color: var(--text-light); }
+    details[open] > .qa-summary .qa-chevron { transform: rotate(180deg); }
+
+    .qa-page-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.7rem 1rem;
+        border-top: 1px solid var(--border);
+        font-size: 0.85rem;
+        text-decoration: none;
+        color: var(--text-dark);
+        -webkit-tap-highlight-color: transparent;
+    }
+    .qa-page-row:hover { background: rgba(157, 132, 255, 0.06); }
+    .qa-page-title {
+        flex: 1; min-width: 0;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .qa-page-score { font-weight: 700; white-space: nowrap; }
+    .qa-page-cta { color: var(--primary); font-weight: 600; white-space: nowrap; }
+
+    .qa-keywords {
+        padding: 0.5rem 1rem 0.9rem;
+        border-top: 1px dashed var(--border);
+        font-size: 0.78rem;
+        color: var(--text-light);
+    }
+    .qa-keyword {
+        display: inline-block;
+        background: rgba(217, 119, 6, 0.12);
+        color: #d97706;
+        border-radius: 999px;
+        padding: 0.2rem 0.6rem;
+        margin: 0.2rem 0.2rem 0 0;
+        font-weight: 600;
+    }
+
+    .qa-retake-hint { font-size: 0.72rem; color: var(--text-light); }
+
+    @media (max-width: 768px) {
+        .qa-header h1 { font-size: 1.3rem; }
+        .qa-summary { padding: 0.8rem 0.75rem; }
+        .qa-summary .qa-title { font-size: 0.78rem; }
+        .qa-page-row { padding: 0.65rem 0.75rem; }
+        .qa-page-cta span { display: none; }  /* keep just the arrow on phones */
+    }
+</style>
+
+{% macro accuracy_bar(pct) %}
+    <div class="qa-bar">
+        {% if pct is none %}
+        <div class="qa-bar-fill none" style="width: 100%;"></div>
+        {% else %}
+        <div class="qa-bar-fill {{ 'good' if pct >= 70 else 'mid' if pct >= 40 else 'low' }}" style="width: {{ pct }}%;"></div>
+        {% endif %}
+    </div>
+{% endmacro %}
+
+{% if totals.answered %}
+<div class="qa-tiles">
+    <div class="qa-tile">
+        <div class="qa-tile-value">{{ totals.answered }}</div>
+        <div class="qa-tile-label">Questions answered</div>
+    </div>
+    <div class="qa-tile">
+        <div class="qa-tile-value">{{ totals.accuracy }}%</div>
+        <div class="qa-tile-label">Correct (latest attempt)</div>
+    </div>
+    <div class="qa-tile">
+        <div class="qa-tile-value">{{ totals.questions - totals.answered }}</div>
+        <div class="qa-tile-label">Not attempted yet</div>
+    </div>
+    <div class="qa-tile">
+        <div class="qa-tile-value">{{ totals.retakes }}</div>
+        <div class="qa-tile-label">Questions retaken</div>
+    </div>
+</div>
+
+<div class="qa-highlights">
+    <div class="qa-highlight strong">
+        <h2>💪 Strengths</h2>
+        {% for s in strengths %}
+        <div class="qa-highlight-row">
+            <span class="qa-hl-name">{{ s.code }}{% if s.title %} <span class="qa-hl-title">{{ s.title }}</span>{% endif %}</span>
+            {{ accuracy_bar(s.accuracy) }}
+            <span class="pct">{{ s.accuracy }}%</span>
+        </div>
+        {% else %}
+        <div class="qa-empty-note">Answer more quizzes to reveal strengths.</div>
+        {% endfor %}
+    </div>
+    <div class="qa-highlight focus">
+        <h2>🎯 Focus areas</h2>
+        {% for s in focus_areas %}
+        <div class="qa-highlight-row">
+            <span class="qa-hl-name">{{ s.code }}{% if s.title %} <span class="qa-hl-title">{{ s.title }}</span>{% endif %}</span>
+            {{ accuracy_bar(s.accuracy) }}
+            <span class="pct">{{ s.accuracy }}%</span>
+        </div>
+        {% else %}
+        <div class="qa-empty-note">No weak spots found — keep it up!</div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% for book in books %}
+<h2 class="qa-book-title">📚 {{ book.title }}
+    {% if book.accuracy is not none %}<span style="font-size:0.8rem; color:var(--text-light); font-weight:400;">— {{ book.accuracy }}% correct overall</span>{% endif %}
+</h2>
+
+{% for unit in book.units %}
+<details class="qa-unit" {% if book.units | length == 1 %}open{% endif %}>
+    <summary class="qa-summary">
+        <span class="qa-code">{{ 'Unit ' + unit.code if unit.code != 'Other' else 'Other pages' }}</span>
+        <span class="qa-title">{{ unit.title or '' }}</span>
+        {{ accuracy_bar(unit.accuracy) }}
+        <span class="qa-meta">
+            {% if unit.answered %}{{ unit.accuracy }}% · {{ unit.answered }}/{{ unit.questions }} answered{% else %}not started{% endif %}
+        </span>
+        <span class="qa-chevron">▾</span>
+    </summary>
+
+    {% for section in unit.sections %}
+    <details class="qa-section">
+        <summary class="qa-summary">
+            <span class="qa-code">{{ section.code }}</span>
+            <span class="qa-title">{{ section.title or '' }}</span>
+            {{ accuracy_bar(section.accuracy) }}
+            <span class="qa-meta">
+                {% if section.answered %}{{ section.accuracy }}% · {{ section.answered }}/{{ section.questions }}{% else %}not started{% endif %}
+            </span>
+            <span class="qa-chevron">▾</span>
+        </summary>
+
+        {% for page in section.pages %}
+        <a class="qa-page-row" href="{{ page.url }}">
+            <span class="qa-page-title">{{ page.title }}</span>
+            {% if page.answered %}
+            <span class="qa-page-score" style="color: {{ '#10b981' if page.accuracy >= 70 else '#d97706' if page.accuracy >= 40 else '#ef4444' }};">{{ page.correct }}/{{ page.answered }}</span>
+            {% if page.retakes %}<span class="qa-retake-hint">↻ {{ page.retakes }}</span>{% endif %}
+            {% else %}
+            <span class="qa-meta">{{ page.questions }} question{{ 's' if page.questions != 1 }}</span>
+            {% endif %}
+            <span class="qa-page-cta"><span>Details </span>→</span>
+        </a>
+        {% endfor %}
+
+        {% if section.keywords %}
+        <div class="qa-keywords">
+            Feedback often mentions:
+            {% for kw in section.keywords %}<span class="qa-keyword">{{ kw }}</span>{% endfor %}
+        </div>
+        {% endif %}
+    </details>
+    {% endfor %}
+</details>
+{% endfor %}
+{% else %}
+<div class="student-card" style="text-align: center; padding: 3rem 1rem; background: var(--bg-white); border: 1px solid var(--border); border-radius: 12px;">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+    <h3 style="margin-bottom: 0.5rem;">No quiz data yet</h3>
+    {% if teacher_view %}
+    <p style="color: var(--text-light);">{{ student.name }} hasn't answered any quizzes yet. Analytics will appear here once they do.</p>
+    {% else %}
+    <p style="color: var(--text-light);">Take some quizzes and your analytics will appear here.</p>
+    <a href="{{ url_for('quiz.student_quizzes') }}" class="btn btn-primary" style="margin-top: 0.5rem;">Browse quizzes</a>
+    {% endif %}
+</div>
+{% endfor %}

@@ -1,0 +1,317 @@
+{% extends "admin_base.html" %}
+{% block title %}Assign Resources{% endblock %}
+{% block content %}
+<h1>Assign Resources</h1>
+
+<form method="POST" action="{{ url_for('admin.assign') }}" class="admin-card" id="assign-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div style="margin-bottom:1.5rem; padding-bottom:1.25rem; border-bottom:1px solid var(--border);">
+        <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.5rem;">Assign to</label>
+        <div style="display:flex; gap:1.5rem; margin-bottom:0.75rem;">
+            <label style="cursor:pointer;"><input type="radio" name="target_type" value="class" checked onchange="switchTarget('class')"> A whole class</label>
+            <label style="cursor:pointer;"><input type="radio" name="target_type" value="student" onchange="switchTarget('student')"> A specific student</label>
+        </div>
+        <div id="target-class">
+            <select name="class_id" style="min-width:280px;">
+                <option value="">Select a class…</option>
+                {% for c in classes %}
+                <option value="{{ c.id }}" {% if c.id == preselect_class_id %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div id="target-student" style="display:none;">
+            <div style="margin-bottom:0.6rem;">
+                <label style="display:block; font-size:0.8rem; color:var(--text-light); margin-bottom:0.25rem;">Class</label>
+                <select id="student-class-select" style="min-width:280px;">
+                    <option value="">Select a class…</option>
+                    {% for c in classes %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.35rem;">
+                <label style="font-size:0.8rem; color:var(--text-light);">Students in this class</label>
+                <label style="font-size:0.8rem; font-weight:600; cursor:pointer;">
+                    <input type="checkbox" id="select-all-students" onchange="toggleAllStudents(this.checked)"> Select all
+                </label>
+            </div>
+            <div id="student-list" style="max-width:420px; max-height:220px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; padding:0.6rem;">
+                <em>Select a class first.</em>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-bottom:1.25rem; display:flex; gap:0.5rem;">
+        <button type="button" class="admin-btn" id="tab-book" onclick="switchTab('book')">📖 Book Pages</button>
+        <button type="button" class="admin-btn" id="tab-exemplar" style="background:var(--bg-light); color:var(--text-dark); border:1px solid var(--border);" onclick="switchTab('exemplar')">📄 EE / IA Resources</button>
+        <button type="button" class="admin-btn" id="tab-unitplan" style="background:var(--bg-light); color:var(--text-dark); border:1px solid var(--border);" onclick="switchTab('unitplan')">🗓️ Unit Plan</button>
+    </div>
+
+    <div id="book-panel">
+        <div style="margin-bottom:1rem;">
+            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.3rem;">Book</label>
+            <select id="book-select">
+                <option value="">Select a book…</option>
+                {% for b in books %}
+                <option value="{{ b.folder }}">{{ b.title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem;">
+            <h3 style="margin:0;">Select Pages</h3>
+            <label style="font-size:0.85rem; font-weight:600; cursor:pointer;">
+                <input type="checkbox" id="select-all-pages" onchange="toggleAllPages(this.checked)"> Select all in this book
+            </label>
+        </div>
+        <div id="page-list" style="max-height:320px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; padding:0.75rem;">
+            <em>Select a book first.</em>
+        </div>
+    </div>
+
+    <div id="exemplar-panel" style="display:none;">
+        <h3 style="margin-top:0;">Assign Entire Collection</h3>
+        <div style="margin-bottom:1.5rem; padding:0.75rem; background:var(--bg-light); border:1px solid var(--border); border-radius:6px;">
+            <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+                <input type="checkbox" name="exemplar_collection" value="true" onchange="updateSelectionSummary()">
+                <span><strong>Full EE / IA Collection</strong> — Assign the entire searchable library of exemplars to this class</span>
+            </label>
+        </div>
+
+        <h3>Assign Individual Exemplars</h3>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem;">
+            <input type="text" id="exemplar-search" placeholder="Search by subject or topic…" style="flex:1; padding:0.5rem 0.7rem; border:1px solid var(--border); border-radius:6px; margin-right:0.75rem;">
+            <label style="font-size:0.85rem; font-weight:600; cursor:pointer; white-space:nowrap;">
+                <input type="checkbox" id="select-all-exemplars" onchange="toggleAllExemplars(this.checked)"> Select all visible
+            </label>
+        </div>
+        <div id="exemplar-list" style="max-height:320px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; padding:0.75rem;">
+            {% for ex in exemplars %}
+            <label class="exemplar-option" data-search="{{ (ex.subject ~ ' ' ~ (ex.comments or '')) | lower }}" style="display:block; padding:0.3rem 0.5rem; font-size:0.9rem; cursor:pointer;">
+                <input type="checkbox" name="exemplar_picks" value="{{ ex.filename }}|{{ ex.comments or (ex.subject ~ ' Exemplar') }}">
+                <strong>{{ ex.subject }}</strong> ({{ ex.level }}, Grade {{ ex.grade }}) — {{ ex.comments or 'No topic notes' }}
+            </label>
+            {% else %}
+            <em>No exemplars available.</em>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div id="unitplan-panel" style="display:none;">
+        <div style="margin-bottom:1rem;">
+            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.3rem;">Semester / Tracker</label>
+            <select id="unitplan-bucket-select">
+                <option value="">Select…</option>
+                <option value="year1sem1">Year 1 — Semester 1</option>
+                <option value="year1sem2">Year 1 — Semester 2</option>
+                <option value="year2sem1">Year 2 — Semester 1</option>
+                <option value="year2sem2">Year 2 — Semester 2</option>
+                <option value="grade12">Grade 12 Syllabus Tracker</option>
+            </select>
+        </div>
+
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem;">
+            <h3 style="margin:0;">Select Weeks / Topics</h3>
+            <label style="font-size:0.85rem; font-weight:600; cursor:pointer;">
+                <input type="checkbox" id="select-all-unitplan" onchange="toggleAllUnitPlan(this.checked)"> Select all
+            </label>
+        </div>
+        <div id="unitplan-list" style="max-height:320px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; padding:0.75rem;">
+            <em>Select a semester or tracker first.</em>
+        </div>
+    </div>
+
+    <div style="margin-top:1rem;">
+        <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.3rem;">Due Date</label>
+        <input type="datetime-local" name="due_date">
+    </div>
+
+    <div id="selection-summary" style="margin-top:0.75rem; font-size:0.85rem; color:var(--text-light);">No resources selected yet.</div>
+
+    <button type="submit" class="admin-btn" style="margin-top:1rem;">Assign Selected Resources</button>
+</form>
+
+<script>
+let currentPages = [];
+
+function switchTarget(type) {
+    document.getElementById('target-class').style.display = type === 'class' ? 'block' : 'none';
+    document.getElementById('target-student').style.display = type === 'student' ? 'block' : 'none';
+}
+
+document.getElementById('student-class-select').addEventListener('change', async function () {
+    const classId = this.value;
+    const list = document.getElementById('student-list');
+    document.getElementById('select-all-students').checked = false;
+    if (!classId) {
+        list.innerHTML = '<em>Select a class first.</em>';
+        return;
+    }
+    list.innerHTML = '<em>Loading…</em>';
+    const res = await fetch(`/admin/api/classes/${classId}/students`);
+    const data = await res.json();
+    const students = data.students || [];
+    if (!students.length) {
+        list.innerHTML = '<em>No students enrolled in this class.</em>';
+        return;
+    }
+    list.innerHTML = students.map(s => `
+        <label style="display:block; padding:0.2rem 0.4rem; font-size:0.9rem; cursor:pointer;">
+            <input type="checkbox" name="student_ids" value="${s.id}">
+            ${s.name} <span style="color:var(--text-light);">(${s.email})</span>
+        </label>
+    `).join('');
+});
+
+function toggleAllStudents(checked) {
+    document.querySelectorAll('input[name="student_ids"]').forEach(cb => { cb.checked = checked; });
+}
+
+function switchTab(tab) {
+    document.getElementById('book-panel').style.display = tab === 'book' ? 'block' : 'none';
+    document.getElementById('exemplar-panel').style.display = tab === 'exemplar' ? 'block' : 'none';
+    document.getElementById('unitplan-panel').style.display = tab === 'unitplan' ? 'block' : 'none';
+
+    const bookBtn = document.getElementById('tab-book');
+    const exBtn = document.getElementById('tab-exemplar');
+    const upBtn = document.getElementById('tab-unitplan');
+    const inactiveStyle = 'background:var(--bg-light); color:var(--text-dark); border:1px solid var(--border);';
+    bookBtn.style.cssText = tab === 'book' ? '' : inactiveStyle;
+    exBtn.style.cssText = tab === 'exemplar' ? '' : inactiveStyle;
+    upBtn.style.cssText = tab === 'unitplan' ? '' : inactiveStyle;
+}
+
+function updateSelectionSummary() {
+    const pageCount = document.querySelectorAll('input[name="page_picks"]:checked').length;
+    const exemplarCount = document.querySelectorAll('input[name="exemplar_picks"]:checked').length;
+    const collectionChecked = document.querySelector('input[name="exemplar_collection"]:checked') ? 1 : 0;
+    const unitPlanCount = document.querySelectorAll('input[name="unit_plan_picks"]:checked').length;
+    const total = pageCount + exemplarCount + collectionChecked + unitPlanCount;
+    const summary = document.getElementById('selection-summary');
+    if (total === 0) {
+        summary.textContent = 'No resources selected yet.';
+    } else {
+        const parts = [];
+        if (pageCount) parts.push(`${pageCount} book page${pageCount === 1 ? '' : 's'}`);
+        if (collectionChecked) parts.push('1 exemplar collection');
+        if (exemplarCount) parts.push(`${exemplarCount} individual exemplar${exemplarCount === 1 ? '' : 's'}`);
+        if (unitPlanCount) parts.push(`${unitPlanCount} unit plan item${unitPlanCount === 1 ? '' : 's'}`);
+        summary.textContent = `Selected: ${parts.join(', ')} (${total} total)`;
+    }
+}
+
+async function loadBookPages(bookFolder) {
+    const list = document.getElementById('page-list');
+    document.getElementById('select-all-pages').checked = false;
+    if (!bookFolder) {
+        list.innerHTML = '<em>Select a book first.</em>';
+        currentPages = [];
+        return;
+    }
+    list.innerHTML = '<em>Loading…</em>';
+    const res = await fetch(`/api/book/${bookFolder}/pages`);
+    const data = await res.json();
+    currentPages = data.pages || [];
+    if (!currentPages.length) {
+        list.innerHTML = '<em>No pages found for this book.</em>';
+        return;
+    }
+    list.innerHTML = currentPages.map(p => `
+        <label style="display:block; padding:0.15rem 0.5rem; font-size:0.9rem; cursor:pointer;">
+            <input type="checkbox" name="page_picks" value="${bookFolder}|${p.id}|${p.title || p.id}" onchange="updateSelectionSummary()">
+            ${p.title || p.id}
+        </label>
+    `).join('');
+    updateSelectionSummary();
+}
+
+document.getElementById('book-select').addEventListener('change', function () {
+    loadBookPages(this.value);
+});
+
+function toggleAllPages(checked) {
+    document.querySelectorAll('input[name="page_picks"]').forEach(cb => { cb.checked = checked; });
+    updateSelectionSummary();
+}
+
+function toggleAllExemplars(checked) {
+    document.querySelectorAll('.exemplar-option').forEach(opt => {
+        if (opt.style.display !== 'none') {
+            opt.querySelector('input[name="exemplar_picks"]').checked = checked;
+        }
+    });
+    updateSelectionSummary();
+}
+
+document.querySelectorAll('input[name="exemplar_picks"]').forEach(cb => {
+    cb.addEventListener('change', updateSelectionSummary);
+});
+
+document.getElementById('exemplar-search').addEventListener('input', function () {
+    const q = this.value.toLowerCase().trim();
+    document.querySelectorAll('.exemplar-option').forEach(function (opt) {
+        opt.style.display = opt.dataset.search.includes(q) ? 'block' : 'none';
+    });
+});
+
+document.getElementById('unitplan-bucket-select').addEventListener('change', async function () {
+    const bucket = this.value;
+    const list = document.getElementById('unitplan-list');
+    document.getElementById('select-all-unitplan').checked = false;
+    if (!bucket) {
+        list.innerHTML = '<em>Select a semester or tracker first.</em>';
+        return;
+    }
+    list.innerHTML = '<em>Loading…</em>';
+    if (bucket === 'grade12') {
+        const res = await fetch('/unit-plan/api/grade12');
+        const data = await res.json();
+        const topics = data.topics || [];
+        list.innerHTML = topics.map(t => `
+            <label style="display:block; padding:0.15rem 0.5rem; font-size:0.9rem; cursor:pointer;">
+                <input type="checkbox" name="unit_plan_picks" value="grade12|${t.id}|${t.code} ${t.statement}" onchange="updateSelectionSummary()">
+                <strong>${t.code}</strong> ${t.statement}
+            </label>
+        `).join('');
+    } else {
+        const res = await fetch('/unit-plan/api/course-data');
+        const data = await res.json();
+        const weeks = ((data[bucket] || {}).weeks || []).filter(w => !w.isBreak);
+        list.innerHTML = weeks.map(w => `
+            <label style="display:block; padding:0.15rem 0.5rem; font-size:0.9rem; cursor:pointer;">
+                <input type="checkbox" name="unit_plan_picks" value="${bucket}|${w.week}|Week ${w.week}: ${w.topic}" onchange="updateSelectionSummary()">
+                Week ${w.week}: ${w.topic}
+            </label>
+        `).join('');
+    }
+    updateSelectionSummary();
+});
+
+function toggleAllUnitPlan(checked) {
+    document.querySelectorAll('input[name="unit_plan_picks"]').forEach(cb => { cb.checked = checked; });
+    updateSelectionSummary();
+}
+
+{% if preselect_book_folder %}
+// Reached via a "🎯 Assign to class" shortcut — jump to the Book Pages tab with the
+// right book already loaded and the specific page checked.
+(async function () {
+    switchTab('book');
+    const sel = document.getElementById('book-select');
+    sel.value = {{ preselect_book_folder | tojson }};
+    await loadBookPages({{ preselect_book_folder | tojson }});
+    {% if preselect_page_id %}
+    const cb = document.querySelector('input[name="page_picks"][value^="' + {{ preselect_book_folder | tojson }} + '|' + {{ preselect_page_id | tojson }} + '|"]');
+    if (cb) {
+        cb.checked = true;
+        updateSelectionSummary();
+        const label = cb.closest('label');
+        label.style.background = 'var(--bg-light)';
+        label.scrollIntoView({ block: 'center' });
+    }
+    {% endif %}
+})();
+{% endif %}
+</script>
+{% endblock %}

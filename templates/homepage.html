@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Book Learning Platform</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .homepage-body {
+            background: var(--bg-light);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        .homepage-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        .homepage-header {
+            text-align: center;
+            margin: 2.5rem 0 3.5rem;
+            position: relative;
+        }
+
+        .homepage-header h1 {
+            font-size: 2.8rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin: 0 0 0.6rem 0;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .homepage-header p {
+            font-size: 1.1rem;
+            color: var(--text-light);
+            margin: 0;
+            font-weight: 400;
+        }
+
+        .scraper-section {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            padding: 2rem;
+            border-radius: var(--radius);
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .scraper-section h2 {
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin: 0 0 1rem 0;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .scraper-controls {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .scraper-controls input {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            background: var(--bg-light);
+            color: var(--text-dark);
+            transition: all 0.2s ease;
+        }
+
+        .scraper-controls input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(157, 132, 255, 0.1);
+            background: var(--bg-white);
+        }
+
+        .scraper-controls button {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(157, 132, 255, 0.2);
+        }
+
+        .scraper-controls button:hover {
+            background: linear-gradient(135deg, #d299ff 0%, #b565ff 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(157, 132, 255, 0.4);
+        }
+
+        [data-theme="light"] .scraper-controls button {
+            background: linear-gradient(135deg, #9d4edd 0%, #7b2cbf 100%);
+            box-shadow: 0 4px 12px rgba(157, 78, 221, 0.15);
+        }
+
+        [data-theme="light"] .scraper-controls button:hover {
+            background: linear-gradient(135deg, #b565ff 0%, #9d4edd 100%);
+            box-shadow: 0 6px 20px rgba(157, 78, 221, 0.25);
+        }
+
+        .scraper-controls button:active {
+            transform: translateY(0);
+        }
+
+        .scraper-controls button:disabled {
+            background: rgba(157, 132, 255, 0.1);
+            color: var(--text-light);
+            cursor: not-allowed;
+            box-shadow: none;
+            opacity: 0.6;
+        }
+
+        .scraper-controls button:disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .scraper-status {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            display: none;
+            font-size: 0.9rem;
+            border-left: 4px solid var(--primary);
+            background: rgba(157, 132, 255, 0.1);
+            color: var(--text-light);
+            backdrop-filter: blur(10px);
+        }
+
+        .scraper-status.show {
+            display: block;
+        }
+
+        .scraper-status.success {
+            background: rgba(10, 157, 88, 0.1);
+            color: #5dd19e;
+            border-left-color: #0a9d58;
+        }
+
+        .scraper-status.error {
+            background: rgba(217, 41, 22, 0.1);
+            color: #ff6b6b;
+            border-left-color: #d92916;
+        }
+
+        .scraper-status.loading {
+            background: rgba(157, 132, 255, 0.1);
+            color: #d299ff;
+            border-left-color: var(--primary);
+        }
+
+        .books-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .book-card {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .book-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(157, 132, 255, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .book-card:hover {
+            box-shadow: 0 16px 48px rgba(157, 132, 255, 0.2);
+            transform: translateY(-6px);
+            border-color: var(--primary);
+        }
+
+        .book-card-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .book-card-meta {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-bottom: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .book-card-progress {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+        }
+
+        .book-card-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .book-card-actions button {
+            flex: 1;
+            padding: 0.7rem;
+            border: 1px solid var(--border);
+            background: var(--bg-light);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            color: var(--text-light);
+        }
+
+        .book-card-actions button:hover {
+            background: rgba(157, 132, 255, 0.25);
+            border-color: var(--primary);
+            color: #ffffff;
+        }
+
+        [data-theme="light"] .book-card-actions button:hover {
+            background: rgba(157, 78, 221, 0.2);
+            color: #1a1a1a;
+        }
+
+        .book-card-actions button.primary {
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 12px rgba(157, 132, 255, 0.2);
+        }
+
+        .book-card-actions button.primary:hover {
+            background: linear-gradient(135deg, #d299ff 0%, #b565ff 100%);
+            box-shadow: 0 6px 20px rgba(157, 132, 255, 0.4);
+            transform: translateY(-2px);
+        }
+
+        [data-theme="light"] .book-card-actions button.primary {
+            background: linear-gradient(135deg, #9d4edd 0%, #7b2cbf 100%);
+            box-shadow: 0 4px 12px rgba(157, 78, 221, 0.15);
+        }
+
+        [data-theme="light"] .book-card-actions button.primary:hover {
+            background: linear-gradient(135deg, #b565ff 0%, #9d4edd 100%);
+            box-shadow: 0 6px 20px rgba(157, 78, 221, 0.25);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-light);
+        }
+
+        .empty-state h3 {
+            margin-top: 0;
+            font-size: 1.3rem;
+            color: var(--text-dark);
+        }
+
+        .discover-btn {
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            margin-top: 1rem;
+            color: white;
+            box-shadow: 0 4px 12px rgba(157, 132, 255, 0.2);
+            transition: all 0.2s ease;
+        }
+
+        .discover-btn:hover {
+            background: linear-gradient(135deg, #d299ff 0%, #b565ff 100%);
+            box-shadow: 0 6px 20px rgba(157, 132, 255, 0.4);
+            transform: translateY(-2px);
+        }
+
+        [data-theme="light"] .discover-btn {
+            background: linear-gradient(135deg, #9d4edd 0%, #7b2cbf 100%);
+            box-shadow: 0 4px 12px rgba(157, 78, 221, 0.15);
+        }
+
+        [data-theme="light"] .discover-btn:hover {
+            background: linear-gradient(135deg, #b565ff 0%, #9d4edd 100%);
+            box-shadow: 0 6px 20px rgba(157, 78, 221, 0.25);
+        }
+
+        .nav-header {
+            background: var(--bg-white);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-header h1 {
+            margin: 0;
+            font-size: 1.3rem;
+            flex: 1;
+            background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-header button {
+            background: rgba(157, 132, 255, 0.15);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.2s;
+            color: var(--text-dark);
+        }
+
+        .nav-header button:hover {
+            background: rgba(157, 132, 255, 0.3);
+            border-color: var(--primary);
+            color: #ffffff;
+        }
+
+        [data-theme="light"] .nav-header button:hover {
+            background: rgba(157, 78, 221, 0.2);
+            color: #1a1a1a;
+        }
+    </style>
+</head>
+<body class="homepage-body">
+{% include "_sidebar.html" %}
+
+    <nav class="app-nav">
+        <div class="nav-brand">📚 The Oracle</div>
+        <div class="nav-links">
+            <a href="/dashboard" class="nav-link">🎓 Dashboard</a>
+            <a href="/resources" class="nav-link">🗂 Resources</a>
+        </div>
+    </nav>
+
+    <div class="homepage-container">
+        <div class="homepage-header">
+            <h1>Welcome to Your Learning Platform</h1>
+            <p>Discover and learn from multiple textbooks</p>
+        </div>
+
+        <div class="scraper-section">
+            <h2>📥 Import New Books</h2>
+            <p style="color: var(--text-light); margin: 0 0 1rem 0;">Enter a book URL (e.g., https://example.com/books/93) to import all pages</p>
+            <div class="scraper-controls">
+                <input type="url" id="bookUrl" placeholder="https://example.com/books/..." />
+                <button onclick="startBookScrape()">🔍 Scrape Book</button>
+                <button onclick="stopScraping()" id="stopBtn" style="background: var(--danger);" disabled>⏹ Stop</button>
+            </div>
+            <div id="scraperStatus" class="scraper-status"></div>
+        </div>
+
+        <h2 style="margin-top: 2rem; color: var(--text-dark);">📖 Your Books</h2>
+        <div class="books-grid" id="booksGrid">
+            <div class="empty-state">
+                <h3>No books yet</h3>
+                <p>Import your first book using the form above</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize theme
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.dataset.theme = savedTheme;
+        }
+
+        // Load books on page load
+        async function loadBooks() {
+            try {
+                const response = await fetch('/api/books');
+                const data = await response.json();
+                renderBooks(data.books || []);
+            } catch (error) {
+                console.error('Failed to load books:', error);
+            }
+        }
+
+        function renderBooks(books) {
+            const grid = document.getElementById('booksGrid');
+            if (!books || books.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <h3>No books yet</h3>
+                        <p>Import your first book using the form above</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = books.map(book => {
+                const coverUrl = book.cover_image ? `/data/${book.cover_image}` : '';
+                const coverStyle = coverUrl 
+                    ? `background-image: url('${coverUrl}'); background-size: cover; background-position: center; height: 160px; border-radius: 6px; margin-bottom: 0.75rem; position: relative; border: 1px solid var(--border);` 
+                    : `background: #e2e8f0; height: 160px; border-radius: 6px; margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: center; font-size: 3rem; position: relative; border: 1px solid var(--border);`;
+                
+                return `
+                    <div class="book-card" style="display: flex; flex-direction: column;">
+                        <div style="${coverStyle}" class="book-cover-container">
+                            ${coverUrl ? '' : '📖'}
+                            <div class="cover-overlay" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0, 0, 0, 0.6); border-radius: 4px; padding: 4px;">
+                                <label for="upload-${book.folder}" style="cursor: pointer; color: white; font-size: 0.75rem; display: flex; align-items: center; gap: 4px;">
+                                    📷 Upload Cover
+                                </label>
+                                <input type="file" id="upload-${book.folder}" accept="image/*" style="display: none;" onchange="uploadCoverImage('${book.folder}', this)" />
+                            </div>
+                        </div>
+                        <div class="book-card-title" style="font-weight: bold; margin-bottom: 0.25rem;">${book.title}</div>
+                        <div class="book-card-meta">📄 ${book.pages_count} pages</div>
+                        <div class="book-card-meta">📅 ${new Date(book.created_at).toLocaleDateString()}</div>
+                        <div class="book-card-actions" style="margin-top: auto; padding-top: 0.75rem; display: flex; gap: 0.5rem;">
+                            <button class="primary" style="flex: 1;" onclick="window.location.href='/book/${book.folder}/learn'">📖 Learn</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function uploadCoverImage(bookFolder, input) {
+            if (!input.files || input.files.length === 0) return;
+            const file = input.files[0];
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const response = await fetch(`/api/book/${bookFolder}/cover`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                if (result.success) {
+                    loadBooks(); // reload the book list to show new cover
+                } else {
+                    alert('Upload failed: ' + result.error);
+                }
+            } catch (err) {
+                console.error('Error uploading cover image:', err);
+                alert('Error uploading cover: ' + err.message);
+            }
+        }
+
+        async function startBookScrape() {
+            const bookUrl = document.getElementById('bookUrl').value.trim();
+            if (!bookUrl) {
+                showStatus('Please enter a book URL', 'error');
+                return;
+            }
+
+            // Extract book ID and source origin from the pasted URL
+            const match = bookUrl.match(/\/books\/(\d+)/);
+            if (!match) {
+                showStatus('Invalid book URL. Use format: https://example.com/books/ID', 'error');
+                return;
+            }
+            let baseUrl;
+            try {
+                baseUrl = new URL(bookUrl).origin;
+            } catch (e) {
+                showStatus('Invalid book URL', 'error');
+                return;
+            }
+
+            const bookId = match[1];
+            document.getElementById('stopBtn').disabled = false;
+
+            showStatus(`Starting to scrape book ${bookId}...`, 'loading');
+
+            try {
+                const response = await fetch(`/api/books/${bookId}/scrape`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ base_url: baseUrl })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showStatus(`✓ Successfully scraped ${data.pages_scraped} pages!`, 'success');
+                    document.getElementById('bookUrl').value = '';
+                    loadBooks();
+                } else if (data.partial) {
+                    showStatus(`Scraping stopped. Saved ${data.pages_scraped || 0} pages.`, 'loading');
+                } else {
+                    showStatus(`Error: ${data.error || 'Failed to scrape'}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('stopBtn').disabled = true;
+            }
+        }
+
+        async function stopScraping() {
+            try {
+                await fetch('/api/scrape/stop', { method: 'POST' });
+                showStatus('Scraping stopped by user', 'loading');
+            } catch (error) {
+                console.error('Failed to stop scraping:', error);
+            }
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('scraperStatus');
+            status.textContent = message;
+            status.className = `scraper-status show ${type}`;
+
+            if (type !== 'loading') {
+                setTimeout(() => status.classList.remove('show'), 5000);
+            }
+        }
+
+        function viewBooks() {
+            window.location.href = '/books';
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            loadBooks();
+        });
+    </script>
+</body>
+</html>

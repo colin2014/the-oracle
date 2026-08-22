@@ -1,0 +1,114 @@
+{% extends "admin_base.html" %}
+{% block title %}Class Games{% endblock %}
+
+{% block content %}
+<style>
+    .cg-container { max-width: 1100px; margin: 0 auto; }
+    .cg-header h1 { font-size: 1.5rem; margin: 0 0 0.25rem 0; }
+    .cg-header .sub { font-size: 0.9rem; color: var(--text-light); margin: 0 0 1.5rem 0; }
+
+    .cg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .cg-card {
+        background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius);
+        padding: 1.4rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        display: flex; flex-direction: column; gap: 0.6rem;
+    }
+    .cg-card-head { display: flex; align-items: center; gap: 0.75rem; }
+    .cg-card-icon {
+        width: 42px; height: 42px; border-radius: var(--radius-sm); flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--tint); color: var(--primary);
+    }
+    .cg-card h2 { font-size: 1.1rem; margin: 0; }
+    .cg-card .tagline { font-size: 0.8rem; color: var(--primary); font-weight: 600; margin: 0; }
+    .cg-card p.desc { font-size: 0.88rem; color: var(--text-light); margin: 0; flex: 1; line-height: 1.55; }
+    .cg-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 0.4rem; }
+    .cg-mode { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-light); }
+
+    .cg-aux { display: flex; gap: 0.75rem; margin-bottom: 2rem; }
+
+    .cg-recent h2 { font-size: 1.1rem; margin: 0 0 0.75rem 0; }
+    .cg-session-row {
+        display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+        border: 1px solid var(--border); border-radius: var(--radius-sm);
+        padding: 0.7rem 1rem; margin-bottom: 0.5rem; background: var(--bg-white);
+    }
+    .cg-session-main { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
+    .cg-session-name { font-weight: 600; font-size: 0.9rem; }
+    .cg-session-meta { font-size: 0.78rem; color: var(--text-light); }
+    .cg-status { font-size: 0.7rem; font-weight: 700; padding: 0.18rem 0.6rem; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .cg-status.lobby { background: var(--tint); color: var(--primary); }
+    .cg-status.active { background: rgba(16,185,129,0.14); color: #047857; }
+    .cg-status.finished { background: var(--bg-light); color: var(--text-light); }
+    [data-theme="dark"] .cg-status.active { color: #34d399; }
+    .cg-empty { color: var(--text-light); font-size: 0.88rem; padding: 1rem 0; }
+</style>
+
+<div class="cg-container">
+    <div class="cg-header">
+        <h1>Class Games</h1>
+        <p class="sub">Games you run on the board, built on the real question bank. HL-only questions are only ever served to HL students.</p>
+    </div>
+
+    <div class="cg-grid">
+        {% for g in games %}
+        <div class="cg-card">
+            <div class="cg-card-head">
+                <span class="cg-card-icon">
+                    {% if g.type == "concept_ladder" %}
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v18M16 3v18M8 8h8M8 13h8M8 18h8"/></svg>
+                    {% elif g.type == "bug_hunt" %}
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="5"/><path d="M12 8V5M8.5 9.5 6 7M15.5 9.5 18 7M7 13H4M20 13h-3M8.5 16.5 6 19M15.5 16.5 18 19"/></svg>
+                    {% else %}
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l2.5 2.5"/></svg>
+                    {% endif %}
+                </span>
+                <div>
+                    <h2>{{ g.name }}</h2>
+                    <p class="tagline">{{ g.tagline }}</p>
+                </div>
+            </div>
+            <p class="desc">{{ g.description }}</p>
+            <div class="cg-card-foot">
+                <span class="cg-mode">{{ g.mode }}</span>
+                <a class="admin-btn" href="{{ url_for(g.setup_endpoint) }}">Set up a game</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="cg-aux">
+        <!-- Auxiliary actions available here -->
+    </div>
+
+    <div class="cg-recent">
+        <h2>Recent sessions</h2>
+        {% if recent %}
+            {% for s in recent %}
+            <div class="cg-session-row">
+                <div class="cg-session-main">
+                    <span class="cg-session-name">
+                        {% if s.game_type == "concept_ladder" %}Concept Ladder
+                        {% elif s.game_type == "think_of_word" %}Think of a Word
+                        {% elif s.game_type == "connections" %}Connections
+                        {% else %}{{ s.game_type }}{% endif %}
+                    </span>
+                    <span class="cg-session-meta">
+                        {% if s.class_ %}{{ s.class_.name }} · {% endif %}{{ s.created_at.strftime("%d %b %Y, %H:%M") }}
+                        {% if s.join_code and s.status != "finished" %} · code {{ s.join_code }}{% endif %}
+                    </span>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                    <span class="cg-status {{ s.status }}">{{ s.status }}</span>
+                    <a class="admin-btn-ghost" href="{{ url_for('games.board', session_id=s.id) }}">
+                        {% if s.status == "finished" %}Review{% else %}Open board{% endif %}
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="cg-empty">No games yet — set one up above and put it on the board.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log In</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 100vh;
+            background: var(--bg-light);
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        @media (max-width: 900px) {
+            body { grid-template-columns: 1fr; }
+            .auth-visual { display: none; }
+        }
+
+        .auth-visual {
+            background: var(--primary);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .visual-element {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.15;
+            mix-blend-mode: screen;
+        }
+
+        .visual-element-1 { width: 420px; height: 420px; background: var(--success); top: -100px; right: -80px; opacity: 0.08; }
+        .visual-element-2 { width: 320px; height: 320px; background: var(--info); bottom: -80px; left: 20px; opacity: 0.08; }
+        .visual-element-3 { width: 280px; height: 280px; background: var(--warning); top: 80px; right: 5%; opacity: 0.08; }
+
+        .visual-content {
+            position: relative;
+            z-index: 10;
+            max-width: 480px;
+            padding: 3rem 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            color: white;
+        }
+
+        .visual-header {
+            text-align: left;
+        }
+
+        .visual-content h2 {
+            font-size: 2.6rem;
+            font-weight: 800;
+            margin: 0 0 0.75rem;
+            letter-spacing: -0.4px;
+            line-height: 1.15;
+        }
+
+        .visual-content p {
+            font-size: 1.05rem;
+            margin: 0;
+            line-height: 1.6;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+
+        .visual-features {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .visual-features li {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+            opacity: 0.88;
+            line-height: 1.5;
+        }
+
+        .visual-features li:before {
+            content: "";
+            flex-shrink: 0;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: white;
+            margin-top: 0.4rem;
+        }
+
+        .auth-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .auth-card {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 420px;
+            overflow-y: auto;
+            max-height: 90vh;
+        }
+
+        .auth-card h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin: 0 0 1.5rem;
+            color: var(--text-dark);
+            letter-spacing: -0.4px;
+        }
+
+        .auth-field { margin-bottom: 1.25rem; }
+
+        .auth-field label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-bottom: 0.6rem;
+            color: var(--text-dark);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .auth-field input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-control);
+            font-size: 0.9rem;
+            box-sizing: border-box;
+            background: var(--bg-light);
+            color: var(--text-dark);
+            transition: all 0.2s ease-out;
+        }
+
+        .auth-field input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--tint);
+            background: var(--bg-white);
+        }
+
+        .auth-submit {
+            width: 100%;
+            padding: 0.75rem 1.2rem;
+            border: none;
+            border-radius: var(--radius-control);
+            background: var(--primary);
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: all 0.2s ease-out;
+            font-size: 0.9rem;
+            letter-spacing: -0.2px;
+        }
+
+        .auth-submit:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(131, 102, 232, 0.3);
+        }
+
+        .auth-submit:active { transform: translateY(0); }
+
+        .auth-flash {
+            background: var(--danger);
+            color: white;
+            padding: 0.9rem 1rem;
+            border-radius: var(--radius-control);
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .auth-footer {
+            text-align: center;
+            margin-top: 1.75rem;
+            font-size: 0.875rem;
+        }
+
+        .auth-footer a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .test-login-section {
+            display: none;
+            margin-top: 1.75rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .test-login-section.visible { display: block; }
+
+        .test-section-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+        }
+
+        .test-credentials-box {
+            background: var(--tint);
+            border: 1px solid var(--primary);
+            border-radius: var(--radius-control);
+            padding: 0.85rem;
+            margin-bottom: 0.85rem;
+            font-size: 0.75rem;
+        }
+
+        .test-credentials-box code {
+            background: var(--bg-white);
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: monospace;
+            color: var(--text-dark);
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .test-credentials-box .cred-line { margin-bottom: 0.4rem; }
+        .test-credentials-box .cred-line:last-child { margin-bottom: 0; }
+
+        .test-login-btn {
+            background: transparent;
+            color: var(--text-dark);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-control);
+            padding: 0.6rem 0.9rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: block;
+            width: 100%;
+            margin-bottom: 0.5rem;
+            transition: all 0.2s ease-out;
+        }
+
+        .test-login-btn:hover {
+            background: var(--tint);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .test-login-btn:last-child { margin-bottom: 0; }
+
+        .auth-theme-toggle {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            padding: 0.6rem 0.75rem;
+            border-radius: var(--radius-control);
+            transition: all 0.2s ease;
+            font-size: 1.1rem;
+            color: var(--text-dark);
+            box-shadow: var(--shadow);
+            z-index: 100;
+        }
+
+        .auth-theme-toggle:hover {
+            background: var(--tint);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+    </style>
+    <script src="{{ url_for('static', filename='js/toast.js') }}" defer></script>
+    {% include '_pwa_head.html' %}
+</head>
+<body>
+    <button id="themeToggle" class="auth-theme-toggle" title="Toggle dark mode">🌙</button>
+    <div class="auth-visual">
+        <div class="visual-element visual-element-1"></div>
+        <div class="visual-element visual-element-2"></div>
+        <div class="visual-element visual-element-3"></div>
+        <div class="visual-content">
+            <div class="visual-header">
+                <h2>The Oracle</h2>
+                <p>A modern learning environment for IB DP Computer Science teachers and students.</p>
+            </div>
+            <ul class="visual-features">
+                <li>Curriculum-aligned assessments</li>
+                <li>AI-assisted grading & feedback</li>
+                <li>Read, revise, and test in one place</li>
+            </ul>
+        </div>
+    </div>
+    <div class="auth-container">
+        <div class="auth-card">
+        <h1>Log In</h1>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for m in messages %}<div class="auth-flash">{{ m }}</div>{% endfor %}
+            {% endif %}
+        {% endwith %}
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="auth-field">
+                <label>Username</label>
+                <input type="text" name="identifier" autocomplete="username" value="{{ identifier or '' }}" required autofocus>
+            </div>
+            <div class="auth-field">
+                <label>Password</label>
+                <input type="password" name="password" required>
+            </div>
+            <button type="submit" class="auth-submit">Log In</button>
+        </form>
+        <div class="auth-footer">Don't have an account? <a href="{{ url_for('auth.signup') }}">Sign up</a></div>
+
+        {% if show_test_login %}
+        <div class="test-login-section" id="testLoginSection">
+            <div class="test-section-title">Quick Test Logins (Ctrl+Shift+S to hide)</div>
+            <div class="test-credentials-box">
+                <div class="cred-line"><strong>Admin:</strong> <code>{{ test_admin_username }}</code> / <code>{{ test_admin_password }}</code></div>
+                <div class="cred-line"><strong>Student:</strong> <code>{{ test_user_username }}</code> / <code>{{ test_user_password }}</code></div>
+            </div>
+            <button type="button" id="testAdminBtn" class="test-login-btn">Quick Login: Admin</button>
+            <button type="button" id="testUserBtn" class="test-login-btn">Quick Login: Student</button>
+        </div>
+        <script>
+            document.getElementById('testAdminBtn').addEventListener('click', function () {
+                document.querySelector('input[name="identifier"]').value = '{{ test_admin_username }}';
+                document.querySelector('input[name="password"]').value = '{{ test_admin_password }}';
+                document.querySelector('form').submit();
+            });
+            document.getElementById('testUserBtn').addEventListener('click', function () {
+                document.querySelector('input[name="identifier"]').value = '{{ test_user_username }}';
+                document.querySelector('input[name="password"]').value = '{{ test_user_password }}';
+                document.querySelector('form').submit();
+            });
+        </script>
+        {% endif %}
+        </div>
+    </div>
+    <script>
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.dataset.theme = savedTheme;
+            updateThemeToggle();
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.dataset.theme || 'light';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.dataset.theme = newTheme;
+            localStorage.setItem('theme', newTheme);
+            updateThemeToggle();
+        }
+
+        function updateThemeToggle() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const isDark = document.documentElement.dataset.theme === 'dark';
+            toggleBtn.textContent = isDark ? '☀️' : '🌙';
+        }
+
+        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+        document.addEventListener('DOMContentLoaded', initTheme);
+        initTheme();
+
+        // Keyboard shortcut: Ctrl+Shift+S to toggle test credentials visibility
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.shiftKey && e.key === 'S') {
+                e.preventDefault();
+                const testSection = document.getElementById('testLoginSection');
+                if (testSection) {
+                    testSection.classList.toggle('visible');
+                }
+            }
+        });
+    </script>
+</body>
+</html>

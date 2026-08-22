@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {# admin_bp is not CSRF-exempt (it serves real destructive form POSTs), so its
+       fetch()-driven endpoints need a token. Exposed here so every admin page has one
+       without depending on an unrelated <form> happening to be on the page. #}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}Admin{% endblock %} · Admin Console</title>
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.svg') }}" type="image/svg+xml">
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon-32.png') }}" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/apple-touch-icon.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .admin-shell { display: flex; min-height: 100vh; }
+        .admin-nav {
+            width: 240px;
+            background: var(--bg-white);
+            border-right: 1px solid var(--border);
+            padding: 1.5rem 1rem;
+            flex-shrink: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .admin-nav h2 {
+            font-size: 0.9rem;
+            margin: 0 0 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-light);
+            font-weight: 700;
+        }
+        .admin-nav a {
+            display: block;
+            padding: 0.6rem 0.8rem;
+            border-radius: 6px;
+            color: var(--text-dark);
+            text-decoration: none;
+            font-size: 0.9rem;
+            margin-bottom: 0.35rem;
+            transition: all 0.2s ease;
+        }
+        .admin-nav a:hover {
+            background: rgba(157, 132, 255, 0.15);
+            color: var(--primary);
+        }
+        .admin-nav a:active {
+            background: rgba(157, 132, 255, 0.25);
+            color: var(--primary);
+        }
+        .admin-more-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 0.4rem;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+
+        .admin-more-btn:hover {
+            background: rgba(157, 132, 255, 0.12);
+            color: var(--primary);
+        }
+
+        .admin-more-btn svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        /* Only show the ⋯ button when the sidebar is expanded */
+        .admin-sidebar.collapsed .admin-more-btn {
+            display: none;
+        }
+
+        .admin-more-dropdown {
+            position: fixed;
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: none;
+            flex-direction: column;
+            z-index: 1000;
+            overflow: hidden;
+            width: 200px;
+        }
+
+        .admin-more-dropdown.open {
+            display: flex;
+        }
+
+        .admin-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: none;
+            border: none;
+            color: var(--text-dark);
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            font-size: 0.9rem;
+            font-weight: 500;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+        }
+
+        .admin-menu-item:hover {
+            background: var(--bg-light);
+        }
+
+        .admin-menu-icon {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            color: var(--primary);
+        }
+
+        .admin-logout-item {
+            color: #dc3545;
+        }
+
+        .admin-logout-item .admin-menu-icon {
+            color: #dc3545;
+        }
+
+        .admin-logout-item:hover {
+            background: rgba(220, 53, 69, 0.1);
+        }
+
+        .admin-menu-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 0;
+        }
+
+        .admin-theme-label {
+            flex: 1;
+        }
+        /* .admin-main's base rule (flex/padding/max-width, deliberately no overflow)
+           lives once in style.css — not duplicated here. */
+        .admin-flash-success {
+            background: rgba(10, 157, 88, 0.1);
+            color: #5dd19e;
+            padding: 0.8rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #10b981;
+        }
+        .admin-flash-error {
+            background: rgba(217, 41, 22, 0.1);
+            color: #ff6b6b;
+            padding: 0.8rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #d92916;
+        }
+        table.admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        table.admin-table th, table.admin-table td {
+            text-align: left;
+            padding: 0.75rem 0.9rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+        table.admin-table th {
+            background: var(--bg-light);
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+        table.admin-table tr:hover {
+            background: rgba(157, 132, 255, 0.05);
+        }
+        .admin-card {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        /* .admin-btn / .admin-btn-danger / .admin-btn-ghost / .admin-btn-text come from
+           style.css — defined once there so every admin page shares one button system. */
+        .admin-inline-form { display: flex; gap: 0.5rem; }
+        .admin-inline-form input {
+            padding: 0.5rem 0.7rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-light);
+            color: var(--text-dark);
+            transition: all 0.2s ease;
+        }
+        .admin-inline-form input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(157, 132, 255, 0.1);
+        }
+        .admin-inline-form select {
+            padding: 0.5rem 0.7rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-light);
+            color: var(--text-dark);
+            transition: all 0.2s ease;
+        }
+        .admin-inline-form select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(157, 132, 255, 0.1);
+        }
+    </style>
+    {% include '_pwa_head.html' %}
+</head>
+<body>
+    <div class="admin-shell">
+        {% include "_sidebar.html" %}
+        <main class="admin-main">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, m in messages %}
+                        <div class="admin-flash-{{ category }}">{{ m }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            {# The Assessment hub has its own richer Live now block; the ambient
+               banner would just repeat it directly above. #}
+            {% if request.endpoint != 'assessment.assessment_hub' %}
+                {% include "_live_test_banner.html" %}
+            {% endif %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+        // Analytics tables: highlight the hovered cell's full column
+        document.querySelectorAll('table.analytics-table').forEach(table => {
+            table.addEventListener('mouseover', e => {
+                const cell = e.target.closest('td, th');
+                if (!cell || !table.contains(cell)) return;
+                const idx = cell.cellIndex;
+                table.querySelectorAll('.col-hover').forEach(c => c.classList.remove('col-hover'));
+                table.querySelectorAll('tr').forEach(tr => {
+                    if (tr.cells[idx]) tr.cells[idx].classList.add('col-hover');
+                });
+            });
+            table.addEventListener('mouseleave', () => {
+                table.querySelectorAll('.col-hover').forEach(c => c.classList.remove('col-hover'));
+            });
+        });
+
+        // Theme is initialised and toggled by the shared sidebar (_sidebar.html).
+        // Kept as a global helper in case child templates call it.
+        function toggleTheme() {
+            const newTheme = (document.documentElement.dataset.theme || 'light') === 'light' ? 'dark' : 'light';
+            document.documentElement.dataset.theme = newTheme;
+            localStorage.setItem('theme', newTheme);
+        }
+    </script>
+</body>
+</html>

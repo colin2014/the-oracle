@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="pageTitle">Course</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .book-learn-body {
+            background: var(--bg-light);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        .book-nav {
+            background: var(--bg-white);
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+
+        .book-nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .book-nav a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .book-nav a:hover {
+            text-decoration: underline;
+        }
+
+        .book-learn-container {
+            max-width: 1400px;
+            margin: 0;
+            padding: 0.5rem 2rem 2rem;
+        }
+
+        /* Two-column layout: page TOC in a left sidebar, content on the right */
+        .learn-layout {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        .learn-sidebar {
+            position: sticky;
+            top: 1rem;
+            max-height: calc(100vh - 2rem);
+            overflow-y: auto;
+        }
+
+        .learn-sidebar-header {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 800;
+            color: var(--text-light);
+            margin: 0 0 0.75rem 0.25rem;
+        }
+
+        .learn-main {
+            min-width: 0;
+        }
+
+        @media (max-width: 860px) {
+            .learn-layout {
+                grid-template-columns: 1fr;
+            }
+            .learn-sidebar {
+                position: static;
+                max-height: none;
+            }
+        }
+
+        .book-learn-header {
+            text-align: center;
+            margin: 0 0 1.25rem;
+        }
+
+        .book-learn-header h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin: 0 0 0.4rem 0;
+            color: var(--text-dark);
+        }
+
+        .book-learn-header p {
+            font-size: 1.05rem;
+            color: var(--text-light);
+            margin: 0;
+        }
+
+        .pages-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .page-card {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.25rem;
+            cursor: pointer;
+            transition: box-shadow 0.2s, transform 0.2s;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .page-card:hover {
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-3px);
+        }
+
+        .page-card.completed {
+            border-left: 4px solid var(--success);
+        }
+
+        .page-card-number {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-light);
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .page-card-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .page-card-footer {
+            margin-top: auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.85rem;
+        }
+
+        .page-card-progress {
+            color: var(--text-light);
+        }
+
+        .page-card-badge {
+            background: var(--success);
+            color: white;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .progress-section {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
+        }
+
+        .progress-bar-container {
+            margin-top: 1rem;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--success);
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-light);
+        }
+
+        .empty-state h3 {
+            margin-top: 0;
+        }
+
+        .theme-toggle {
+            background: rgba(0, 0, 0, 0.1);
+            border: none;
+            border-radius: 6px;
+            padding: 0.4rem 0.75rem;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: background 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        /* One clickable table-of-contents tree (mirrors the reading-page chapter nav) */
+        .toc-card {
+            background: #F7F5FC;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 0;
+            overflow: hidden;
+        }
+
+        [data-theme="dark"] .toc-card {
+            background: #16151f;
+        }
+
+        .toc-controls {
+            display: flex;
+            gap: 12px;
+            padding: 12px 14px 8px;
+        }
+
+        .toc-mini-btn {
+            background: none;
+            border: none;
+            padding: 0;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-light);
+            cursor: pointer;
+            transition: color 0.15s ease;
+        }
+
+        .toc-mini-btn:hover {
+            color: var(--primary);
+        }
+
+        .toc-theme-label {
+            padding: 14px 14px 4px;
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        /* Top-level unit (A1, B3, Internal Assessment, ...): icon + full title + chevron,
+           expanded state gets a solid tinted bar. */
+        .toc-unit-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 11px 14px;
+            margin: 0;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--border);
+            font-family: inherit;
+            font-size: 0.92rem;
+            text-align: left;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+
+        .toc-unit-header:hover {
+            background-color: rgba(131, 102, 232, 0.08);
+        }
+
+        .toc-unit-header:not(.collapsed) {
+            background-color: rgba(131, 102, 232, 0.16);
+        }
+
+        .toc-unit-header:not(.collapsed):hover {
+            background-color: rgba(131, 102, 232, 0.2);
+        }
+
+        .toc-unit-icon {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+            stroke: var(--primary);
+            fill: none;
+            stroke-width: 1.75;
+        }
+
+        .toc-unit-label {
+            flex: 1;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .toc-unit-header:not(.collapsed) .toc-unit-label {
+            color: var(--primary);
+        }
+
+        .toc-chevron {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+            stroke: var(--text-light);
+            fill: none;
+            stroke-width: 2;
+            transform: rotate(180deg);
+            transition: transform 0.2s ease;
+        }
+
+        .toc-unit-header:not(.collapsed) .toc-chevron,
+        .toc-sub-header:not(.collapsed) .toc-chevron {
+            stroke: var(--primary);
+        }
+
+        .toc-unit-header.collapsed .toc-chevron,
+        .toc-sub-header.collapsed .toc-chevron {
+            transform: rotate(0deg);
+        }
+
+        .toc-unit-body {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .toc-unit-body.collapsed {
+            display: none;
+        }
+
+        /* Sub-topic (A1.1, B2.1, ...): lighter, no icon — still its own accordion since
+           a unit can hold a dozen+ leaf pages across several sub-topics. */
+        .toc-sub-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 8px 14px 8px 28px;
+            background: transparent;
+            border: none;
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+
+        .toc-sub-header:hover {
+            background-color: rgba(131, 102, 232, 0.06);
+        }
+
+        .toc-sub-label {
+            flex: 1;
+            color: var(--text-dark);
+        }
+
+        .toc-sub-header:not(.collapsed) .toc-sub-label {
+            color: var(--primary);
+        }
+
+        .toc-sub-body.collapsed {
+            display: none;
+        }
+
+        .toc-row {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.45rem 0.75rem 0.45rem 46px;
+            text-decoration: none;
+            color: var(--text-dark);
+            line-height: 1.4;
+            font-size: 0.85rem;
+            border-left: 3px solid transparent;
+        }
+
+        a.toc-row:hover {
+            background: rgba(131, 102, 232, 0.08);
+            color: var(--primary);
+        }
+
+        .toc-title {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .toc-check {
+            color: var(--success);
+            font-weight: 700;
+            margin-left: auto;
+        }
+    </style>
+</head>
+<body class="book-learn-body">
+{% include "_sidebar.html" %}
+
+    <nav class="app-nav">
+        <div class="nav-brand">📚 The Oracle</div>
+        <div class="nav-links">
+            <a href="/dashboard" class="nav-link">🎓 Dashboard</a>
+            <a href="/resources" class="nav-link active">🗂 Resources</a>
+        </div>
+    </nav>
+
+    <div class="book-learn-container">
+        <div class="book-learn-header">
+            <h1 id="bookTitle">Course</h1>
+            <p>Select a page to begin</p>
+        </div>
+
+        <div class="learn-layout">
+            <!-- Left sidebar: pages / table of contents from book.json -->
+            <aside class="learn-sidebar">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                    <div class="learn-sidebar-header" style="margin: 0;">📖 Pages</div>
+                    {% if current_user.is_authenticated and current_user.is_admin() %}
+                    <button id="manageFoldersBtn" style="background: none; border: none; color: var(--primary); cursor: pointer; font-size: 0.9rem; font-weight: 600; padding: 0.3rem 0.6rem; border-radius: 4px;">⚙️ Manage</button>
+                    {% endif %}
+                </div>
+                <div class="pages-grid" id="pagesGrid">
+                    <div class="empty-state">
+                        <h3>Loading…</h3>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main content -->
+            <div class="learn-main">
+                <div class="progress-section">
+                    <div style="font-size: 0.9rem; color: var(--text-light); font-weight: 600;">
+                        <span id="progressText">0 of 0</span> pages complete
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar">
+                            <div class="progress-bar-fill" id="progressBarFill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="empty-state" style="text-align: left; padding: 1rem 0;">
+                    <h3 style="color: var(--text-dark);">Select a page from the list to begin</h3>
+                    <p>Use the list on the left to navigate through this resource.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Folders Modal -->
+    <div id="manageFoldersModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; overflow-y:auto;">
+        <div class="modal-content" style="position:relative; top:auto; left:auto; transform:none; background:var(--bg-white); border-radius:10px; padding:2rem; max-width:700px; width:90%; margin:2rem auto; box-shadow:0 10px 40px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h3 style="margin:0;">Manage Folders</h3>
+                <button onclick="closeFoldersModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; padding:0;">✕</button>
+            </div>
+
+            <!-- Tabs -->
+            <div style="display:flex; gap:1rem; margin-bottom:1.5rem; border-bottom:1px solid var(--border); padding-bottom:1rem;">
+                <button class="tab-btn active" onclick="switchTab('create')" style="padding:0.5rem 1rem; border:none; background:none; cursor:pointer; font-weight:600; border-bottom:2px solid transparent; color:var(--text-light);" data-tab="create">📁 Create Folder</button>
+                <button class="tab-btn" onclick="switchTab('organize')" style="padding:0.5rem 1rem; border:none; background:none; cursor:pointer; font-weight:600; border-bottom:2px solid transparent; color:var(--text-light);" data-tab="organize">🏷️ Organize Pages</button>
+            </div>
+
+            <!-- Create Tab -->
+            <div id="createTab" class="tab-content" style="display:block;">
+                <div style="margin-bottom:1.5rem;">
+                    <h4 style="margin:0 0 1rem 0;">Create New Folder</h4>
+                    <div style="display:flex; gap:0.75rem; margin-bottom:1.5rem; flex-wrap:wrap;">
+                        <input type="text" id="newFolderName" placeholder="Folder name" style="flex:1; min-width:200px; padding:0.75rem; border:1px solid var(--border); border-radius:6px; font-family:inherit;">
+                        <select id="parentFolderSelect" style="padding:0.75rem; border:1px solid var(--border); border-radius:6px; font-family:inherit;">
+                            <option value="">Root Level</option>
+                        </select>
+                        <button onclick="createFolder()" style="padding:0.75rem 1.5rem; background:var(--primary); color:white; border:none; border-radius:6px; cursor:pointer; font-weight:600;">+ Create</button>
+                    </div>
+                </div>
+
+                <div style="max-height:400px; overflow-y:auto;">
+                    <h4 style="margin:1.5rem 0 1rem 0;">Existing Folders</h4>
+                    <div id="foldersList" style="display:flex; flex-direction:column; gap:0.75rem;">
+                        <div style="text-align:center; padding:2rem; color:var(--text-light);">Loading folders...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Organize Tab -->
+            <div id="organizeTab" class="tab-content" style="display:none;">
+                <div style="margin-bottom:1.5rem;">
+                    <h4 style="margin:0 0 1rem 0;">Drag & Drop Pages to Organize</h4>
+                    <p style="color:var(--text-light); font-size:0.9rem; margin:0 0 1.5rem 0;">Drag pages from the list below and drop them into folders above. Drag to "Unassigned" area to remove from folder.</p>
+
+                    <div style="background:var(--bg-light); border:2px dashed var(--border); border-radius:8px; padding:1.5rem; min-height:100px; margin-bottom:1rem;" id="unassignedArea" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDropUnassigned(event)">
+                        <div style="text-align:center; color:var(--text-light);">
+                            <div style="font-weight:600; margin-bottom:0.5rem;">📭 Unassigned Pages</div>
+                            <div style="font-size:0.9rem;">Drag pages here to remove from folders</div>
+                        </div>
+                        <div id="unassignedPagesList" style="display:flex; flex-direction:column; gap:0.5rem; margin-top:1rem;"></div>
+                    </div>
+
+                    <h4 style="margin:1.5rem 0 1rem 0;">Folders</h4>
+                    <div id="dragDropFolders" style="display:flex; flex-direction:column; gap:0.75rem;">
+                        <div style="text-align:center; padding:1rem; color:var(--text-light);">Loading folders...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex; gap:1rem; margin-top:2rem; justify-content:flex-end; border-top:1px solid var(--border); padding-top:1rem;">
+                <button onclick="closeFoldersModal()" style="padding:0.75rem 1.5rem; border:1px solid var(--border); border-radius:6px; background:var(--bg-light); cursor:pointer;">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const bookFolder = "{{ book_folder }}";
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.dataset.theme = savedTheme;
+        }
+
+        function getProgress() {
+            const key = `book_${bookFolder}_progress`;
+            try {
+                return JSON.parse(localStorage.getItem(key) || '{}');
+            } catch {
+                return {};
+            }
+        }
+
+        function isPageComplete(pageId) {
+            return getProgress()[pageId] === true;
+        }
+
+        async function loadBook() {
+            try {
+                const response = await fetch(`/api/book/${bookFolder}/pages`);
+                const data = await response.json();
+
+                if (data.pages && data.pages.length > 0) {
+                    allPages = data.pages;
+                    document.getElementById('pageTitle').textContent = data.book_title || 'Course';
+                    document.getElementById('bookTitle').textContent = data.book_title || 'Course';
+                    if (data.tree && data.tree.length > 0) {
+                        renderSyllabusTree(data.tree);   // same hierarchy as the editor sidebar
+                    } else {
+                        renderPages(data.pages);          // fallback: derive from title codes
+                    }
+                    updateProgress(data.pages);
+                }
+            } catch (error) {
+                console.error('Failed to load pages:', error);
+                document.getElementById('pagesGrid').innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <h3>Error loading pages</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Parse topic prefixes (Theme A, A1.1, etc.)
+        function parseTopicCode(title) {
+            const themeMatch = (title || '').match(/^Theme\s+([A-Z])\b/i);
+            if (themeMatch) return themeMatch[1].toUpperCase();
+            const m = (title || '').match(/^([A-Za-z])\s*\.?\s*(\d+(?:\.\d+)*)/);
+            if (m) return m[1].toUpperCase() + m[2];
+            return null;
+        }
+
+        // "A1.1" -> "A1", etc.
+        function parentCode(code) {
+            if (code.includes('.')) return code.substring(0, code.lastIndexOf('.'));
+            if (code.length > 1) return code[0];
+            return null;
+        }
+
+        function codeSegments(code) {
+            const segs = [code[0]];
+            const nums = code.substring(1);
+            if (nums) nums.split('.').forEach(n => segs.push(parseInt(n, 10)));
+            return segs;
+        }
+
+        function compareCodes(a, b) {
+            const sa = codeSegments(a), sb = codeSegments(b);
+            for (let i = 0; i < Math.max(sa.length, sb.length); i++) {
+                if (sa[i] === undefined) return -1;
+                if (sb[i] === undefined) return 1;
+                if (sa[i] < sb[i]) return -1;
+                if (sa[i] > sb[i]) return 1;
+            }
+            return 0;
+        }
+
+        // Build a hierarchical tree from flat book pages
+        function buildHierarchy(pages) {
+            const nodes = {};
+            const roots = [];
+
+            function getOrCreateCategory(code, originalTitle) {
+                if (nodes[code]) return nodes[code];
+                
+                // Construct titles: "Theme A" or "A1.1 Computer fundamental"
+                let title = code.length === 1 ? 'Theme ' + code : code;
+                if (originalTitle && parseTopicCode(originalTitle) === code) {
+                    title = originalTitle;
+                }
+                
+                const node = {
+                    id: 'group_' + code.replace(/\./g, '_'),
+                    code: code,
+                    title: title,
+                    isCategory: true,
+                    children: []
+                };
+                nodes[code] = node;
+
+                const parent = parentCode(code);
+                if (parent) {
+                    const parentNode = getOrCreateCategory(parent);
+                    parentNode.children.push(node);
+                } else {
+                    roots.push(node);
+                }
+                return node;
+            }
+
+            pages.forEach(page => {
+                const code = parseTopicCode(page.title);
+                if (code) {
+                    const pageNode = {
+                        id: page.id,
+                        title: page.title,
+                        isCategory: false
+                    };
+                    
+                    // If it is a leaf level chapter (e.g. A1.1.1 or A1.1.2), put it under its parent (e.g. A1.1)
+                    // If it is itself a category header (e.g. A1.1 is defined in page list), update category title
+                    const isLeaf = code.split('.').length > 2 || (code.length > 1 && !pages.some(p => parseTopicCode(p.title) !== code && parseTopicCode(p.title)?.startsWith(code)));
+                    
+                    if (isLeaf) {
+                        const parent = parentCode(code);
+                        if (parent) {
+                            getOrCreateCategory(parent).children.push(pageNode);
+                        } else {
+                            roots.push(pageNode);
+                        }
+                    } else {
+                        // It is a category marker page (e.g. A1 or A1.1) - register it to nodes
+                        getOrCreateCategory(code, page.title);
+                        // Also append this page node inside it as a starting topic page if needed
+                        getOrCreateCategory(code).pageId = page.id;
+                    }
+                } else {
+                    roots.push({
+                        id: page.id,
+                        title: page.title,
+                        isCategory: false
+                    });
+                }
+            });
+
+            // Sort
+            function sortNode(node) {
+                if (node.children) {
+                    node.children.sort((x, y) => {
+                        if (x.isCategory && !y.isCategory) return -1;
+                        if (!x.isCategory && y.isCategory) return 1;
+                        if (x.code && y.code) return compareCodes(x.code, y.code);
+                        return (x.title || '').localeCompare(y.title || '');
+                    });
+                    node.children.forEach(sortNode);
+                }
+            }
+
+            roots.sort((x, y) => {
+                if (x.isCategory && !y.isCategory) return -1;
+                if (!x.isCategory && y.isCategory) return 1;
+                if (x.code && y.code) return compareCodes(x.code, y.code);
+                return (x.title || '').localeCompare(y.title || '');
+            });
+            roots.forEach(sortNode);
+
+            return roots;
+        }
+
+        // IB DP Computer Science syllabus icons — matched by code (A1, B3, ...) when the
+        // title follows that convention; anything else (a different book, "Internal
+        // Assessment") falls back to a generic icon, so this never breaks on other books.
+        const TOC_ICONS = {
+            A1: '<rect x="6" y="6" width="12" height="12" rx="2"></rect><path d="M6 3v3M12 3v3M18 3v3M6 18v3M12 18v3M18 18v3M3 6h3M3 12h3M3 18h3M18 6h3M18 12h3M18 18h3"></path>',
+            A2: '<circle cx="6" cy="6" r="2.5"></circle><circle cx="18" cy="6" r="2.5"></circle><circle cx="12" cy="18" r="2.5"></circle><path d="M8 7.5 10.5 15.5M16 7.5 13.5 15.5M8.5 6h7"></path>',
+            A3: '<ellipse cx="12" cy="6" rx="7" ry="3"></ellipse><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6"></path><path d="M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"></path>',
+            A4: '<rect x="5" y="9" width="14" height="10" rx="2"></rect><circle cx="9" cy="14" r="1.3"></circle><circle cx="15" cy="14" r="1.3"></circle><path d="M12 9V5M9 5h6"></path>',
+            B1: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3 11.2c.4.3.6.7.6 1.1V16h4.8v-.7c0-.4.2-.8.6-1.1A6 6 0 0 0 12 3z"></path>',
+            B2: '<polyline points="8 8 4 12 8 16"></polyline><polyline points="16 8 20 12 16 16"></polyline>',
+            B3: '<path d="M12 3 4 7.5v9L12 21l8-4.5v-9L12 3z"></path><path d="M4 7.5 12 12l8-4.5M12 12v9"></path>',
+            B4: '<polygon points="12 3 21 8 12 13 3 8"></polygon><polyline points="3 13 12 18 21 13"></polyline>',
+        };
+        const TOC_ICON_GENERIC = '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>';
+        let tocGroupSeq = 0;
+
+        // Render ONE clickable table-of-contents tree as a real accordion. Classified by
+        // shape, not raw depth, so it works regardless of how deep a given book nests:
+        // "Theme X" titles are plain (non-collapsible) super-group labels; any other node
+        // with children is a collapsible group (icon + full title at the top level, a
+        // lighter chevron-only header once nested); anything with no children is a leaf link.
+        function renderSyllabusTree(tree) {
+            const grid = document.getElementById('pagesGrid');
+            grid.style.display = 'block';
+            tocGroupSeq = 0;
+            grid.innerHTML = `
+                <div class="toc-controls">
+                    <button type="button" id="tocExpandAll" class="toc-mini-btn">Expand all</button>
+                    <button type="button" id="tocCollapseAll" class="toc-mini-btn">Collapse all</button>
+                </div>
+                <div class="toc-card" style="border:none;box-shadow:none;border-radius:0;">
+                    ${tree.map(node => renderTocNode(node, 0)).join('')}
+                </div>
+            `;
+            initTocToggles(grid);
+        }
+
+        // First page id found in this node or its descendants
+        function firstPageId(node) {
+            if (node.folder) return node.folder;
+            for (const child of (node.children || [])) {
+                const id = firstPageId(child);
+                if (id) return id;
+            }
+            return null;
+        }
+
+        function renderTocNode(node, level) {
+            const children = node.children || [];
+            const isThemeLabel = /^Theme\s+[A-Z]\b/i.test(node.title || '');
+
+            if (isThemeLabel) {
+                return `<div class="toc-theme-label">${node.title}</div>` +
+                    children.map(c => renderTocNode(c, 0)).join('');
+            }
+
+            if (!children.length) {
+                const target = firstPageId(node);
+                const check = (node.folder && isPageComplete(node.folder)) ? '<span class="toc-check">✓</span>' : '';
+                return target
+                    ? `<a class="toc-row" href="/book/${bookFolder}/page/${target}"><span class="toc-title">${node.title}</span>${check}</a>`
+                    : `<div class="toc-row"><span class="toc-title">${node.title}</span></div>`;
+            }
+
+            const groupId = 'tocgrp-' + (tocGroupSeq++);
+            const chevron = '<svg class="toc-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>';
+            const inner = children.map(c => renderTocNode(c, level + 1)).join('');
+
+            if (level === 0) {
+                const codeMatch = parseTopicCode(node.title);
+                const icon = (codeMatch && TOC_ICONS[codeMatch]) || TOC_ICON_GENERIC;
+                return `
+                    <button type="button" class="toc-unit-header collapsed" data-toc-target="${groupId}">
+                        <svg class="toc-unit-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${icon}</svg>
+                        <span class="toc-unit-label">${node.title}</span>
+                        ${chevron}
+                    </button>
+                    <div class="toc-unit-body collapsed" data-toc="${groupId}">${inner}</div>
+                `;
+            }
+
+            return `
+                <button type="button" class="toc-sub-header collapsed" data-toc-target="${groupId}">
+                    <span class="toc-sub-label">${node.title}</span>
+                    ${chevron}
+                </button>
+                <div class="toc-sub-body collapsed" data-toc="${groupId}">${inner}</div>
+            `;
+        }
+
+        function initTocToggles(grid) {
+            grid.addEventListener('click', (e) => {
+                const header = e.target.closest('.toc-unit-header, .toc-sub-header');
+                if (!header) return;
+                const body = grid.querySelector(`[data-toc="${header.dataset.tocTarget}"]`);
+                if (!body) return;
+                const collapsed = body.classList.toggle('collapsed');
+                header.classList.toggle('collapsed', collapsed);
+            });
+
+            const expandAllBtn = document.getElementById('tocExpandAll');
+            const collapseAllBtn = document.getElementById('tocCollapseAll');
+            if (expandAllBtn) {
+                expandAllBtn.addEventListener('click', () => {
+                    grid.querySelectorAll('[data-toc]').forEach(b => b.classList.remove('collapsed'));
+                    grid.querySelectorAll('[data-toc-target]').forEach(h => h.classList.remove('collapsed'));
+                });
+            }
+            if (collapseAllBtn) {
+                collapseAllBtn.addEventListener('click', () => {
+                    grid.querySelectorAll('[data-toc]').forEach(b => b.classList.add('collapsed'));
+                    grid.querySelectorAll('[data-toc-target]').forEach(h => h.classList.add('collapsed'));
+                });
+            }
+        }
+
+        function renderPages(pages) {
+            const grid = document.getElementById('pagesGrid');
+            
+            // Adjust styles of grid to accommodate accordion list
+            grid.style.display = 'flex';
+            grid.style.flexDirection = 'column';
+            grid.style.gap = '1rem';
+            
+            const hierarchy = buildHierarchy(pages);
+            
+            if (hierarchy.length === 0) {
+                grid.innerHTML = '<div class="empty-state">No pages found in this book.</div>';
+                return;
+            }
+
+            grid.innerHTML = hierarchy.map((theme, idx) => {
+                // Root-level plain pages (no topic code) are links, not folders
+                if (!theme.isCategory) {
+                    return renderPageItem(theme);
+                }
+                const id = `theme-${idx}`;
+                const hasChildren = theme.children && theme.children.length > 0;
+                let childHtml = '';
+                
+                if (hasChildren) {
+                    childHtml = theme.children.map(child => {
+                        if (child.isCategory) {
+                            return `
+                                <div style="border-left: 3px solid var(--primary); padding-left: 1rem; margin: 0.5rem 0 0.5rem 0.5rem;">
+                                    <div style="font-weight: bold; font-size: 1rem; margin-bottom: 0.5rem; color: var(--text-dark);">📁 ${child.title}</div>
+                                    <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-left: 0.5rem;">
+                                        ${child.children ? child.children.map(grand => renderPageItem(grand)).join('') : ''}
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            return renderPageItem(child);
+                        }
+                    }).join('');
+                }
+
+                return `
+                    <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--bg-white); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <div style="background: var(--bg-light); padding: 1rem; font-weight: 800; font-size: 1.15rem; color: var(--primary); display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleAccordion('${id}')">
+                            <span>📁 ${theme.title}</span>
+                            <span id="chevron-${id}" style="font-size: 0.85rem; transition: transform 0.2s;">▼</span>
+                        </div>
+                        <div id="content-${id}" style="padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                            ${theme.pageId ? renderPageItem({id: theme.pageId, title: 'Introduction / Overview', isCategory: false}) : ''}
+                            ${childHtml}
+                            ${!hasChildren && !theme.pageId ? '<div style="font-size: 0.85rem; color: var(--text-light); padding: 0.5rem;">No chapters in this theme yet.</div>' : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderPageItem(page) {
+            const isComplete = isPageComplete(page.id);
+            return `
+                <a href="/book/${bookFolder}/page/${page.id}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: var(--bg-white); border: 1px solid var(--border); border-radius: 6px; text-decoration: none; color: var(--text-dark); transition: all 0.2s;" class="page-link-hover ${isComplete ? 'completed' : ''}" onmouseover="this.style.borderColor='var(--primary)'; this.style.background='var(--tint)'; this.style.transform='translateX(2px)';" onmouseout="this.style.borderColor='var(--border)'; this.style.background='var(--bg-white)'; this.style.transform='none';">
+                    <span style="font-weight: 500; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 85%;">${page.title}</span>
+                    ${isComplete ? '<span style="background: #d1fae5; color: #065f46; font-size: 0.75rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 4px;">✓ Complete</span>' : '<span style="font-size: 0.8rem; opacity: 0.6;">Read →</span>'}
+                </a>
+            `;
+        }
+
+        function toggleAccordion(id) {
+            const content = document.getElementById(`content-${id}`);
+            const chevron = document.getElementById(`chevron-${id}`);
+            if (content.style.display === 'none') {
+                content.style.display = 'flex';
+                chevron.style.transform = 'none';
+            } else {
+                content.style.display = 'none';
+                chevron.style.transform = 'rotate(-90deg)';
+            }
+        }
+
+        function updateProgress(pages) {
+            const progress = getProgress();
+            const completed = Object.values(progress).filter(v => v === true).length;
+            const total = pages.length;
+
+            document.getElementById('progressText').textContent = `${completed} of ${total}`;
+            const percentage = total > 0 ? (completed / total) * 100 : 0;
+            document.getElementById('progressBarFill').style.width = `${percentage}%`;
+        }
+
+        let allPages = [];
+        let allFolders = [];
+
+        async function loadFolders() {
+            try {
+                const response = await fetch(`/api/book/${bookFolder}/folders`);
+                const data = await response.json();
+                allFolders = data.folders || [];
+                updateFolderSelects();
+                renderFoldersList();
+            } catch (error) {
+                console.error('Failed to load folders:', error);
+                allFolders = [];
+            }
+        }
+
+        function updateFolderSelects() {
+            const parentSelect = document.getElementById('parentFolderSelect');
+            const assignSelect = document.getElementById('assignFolderSelect');
+
+            const parentOptions = '<option value="">Root Level</option>' + allFolders.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+            const assignOptions = '<option value="">Root Level (No Folder)</option>' + allFolders.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+
+            if (parentSelect) parentSelect.innerHTML = parentOptions;
+            if (assignSelect) assignSelect.innerHTML = assignOptions;
+        }
+
+        function renderFoldersList() {
+            const foldersList = document.getElementById('foldersList');
+            if (!allFolders || allFolders.length === 0) {
+                foldersList.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--text-light);">No folders yet</div>';
+                return;
+            }
+
+            foldersList.innerHTML = allFolders.map(folder => `
+                <div style="background:var(--bg-light); padding:1rem; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-weight:600;">📁 ${folder.name}</div>
+                        <div style="font-size:0.85rem; color:var(--text-light);">${folder.items || 0} pages</div>
+                    </div>
+                    <button onclick="deleteFolder(${folder.id})" style="background:rgba(255,0,0,0.1); border:none; color:#e84c3d; cursor:pointer; padding:0.5rem 1rem; border-radius:4px;">Delete</button>
+                </div>
+            `).join('');
+        }
+
+        function renderDragDropFolders() {
+            const container = document.getElementById('dragDropFolders');
+            if (!allFolders || allFolders.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--text-light);">No folders yet. Create some in the first tab!</div>';
+                return;
+            }
+
+            function renderFolderWithPages(folder, depth = 0) {
+                const margin = depth * 20;
+                return `
+                    <div style="background:var(--bg-white); border:2px solid var(--border); border-radius:8px; padding:1rem; margin-left:${margin}px; margin-bottom:0.75rem;" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDropOnFolder(event, ${folder.id})" data-folder-id="${folder.id}">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                            <div style="font-weight:600; color:var(--primary);">📁 ${folder.name}</div>
+                            <div style="font-size:0.85rem; color:var(--text-light);">${folder.items || 0} pages</div>
+                        </div>
+                        <div id="folder-${folder.id}-pages" style="display:flex; flex-direction:column; gap:0.5rem; min-height:40px; background:var(--bg-light); border-radius:6px; padding:0.75rem;"></div>
+                        ${folder.subfolders && folder.subfolders.length > 0 ? folder.subfolders.map(sf => renderFolderWithPages(sf, depth + 1)).join('') : ''}
+                    </div>
+                `;
+            }
+
+            container.innerHTML = allFolders.map(folder => renderFolderWithPages(folder)).join('');
+            loadAndDisplayFolderPages();
+        }
+
+        async function loadAndDisplayFolderPages() {
+            try {
+                const response = await fetch(`/api/book/${bookFolder}/folders`);
+                const data = await response.json();
+
+                // Map every page to its assigned folder (null = unassigned).
+                const pageAssignments = {};
+                allPages.forEach(page => { pageAssignments[page.id] = null; });
+
+                function recordAssignments(folder) {
+                    (folder.page_ids || []).forEach(pid => { pageAssignments[pid] = folder.id; });
+                    (folder.subfolders || []).forEach(recordAssignments);
+                }
+                data.folders.forEach(recordAssignments);
+
+                // Render pages inside each folder's drop zone.
+                function displayPagesInFolder(folder) {
+                    const pagesList = document.getElementById(`folder-${folder.id}-pages`);
+                    if (pagesList) {
+                        const folderPages = allPages.filter(p => pageAssignments[p.id] === folder.id);
+                        if (folderPages.length === 0) {
+                            pagesList.innerHTML = '<div style="color:var(--text-light); font-size:0.9rem; text-align:center; padding:0.5rem;">Drop pages here</div>';
+                        } else {
+                            pagesList.innerHTML = folderPages.map(page => `
+                                <div draggable="true" ondragstart="handleDragStart(event, '${page.id}')" ondragend="handleDragEnd(event)" style="background:var(--primary); color:white; padding:0.75rem; border-radius:4px; cursor:move; font-weight:500; font-size:0.95rem;">
+                                    ${page.title}
+                                </div>
+                            `).join('');
+                        }
+                    }
+                    (folder.subfolders || []).forEach(displayPagesInFolder);
+                }
+
+                data.folders.forEach(displayPagesInFolder);
+
+                // Display unassigned pages
+                const unassignedList = document.getElementById('unassignedPagesList');
+                const unassignedPages = allPages.filter(p => pageAssignments[p.id] === null);
+
+                if (unassignedPages.length === 0) {
+                    unassignedList.innerHTML = '<div style="color:var(--text-light); font-size:0.9rem; text-align:center; padding:0.5rem;">All pages assigned to folders</div>';
+                } else {
+                    unassignedList.innerHTML = unassignedPages.map(page => `
+                        <div draggable="true" ondragstart="handleDragStart(event, '${page.id}')" ondragend="handleDragEnd(event)" style="background:#e0e7ff; color:#4338ca; padding:0.75rem; border-radius:4px; cursor:move; font-weight:500; font-size:0.95rem;">
+                            ${page.title}
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Failed to load folder pages:', error);
+            }
+        }
+
+        function handleDragStart(e, pageId) {
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('pageId', pageId);
+            e.currentTarget.style.opacity = '0.5';
+        }
+
+        function handleDragEnd(e) {
+            e.currentTarget.style.opacity = '1';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+        }
+
+        function handleDragLeave(e) {
+            e.currentTarget.style.backgroundColor = '';
+        }
+
+        async function handleDropOnFolder(e, folderId) {
+            e.preventDefault();
+            e.currentTarget.style.backgroundColor = '';
+
+            const pageId = e.dataTransfer.getData('pageId');
+            if (pageId) {
+                await assignPageToFolderDrop(pageId, folderId);
+            }
+        }
+
+        async function handleDropUnassigned(e) {
+            e.preventDefault();
+            e.currentTarget.style.backgroundColor = '';
+
+            const pageId = e.dataTransfer.getData('pageId');
+            if (pageId) {
+                await assignPageToFolderDrop(pageId, null);
+            }
+        }
+
+        async function assignPageToFolderDrop(pageId, folderId) {
+            try {
+                const response = await fetch(`/api/book/${bookFolder}/page-assignment`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ page_id: pageId, folder_id: folderId })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    await loadFolders();
+                    loadAndDisplayFolderPages();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to assign page'));
+                }
+            } catch (error) {
+                console.error('Failed to assign page:', error);
+                alert('Error assigning page');
+            }
+        }
+
+        function openFoldersModal() {
+            document.getElementById('manageFoldersModal').style.display = 'block';
+            loadFolders();
+            renderPagesList();
+        }
+
+        function closeFoldersModal() {
+            document.getElementById('manageFoldersModal').style.display = 'none';
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.style.borderBottomColor = 'transparent';
+                el.style.color = 'var(--text-light)';
+            });
+            document.getElementById(tab + 'Tab').style.display = 'block';
+            document.querySelector(`[data-tab="${tab}"]`).style.borderBottomColor = 'var(--primary)';
+            document.querySelector(`[data-tab="${tab}"]`).style.color = 'var(--text-dark)';
+
+            if (tab === 'organize') {
+                renderDragDropFolders();
+            }
+        }
+
+        function renderPagesList() {
+            const pageSelect = document.getElementById('pageSelect');
+            if (pageSelect) {
+                pageSelect.innerHTML = '<option value="">Choose a page...</option>' + allPages.map(p => `<option value="${p.id}">${p.title}</option>`).join('');
+            }
+        }
+
+        async function createFolder() {
+            const folderName = document.getElementById('newFolderName').value.trim();
+            const parentId = document.getElementById('parentFolderSelect').value || null;
+
+            if (!folderName) {
+                alert('Please enter a folder name');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/book/${bookFolder}/folders`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: folderName, parent_id: parentId })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('newFolderName').value = '';
+                    document.getElementById('parentFolderSelect').value = '';
+                    await loadFolders();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to create folder'));
+                }
+            } catch (error) {
+                console.error('Failed to create folder:', error);
+                alert('Error creating folder');
+            }
+        }
+
+        async function deleteFolder(folderId) {
+            if (!confirm('Delete this folder? Pages in this folder will remain but be unassigned.')) return;
+
+            try {
+                const response = await fetch(`/api/book/${bookFolder}/folders/${folderId}`, { method: 'DELETE' });
+                const data = await response.json();
+                if (data.success) {
+                    await loadFolders();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to delete folder'));
+                }
+            } catch (error) {
+                console.error('Failed to delete folder:', error);
+                alert('Error deleting folder');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            const manageFoldersBtn = document.getElementById('manageFoldersBtn');
+            if (manageFoldersBtn) {
+                manageFoldersBtn.addEventListener('click', openFoldersModal);
+            }
+            loadBook();
+        });
+    </script>
+</body>
+</html>

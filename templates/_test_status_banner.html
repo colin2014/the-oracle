@@ -1,0 +1,165 @@
+<style>
+    .tsb-banner {
+        background: linear-gradient(135deg, rgba(157,132,255,0.14), rgba(157,132,255,0.04));
+        border: 1px solid var(--border); border-radius: 12px;
+        padding: 1.1rem 1.25rem; margin-bottom: 1.5rem;
+        display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+    }
+    .tsb-banner h2 { font-size: 1rem; margin: 0 0 0.2rem; }
+    .tsb-banner p { margin: 0; font-size: 0.8rem; color: var(--text-light); }
+    .tsb-btn {
+        padding: 0.6rem 1.3rem; border: none; border-radius: 8px; background: var(--primary);
+        color: #fff; font-weight: 700; font-size: 0.88rem; cursor: pointer; white-space: nowrap; text-decoration: none;
+        display: inline-block;
+    }
+    .tsb-btn:hover { background: var(--primary-dark); }
+    .tsb-btn.tsb-resume { background: #d97706; }
+    .tsb-btn.tsb-resume:hover { background: #b45309; }
+    .tsb-pulse-dot {
+        display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #ef4444;
+        margin-right: 0.4rem; animation: tsbPulse 1.4s ease-in-out infinite;
+    }
+    @keyframes tsbPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    .tsb-generic-card {
+        background: var(--bg-white); border: 1px solid var(--border); border-radius: 12px;
+        padding: 1.1rem 1.25rem; margin-bottom: 1.5rem;
+        display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+    }
+    .tsb-generic-card h2 { font-size: 1rem; margin: 0 0 0.2rem; }
+    .tsb-generic-card p { margin: 0; font-size: 0.8rem; color: var(--text-light); }
+
+    .et-overlay {
+        position: fixed; inset: 0; background: rgba(10,8,16,0.55); backdrop-filter: blur(2px);
+        display: flex; align-items: center; justify-content: center; z-index: 100; padding: 1rem;
+    }
+    .et-modal {
+        background: var(--bg-white); border-radius: 14px; padding: 2rem 2.25rem; max-width: 380px; width: 100%;
+        text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .et-modal h2 { margin: 0 0 0.4rem; font-size: 1.2rem; }
+    .et-modal p { margin: 0 0 1.25rem; font-size: 0.85rem; color: var(--text-light); }
+    .et-code-input {
+        font-family: ui-monospace, Consolas, monospace; font-size: 1.6rem; font-weight: 800;
+        letter-spacing: 0.25em; text-transform: uppercase; width: 100%; text-align: center;
+        padding: 0.75rem 0.6rem; border: 2px solid var(--border); border-radius: 10px;
+        background: var(--bg-light); color: var(--text-dark); margin-bottom: 0.75rem;
+    }
+    .et-code-input:focus { outline: none; border-color: var(--primary); }
+    .et-error { font-size: 0.8rem; color: #ef4444; min-height: 1.2em; margin-bottom: 0.75rem; }
+    .et-actions { display: flex; gap: 0.6rem; }
+    .et-actions button {
+        flex: 1; padding: 0.65rem; border-radius: 8px; font-weight: 700; font-size: 0.9rem; cursor: pointer;
+    }
+    #etSubmitBtn { border: none; background: var(--primary); color: #fff; }
+    #etSubmitBtn:hover { background: var(--primary-dark); }
+    #etCancelBtn { border: 1px solid var(--border); background: var(--bg-white); color: var(--text-dark); }
+</style>
+
+<div id="tsbContainer"></div>
+
+<div class="et-overlay" id="etOverlay" style="display:none;">
+    <div class="et-modal">
+        <h2>Enter Test</h2>
+        <p>Type the code your teacher gave you. Once you start, the timer won't stop.</p>
+        <input type="text" id="joinCodeInput" class="et-code-input" placeholder="CODE" maxlength="8" autocomplete="off">
+        <div class="et-error" id="joinCodeError"></div>
+        <div class="et-actions">
+            <button id="etCancelBtn">Cancel</button>
+            <button id="etSubmitBtn">Start</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const etOverlay = document.getElementById('etOverlay');
+    const joinCodeInput = document.getElementById('joinCodeInput');
+
+    function openEnterTest() {
+        document.getElementById('joinCodeError').textContent = '';
+        joinCodeInput.value = '';
+        etOverlay.style.display = 'flex';
+        joinCodeInput.focus();
+    }
+    function closeEnterTest() {
+        etOverlay.style.display = 'none';
+    }
+
+    async function submitJoinCode() {
+        const errorEl = document.getElementById('joinCodeError');
+        const code = joinCodeInput.value.trim();
+        errorEl.textContent = '';
+        if (!code) return;
+        try {
+            const res = await fetch('/api/assessment/join', {
+                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ code }),
+            });
+            const data = await res.json();
+            if (res.ok && data.ok) {
+                window.location.href = data.redirect;
+            } else {
+                errorEl.textContent = data.error || 'Could not join that test.';
+            }
+        } catch (e) {
+            errorEl.textContent = 'Connection issue — please try again.';
+        }
+    }
+
+    document.getElementById('etCancelBtn').addEventListener('click', closeEnterTest);
+    document.getElementById('etSubmitBtn').addEventListener('click', submitJoinCode);
+    joinCodeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitJoinCode(); });
+    etOverlay.addEventListener('click', (e) => { if (e.target === etOverlay) closeEnterTest(); });
+    window.openEnterTest = openEnterTest;
+
+    function escapeHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s || '';
+        return d.innerHTML;
+    }
+
+    async function loadTestStatus() {
+        const container = document.getElementById('tsbContainer');
+        try {
+            const res = await fetch('/api/assessment/my-status');
+            const data = await res.json();
+            const tests = data.tests || [];
+            if (!tests.length) {
+                container.innerHTML = `
+                    <div class="tsb-generic-card">
+                        <div>
+                            <h2>🔒 Have a test to take?</h2>
+                            <p>Your teacher will give you a code when it's time to start.</p>
+                        </div>
+                        <button class="tsb-btn" onclick="openEnterTest()">Enter Test →</button>
+                    </div>`;
+                return;
+            }
+            container.innerHTML = tests.map(t => {
+                if (t.in_progress) {
+                    return `
+                        <div class="tsb-banner">
+                            <div>
+                                <h2><span class="tsb-pulse-dot"></span>${escapeHtml(t.paper_title)} — in progress</h2>
+                                <p>You started this test but haven't submitted it yet.</p>
+                            </div>
+                            <a class="tsb-btn tsb-resume" href="/assessment/test/${t.submission_id}/take">Resume test →</a>
+                        </div>`;
+                }
+                return `
+                    <div class="tsb-banner">
+                        <div>
+                            <h2><span class="tsb-pulse-dot"></span>You have a test: ${escapeHtml(t.paper_title)}</h2>
+                            <p>Ask your teacher for today's code, then enter it here to begin.</p>
+                        </div>
+                        <button class="tsb-btn" onclick="openEnterTest()">Enter Test →</button>
+                    </div>`;
+            }).join('');
+        } catch (e) {
+            container.innerHTML = '';
+        }
+    }
+
+    loadTestStatus();
+})();
+</script>

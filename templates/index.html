@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Scraper & Organizer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div>
+                    <h1>📚 Content Scraper & Organizer</h1>
+                    <p>Scrape, organize, and search web content with embedded images</p>
+                </div>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <a href="/learn" style="color: white; text-decoration: none; font-weight: 600; padding: 0.75rem 1.5rem; background: rgba(255, 255, 255, 0.2); border-radius: 6px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255, 255, 255, 0.3)'" onmouseout="this.style.background='rgba(255, 255, 255, 0.2)'">🎓 Course Home</a>
+                    <button id="themeToggle" class="btn-toggle" title="Toggle dark mode" style="background: rgba(255, 255, 255, 0.15); border: none; color: white; font-size: 1.25rem; padding: 0.4rem 0.75rem; border-radius: 6px; cursor: pointer; transition: background 0.2s;">🌙</button>
+                    <a href="/syllabus" style="text-decoration: none;">
+                        <button class="btn btn-primary" style="padding: 0.75rem 1.5rem; font-size: 1rem;">📖 Syllabus Manager</button>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <div id="mainGrid" class="main-grid">
+            <!-- Left Panel: Input & Search -->
+            <aside class="sidebar">
+                <div class="panel">
+                    <h2>Scrape Content</h2>
+                    <form id="scrapeForm" class="form-group">
+                        <input type="url" id="urlInput" placeholder="Enter URL..." required>
+                        <button type="submit" class="btn btn-primary">Scrape URL</button>
+                    </form>
+                    <div id="scrapeStatus" class="status-message"></div>
+                </div>
+
+                <div class="panel">
+                    <h2>Search</h2>
+                    <div class="form-group">
+                        <input type="text" id="searchInput" placeholder="Search all content...">
+                        <button type="button" class="btn btn-secondary" onclick="performSearch()">Search</button>
+                    </div>
+                    <div id="searchResults" class="search-results"></div>
+                </div>
+
+                <div class="panel">
+                    <h2>All Scraped Content</h2>
+                    <div id="contentList" class="content-list"></div>
+                </div>
+            </aside>
+
+            <!-- Middle Panel: Content Display -->
+            <main class="content-area">
+                <div id="contentView" class="content-panel">
+                    <div class="placeholder">
+                        <h3>Welcome!</h3>
+                        <p>Enter a URL on the left to start scraping, or select an item from your scraped content.</p>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Right Panel: Component Sidebar (Google Sites style, active in edit mode) -->
+            <aside id="componentSidebar" class="component-sidebar" style="display: none;">
+                <div class="panel" style="height: 100%; display: flex; flex-direction: column; gap: 1rem;">
+                    <h2>Insert Components</h2>
+                    <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; padding-right: 0.25rem;">
+                        <div class="palette-group">
+                            <h3 class="palette-subhead">Layouts & Headers</h3>
+                            <div class="palette-buttons">
+                                <button class="btn btn-palette" onclick="window.app.addHeadingBlock(1)">📝 Title Heading</button>
+                                <button class="btn btn-palette" onclick="window.app.addHeadingBlock(3)">📝 Subheading</button>
+                                <button class="btn btn-palette" onclick="window.app.addParagraphBlock()">✍️ Paragraph Text</button>
+                            </div>
+                        </div>
+                        <div class="palette-group">
+                            <h3 class="palette-subhead">Syllabus Boxes</h3>
+                            <div class="palette-buttons">
+                                <button class="btn btn-palette" onclick="window.app.addSideboxBlock('study')">💡 Study Tip</button>
+                                <button class="btn btn-palette" onclick="window.app.addSideboxBlock('theory')">🤔 Theory of Knowledge</button>
+                                <button class="btn btn-palette" onclick="window.app.addSideboxBlock('applied')">🛠️ Applied Work</button>
+                                <button class="btn btn-palette" onclick="window.app.addSideboxBlock('vocab')">📖 Vocabulary</button>
+                                <button class="btn btn-palette" onclick="window.app.addSideboxBlock('funfact')">🎉 Fun Fact</button>
+                            </div>
+                        </div>
+                        <div class="palette-group">
+                            <h3 class="palette-subhead">Interactive</h3>
+                            <div class="palette-buttons">
+                                <button class="btn btn-palette" onclick="window.app.addQuestionBlock()">❓ Question + Reveal Answer</button>
+                                <button class="btn btn-palette" onclick="window.app.addTaskBlock()">📋 Task Box</button>
+                            </div>
+                        </div>
+                        <div class="palette-group">
+                            <h3 class="palette-subhead">Media & Embeds</h3>
+                            <div class="palette-buttons">
+                                <button class="btn btn-palette" onclick="window.app.addImageBlock()">🖼️ Image File</button>
+                                <button class="btn btn-palette" onclick="window.app.addVideoBlock()">🎥 Video Player</button>
+                                <button class="btn btn-palette" onclick="window.app.addPptxBlock()">📊 PowerPoint Slides</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

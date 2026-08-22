@@ -1,0 +1,23 @@
+{% extends base_template|default("student_base.html") %}
+{% block title %}{% if teacher_view %}{{ student.name }} — Quiz Analytics{% else %}Quiz Analytics — The Oracle{% endif %}{% endblock %}
+
+{% block content %}
+{% if teacher_view %}
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+    <a href="{{ url_for('admin.analytics_student', student_id=student.id) }}"
+       style="color: var(--primary); text-decoration: none; font-weight: 600; padding: 0.5rem 1rem; border-radius: 6px; background: rgba(157, 132, 255, 0.1);">← Back to {{ student.name }}</a>
+</div>
+{% endif %}
+
+<div class="qa-header">
+    {% if teacher_view %}
+    <h1>📊 {{ student.name }}'s Quiz Analytics</h1>
+    <p>{{ student.name }}'s strengths and areas to improve, section by section. Tap a unit to drill down, then tap a page for the full breakdown.</p>
+    {% else %}
+    <h1>📊 Quiz Analytics</h1>
+    <p>Your strengths and areas to improve, section by section. Tap a unit to drill down, then tap a page for its full breakdown.</p>
+    {% endif %}
+</div>
+
+{% include "_quiz_analytics_body.html" %}
+{% endblock %}

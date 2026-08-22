@@ -1,0 +1,216 @@
+{% extends "admin_base.html" %}
+{% block title %}Bug Hunt snippets{% endblock %}
+
+{% block content %}
+<style>
+    .bs-container { max-width: 900px; margin: 0 auto; }
+    .bs-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+    .bs-head h1 { font-size: 1.5rem; margin: 0; }
+    .bs-sub { font-size: 0.9rem; color: var(--text-light); margin: 0 0 1.5rem 0; }
+    .bs-actions { display: flex; gap: 0.6rem; }
+
+    .bs-row {
+        display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+        background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius-sm);
+        padding: 0.8rem 1rem; margin-bottom: 0.5rem;
+    }
+    .bs-main { min-width: 0; }
+    .bs-title { font-weight: 600; font-size: 0.95rem; }
+    .bs-meta { font-size: 0.78rem; color: var(--text-light); margin-top: 0.15rem; }
+    .bs-pill { font-size: 0.68rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em; margin-left: 0.5rem; }
+    .bs-pill.sample { background: var(--tint); color: var(--primary); }
+    .bs-side { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
+    .bs-empty {
+        text-align: center; padding: 2.5rem 1rem; border: 1px dashed var(--border);
+        border-radius: var(--radius); color: var(--text-light);
+    }
+    .bs-empty h2 { color: var(--text-dark); font-size: 1.05rem; margin: 0 0 0.35rem; }
+    .bs-empty p { margin: 0 0 1.2rem; font-size: 0.9rem; }
+
+    /* Snippet preview: full-height panel docked to the right */
+    .modal-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+        opacity: 0; pointer-events: none; transition: opacity 200ms ease; z-index: 1000;
+    }
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
+    .modal-content {
+        position: fixed; top: 0; right: 0; height: 100vh; width: min(56vw, 820px);
+        display: flex; flex-direction: column;
+        background: var(--bg-white); border-left: 1px solid var(--border);
+        box-shadow: -8px 0 32px rgba(0,0,0,0.18);
+        transform: translateX(100%); transition: transform 240ms ease; z-index: 1001;
+    }
+    .modal-overlay.active .modal-content { transform: translateX(0); }
+    @media (max-width: 900px) { .modal-content { width: 100vw; } }
+    @media (prefers-reduced-motion: reduce) {
+        .modal-overlay, .modal-content { transition: none; }
+    }
+
+    .modal-head {
+        display: flex; align-items: flex-start; gap: 1rem;
+        padding: 1.1rem 1.25rem; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .modal-close {
+        margin-left: auto; background: none; border: none; font-size: 1.6rem; line-height: 1;
+        cursor: pointer; color: var(--text-light); padding: 0 0.2rem; flex-shrink: 0;
+    }
+    .modal-close:hover { color: var(--text-dark); }
+    .modal-header { font-size: 1.15rem; font-weight: 700; margin: 0 0 0.2rem; }
+    .modal-meta { font-size: 0.82rem; color: var(--text-light); }
+
+    .modal-body { flex: 1; overflow-y: auto; padding: 1.1rem 1.25rem; }
+    .modal-code {
+        font-family: var(--mono); font-size: 0.92rem; line-height: 1.65;
+        background: var(--bg-light); border: 1px solid var(--border); border-radius: var(--radius-sm);
+        padding: 1rem; overflow-x: auto; margin: 0 0 1.2rem; white-space: pre; tab-size: 4;
+    }
+    .modal-code .ln {
+        display: inline-block; width: 2.2em; margin-right: 1rem;
+        color: var(--text-light); text-align: right; user-select: none;
+    }
+    .modal-bugs { font-size: 0.9rem; }
+    .modal-bugs h3 { margin: 0.8rem 0 0.5rem; font-size: 0.95rem; font-weight: 700; }
+    .modal-bug-item { background: var(--bg-light); padding: 0.6rem 0.8rem; border-radius: var(--radius-sm); margin-bottom: 0.4rem; font-size: 0.88rem; }
+    .modal-bug-item .ln { font-family: var(--mono); font-weight: 700; color: var(--primary); }
+    .bug-note { font-size: 0.82rem; color: var(--text-light); margin: 0 0 0.8rem; }
+    .bug-list { display: block; }
+    .bug-list.hidden { display: none; }
+</style>
+
+<div class="bs-container">
+    <div class="bs-head">
+        <h1>Bug Hunt snippets</h1>
+        <div class="bs-actions">
+            <a class="admin-btn" href="{{ url_for('games.bughunt_snippet_edit') }}">New snippet</a>
+            <a class="admin-btn-ghost" href="{{ url_for('games.hub') }}">Back to games</a>
+        </div>
+    </div>
+    <p class="bs-sub">Code with bugs you've planted on purpose. Each snippet is one auction round; the bug list stays hidden from the board until found.</p>
+
+    {% if snippets %}
+        <script>
+            const snippetData = {
+                {%- for sn in snippets %}
+                {{ sn.id | string | tojson }}: {{ {
+                    'title': sn.title,
+                    'language': sn.language,
+                    'difficulty': sn.difficulty,
+                    'lineCount': sn.line_count(),
+                    'bugCount': sn.bugs_list()|length,
+                    'code': sn.code,
+                    'bugs': sn.bugs_list()
+                } | tojson }}{{ "," if not loop.last }}
+                {%- endfor %}
+            };
+        </script>
+        {% for sn in snippets %}
+        <div class="bs-row">
+            <div class="bs-main">
+                <div class="bs-title">{{ sn.title }}{% if sn.is_sample %}<span class="bs-pill sample">sample</span>{% endif %}</div>
+                <div class="bs-meta">
+                    {{ sn.language }} · {{ sn.difficulty }} · {{ sn.bugs_list()|length }} bug{{ "s" if sn.bugs_list()|length != 1 }} ·
+                    {{ sn.line_count() }} lines{% if sn.topic_label %} · {{ sn.topic_label }}{% endif %}
+                </div>
+            </div>
+            <div class="bs-side">
+                <button class="admin-btn-ghost" style="cursor: pointer;" data-snippet-id="{{ sn.id }}" onclick="openPreview(this.dataset.snippetId)">Preview</button>
+                <a class="admin-btn-ghost" href="{{ url_for('games.bughunt_snippet_edit', snippet_id=sn.id) }}">Edit</a>
+                <form method="post" action="{{ url_for('games.bughunt_snippet_archive', snippet_id=sn.id) }}"
+                      onsubmit="return confirm('Archive this snippet? It will disappear from new games.');">
+                    <button class="admin-btn-text" type="submit">Archive</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="bs-empty">
+            <h2>No snippets yet</h2>
+            <p>Write your first buggy snippet, or start from three worked samples in IB-style pseudocode.</p>
+            <form method="post" action="{{ url_for('games.bughunt_add_samples') }}" style="display:inline;">
+                <button class="admin-btn-ghost" type="submit">Add sample snippets</button>
+            </form>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Preview Modal -->
+<div class="modal-overlay" id="previewModal">
+    <aside class="modal-content" role="dialog" aria-modal="true" aria-label="Snippet preview">
+        <div class="modal-head">
+            <div>
+                <h2 class="modal-header" id="previewTitle"></h2>
+                <div class="modal-meta" id="previewMeta"></div>
+            </div>
+            <button type="button" class="modal-close" onclick="closePreview()" aria-label="Close preview">×</button>
+        </div>
+        <div class="modal-body">
+            <pre class="modal-code" id="previewCode"></pre>
+            <div class="modal-bugs" id="previewBugs"></div>
+        </div>
+    </aside>
+</div>
+
+<script>
+function openPreview(snippetId) {
+    const data = snippetData[snippetId];
+    if (!data) {
+        console.error('Snippet not found:', snippetId);
+        return;
+    }
+
+    document.getElementById('previewTitle').textContent = data.title;
+    document.getElementById('previewMeta').innerHTML =
+        `${data.language} • ${data.difficulty} • ${data.bugCount} bug${data.bugCount !== 1 ? 's' : ''} • ${data.lineCount} lines`;
+
+    // Format code with line numbers
+    const isPython = data.language && data.language.toLowerCase().includes('python');
+    const lines = data.code.split('\n').map((line, i) => {
+        let displayLine = escapeHtml(line);
+        if (isPython) {
+            // Replace leading spaces with visible dots, tabs with → for Python
+            displayLine = displayLine.replace(/^ +/g, (match) => '·'.repeat(match.length));
+            displayLine = displayLine.replace(/\t/g, '→');
+        }
+        return `<span class="ln">${i + 1}</span>${displayLine}`;
+    }).join('\n');
+    document.getElementById('previewCode').innerHTML = lines;
+
+    // List bugs with toggle
+    let bugsHtml = '';
+    if (data.bugs && data.bugs.length > 0) {
+        bugsHtml = `<h3 style="margin: 0.8rem 0 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+            <button type="button" class="bug-toggle" onclick="const list = this.closest('.modal-bugs').querySelector('.bug-list'); list.classList.toggle('hidden'); this.textContent = list.classList.contains('hidden') ? '▶' : '▼';" style="background: none; border: none; cursor: pointer; padding: 0; font-size: 0.9rem; color: var(--text-light);">▶</button>
+            Planted bugs
+          </h3>
+          <div class="bug-list hidden">
+            <p class="bug-note">Teachers can reveal these after each bug is found.</p>` +
+          data.bugs.map((b, i) => `<div class="modal-bug-item"><span class="ln">Line ${b.line}:</span> ${escapeHtml(b.description)}</div>`).join('') +
+          `</div>`;
+    } else {
+        bugsHtml = '<p class="bug-note">No bugs planted yet.</p>';
+    }
+    document.getElementById('previewBugs').innerHTML = bugsHtml;
+
+    document.getElementById('previewModal').classList.add('active');
+}
+
+function closePreview() {
+    document.getElementById('previewModal').classList.remove('active');
+}
+
+function escapeHtml(text) {
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closePreview();
+});
+
+document.getElementById('previewModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('previewModal')) {
+        closePreview();
+    }
+});
+</script>
+{% endblock %}

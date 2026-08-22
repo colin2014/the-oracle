@@ -1,0 +1,85 @@
+{% extends "unit_plan/_base.html" %}
+{% block title %}Unit Plan{% endblock %}
+
+{% block content %}
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">IB Diploma Programme · First exams 2027 &amp; 2028</p>
+    <h1>Everything for this year of Computer Science, in one place.</h1>
+    <p class="lead">Term-by-term unit plans, weekly learning objectives, and assessment schedules for both cohorts currently running — Year 1 and Year 2 of the DP.</p>
+    <p class="lead">Pick your semester below, or track exactly how long you have left until exam season.</p>
+
+    <div class="countdowns" id="countdowns"></div>
+    <p class="lead" style="margin-top:18px; font-size:0.95rem;"><a href="{{ url_for('unit_plan.calendar_page') }}" style="color:var(--accent); font-weight:600; text-decoration:none;">View the full school calendar (breaks, PD days, term dates) →</a></p>
+  </div>
+</header>
+
+<main class="wrap">
+  <h2 class="section-title">Course roadmap</h2>
+  <p class="section-sub">Two cohorts run side by side each year. Find your grade and semester to see the full weekly breakdown.</p>
+
+  <div class="roadmap">
+    <a class="road-card year1" href="{{ url_for('unit_plan.semester_page', key='year1sem1') }}">
+      <span class="tag">Year 1 · Grade 11</span>
+      <h3>Semester 1</h3>
+      <p>Programming Fundamentals and Algorithms — from variables and control structures through data structures, searching/sorting, and computer hardware.</p>
+      <div class="meta">Weeks 1–18 · 31 August 2026 – 22 January 2027</div>
+      <div class="arrow">→</div>
+    </a>
+
+    <a class="road-card year1" href="{{ url_for('unit_plan.semester_page', key='year1sem2') }}">
+      <span class="tag">Year 1 · Grade 11</span>
+      <h3>Semester 2</h3>
+      <p>Databases, the Internal Assessment, and Networks — schema design, SQL, IA development and submission, then network architecture and security.</p>
+      <div class="meta">Weeks 22–45 · 25 January – 23 June 2027</div>
+      <div class="arrow">→</div>
+    </a>
+
+    <a class="road-card year2" href="{{ url_for('unit_plan.semester_page', key='year2sem1') }}">
+      <span class="tag">Year 2 · Grade 12</span>
+      <h3>Semester 1</h3>
+      <p>Object-Oriented Programming and Abstract Data Types — classes, inheritance and polymorphism, linked lists and binary search trees, plus the Internal Assessment and mock exam preparation.</p>
+      <div class="meta">Weeks 1–18 · 30 August 2027 – 28 January 2028</div>
+      <div class="arrow">→</div>
+    </a>
+
+    <a class="road-card year2" href="{{ url_for('unit_plan.semester_page', key='year2sem2') }}">
+      <span class="tag">Year 2 · Grade 12</span>
+      <h3>Semester 2</h3>
+      <p>Machine Learning, the Case Study, and final exam preparation — leading straight into IB written exams.</p>
+      <div class="meta">Weeks 22–38 · 31 January – 2 June 2028</div>
+      <div class="arrow">→</div>
+    </a>
+
+    <a class="road-card year2" href="{{ url_for('unit_plan.grade12_page') }}">
+      <span class="tag">Grade 12 · Tracker</span>
+      <h3>Syllabus Tracker &amp; Exam-Prep Plan</h3>
+      <p>Every individual syllabus statement (A1.1.1–B4.1.6, plus IA and Case Study) as a checklist — mark each done or not done, then drag what's left into an ordered plan to get through before IB exams.</p>
+      <div class="meta">Not calendar-bound · updates live</div>
+      <div class="arrow">→</div>
+    </a>
+
+    {% if can_edit %}
+    <a class="road-card year1" href="{{ url_for('unit_plan.dashboard_page') }}">
+      <span class="tag">Planning · Dashboard</span>
+      <h3>Planning Dashboard</h3>
+      <p>Pacing, syllabus coverage, and resource gaps across both cohorts, at a glance — how many weeks are taught, how the Grade 12 tracker is trending, and where resources are still missing.</p>
+      <div class="meta">Admin only</div>
+      <div class="arrow">→</div>
+    </a>
+    {% endif %}
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <span>DP Computer Science unit planner</span>
+    <span>Built from the department's term-by-term planning documents.</span>
+  </div>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='unit_plan/app.js') }}?v={{ asset_v }}"></script>
+<script>renderCountdowns();</script>
+{% endblock %}

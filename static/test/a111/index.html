@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A1.1.1 CPU components — dynamic page prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────────────────────────────────────────
+   Tokens — mirrored from static/css/style.css so this prototype
+   opens standalone (file://) and still reads as The Oracle.
+   ───────────────────────────────────────────────────────────── */
+:root{
+  --primary:#8366e8; --primary-light:#9d84ff; --primary-dark:#6b52cc;
+  --success:#10b981; --warning:#f59e0b; --danger:#ef4444; --info:#3b82f6;
+  --bg-light:#f8f9fa; --bg-white:#ffffff;
+  --text-dark:#1a1a1a; --text-light:#6b7280; --border:#e5e7eb;
+  --shadow:0 1px 3px rgba(0,0,0,.1),0 4px 6px rgba(0,0,0,.05);
+  --shadow-lg:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -2px rgba(0,0,0,.05);
+  --radius:12px; --radius-sm:8px; --radius-ctl:6px;
+  --ease-out:cubic-bezier(.16,1,.3,1);
+  --tint:rgba(131,102,232,.08);
+  --tint-strong:rgba(131,102,232,.16);
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --stage-bg:#fbfbfd; --chip:#f1f2f6;
+  color-scheme:light;
+}
+[data-theme="dark"]{
+  --primary:#9d84ff; --primary-light:#b5a3ff; --primary-dark:#8366e8;
+  --success:#34d399; --warning:#fbbf24; --danger:#f87171; --info:#60a5fa;
+  --bg-light:#0f1014; --bg-white:#17181f;
+  --text-dark:#ececf1; --text-light:#9a9aa8; --border:#262833;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);
+  --shadow-lg:0 16px 40px -8px rgba(0,0,0,.55),0 0 0 1px rgba(157,132,255,.06);
+  --tint:rgba(157,132,255,.12);
+  --tint-strong:rgba(157,132,255,.22);
+  --stage-bg:#121319; --chip:#20222c;
+  color-scheme:dark;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  background:var(--bg-light); color:var(--text-dark); line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:none}
+a{color:var(--primary)}
+svg{display:block}
+
+/* ── Top bar ───────────────────────────────────────────────── */
+.topbar{
+  position:sticky; top:0; z-index:40;
+  display:flex; align-items:center; gap:.9rem;
+  padding:.7rem 1.5rem;
+  background:var(--bg-white); border-bottom:1px solid var(--border);
+}
+.crumb{font-size:.85rem;color:var(--text-light);display:flex;align-items:center;gap:.45rem;min-width:0}
+.crumb b{color:var(--text-dark);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{
+  display:inline-block;padding:.18rem .55rem;border-radius:999px;
+  font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  background:var(--tint-strong);color:var(--primary-dark);
+}
+[data-theme="dark"] .pill{color:var(--primary-light)}
+.topbar .spacer{margin-left:auto}
+.icon-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:34px;height:34px;border-radius:var(--radius-ctl);
+  border:1px solid var(--border);color:var(--text-dark);
+}
+.icon-btn:hover{background:var(--tint);border-color:var(--primary)}
+
+/* ── Page shell ────────────────────────────────────────────── */
+.shell{max-width:1240px;margin:0 auto;padding:2rem 1.5rem 5rem}
+.card{
+  background:var(--bg-white);border:1px solid var(--border);
+  border-radius:var(--radius);box-shadow:var(--shadow);
+}
+
+/* ── Reading section (existing content, unchanged) ─────────── */
+.reading{padding:2.5rem 2.75rem 2.25rem}
+.reading h1{
+  font-size:1.75rem;line-height:1.25;font-weight:700;letter-spacing:-.02em;
+  margin:0 0 .35rem;max-width:22ch;
+}
+.topic-no{font-family:var(--mono);font-size:.8rem;color:var(--primary);font-weight:600;letter-spacing:.04em}
+.meta{display:flex;gap:1rem;align-items:center;font-size:.82rem;color:var(--text-light);margin-top:.75rem}
+.meta .dot{width:3px;height:3px;border-radius:50%;background:var(--text-light);opacity:.6}
+.rule{height:1px;background:var(--border);margin:1.75rem 0 2rem}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:2.75rem;align-items:start}
+.prose{max-width:70ch;font-size:1.02rem;line-height:1.75}
+.prose p{margin:0 0 1.15rem}
+.prose h2{
+  font-size:1.12rem;font-weight:600;letter-spacing:-.01em;
+  margin:2.25rem 0 .75rem;
+}
+.prose b,.prose strong{font-weight:600}
+figure{margin:1.75rem 0}
+figure img{width:100%;height:auto;border-radius:var(--radius-sm);border:1px solid var(--border);display:block}
+figcaption{font-size:.8rem;color:var(--text-light);margin-top:.5rem}
+
+/* Question blocks — as they exist on the reading page today */
+.qblock{
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:var(--bg-light);padding:1.15rem 1.25rem;margin:1.25rem 0;
+}
+.qhead{display:flex;align-items:center;gap:.5rem;font-size:.7rem;font-weight:700;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--primary);margin-bottom:.6rem}
+.qblock p{margin:0 0 .6rem;font-size:.98rem}
+.qblock p:last-child{margin-bottom:0}
+.marks{font-family:var(--mono);font-size:.78rem;color:var(--text-light);font-weight:600}
+details.ms{margin-top:.9rem;border-top:1px solid var(--border);padding-top:.8rem}
+details.ms summary{
+  list-style:none;cursor:pointer;font-size:.83rem;font-weight:600;color:var(--text-dark);
+  display:flex;align-items:center;gap:.45rem;
+}
+details.ms summary::-webkit-details-marker{display:none}
+details.ms summary svg{transition:transform .2s var(--ease-out);flex:none}
+details.ms[open] summary svg{transform:rotate(90deg)}
+.ms-body{font-size:.9rem;color:var(--text-light);margin-top:.7rem;white-space:pre-line;line-height:1.7}
+
+/* Side rail */
+.rail{display:flex;flex-direction:column;gap:1rem;position:sticky;top:5rem}
+.sidebox{
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  background:var(--bg-light);padding:1rem 1.05rem;
+}
+.sidebox h3{
+  display:flex;align-items:center;gap:.5rem;
+  font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--text-light);margin:0 0 .55rem;
+}
+.sidebox h3 svg{flex:none;color:var(--primary)}
+.sidebox p{font-size:.88rem;line-height:1.65;margin:0 0 .6rem}
+.sidebox p:last-child{margin-bottom:0}
+
+/* Vocabulary */
+.vocab{margin-top:2.5rem;border-top:1px solid var(--border);padding-top:1.75rem}
+.vocab h2{display:flex;align-items:center;gap:.5rem;font-size:1.05rem;font-weight:600;margin:0 0 1rem}
+.vocab h2 svg{color:var(--primary)}
+.vlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:.6rem 1.5rem}
+.vitem{padding:.6rem .75rem;border-radius:var(--radius-ctl);border:1px solid transparent}
+.vitem dt{font-weight:600;font-size:.9rem;display:flex;align-items:baseline;gap:.5rem;flex-wrap:wrap}
+.vitem dd{font-size:.86rem;color:var(--text-light);line-height:1.6;margin-top:.15rem}
+.seeit{
+  font-size:.68rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--primary);border:1px solid var(--border);border-radius:999px;
+  padding:.1rem .5rem;white-space:nowrap;
+}
+.seeit:hover{background:var(--tint);border-color:var(--primary)}
+
+/* ── The machine ───────────────────────────────────────────── */
+.machine{margin-top:2rem;padding:2.5rem 2.75rem 2.75rem}
+.machine-head{max-width:62ch;margin-bottom:1.75rem}
+.machine-head h2{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;margin:0 0 .6rem}
+.machine-head p{color:var(--text-light);font-size:.98rem}
+
+.stage-wrap{
+  position:relative;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--stage-bg);padding:.75rem;overflow:hidden;
+}
+.stage{width:100%;height:auto;display:block}
+
+/* SVG component styling */
+.chassis{fill:none;stroke:var(--border);stroke-width:1.5}
+.chassis-fill{fill:var(--bg-white)}
+.blk{fill:var(--bg-white);stroke:var(--border);stroke-width:1.5}
+.blk-label{font-size:13px;font-weight:600;fill:var(--text-dark)}
+.blk-sub{font-size:10px;fill:var(--text-light)}
+.zone-label{font-size:10px;font-weight:700;letter-spacing:.09em;fill:var(--text-light);text-transform:uppercase}
+.reg-row{fill:transparent;stroke:none}
+.reg-name{font-size:12px;font-weight:600;fill:var(--text-dark)}
+.reg-desc{font-size:9.5px;fill:var(--text-light)}
+.reg-box{fill:var(--chip);stroke:var(--border);stroke-width:1}
+.reg-val{font-family:var(--mono);font-size:13px;font-weight:600;fill:var(--text-dark);text-anchor:middle;dominant-baseline:middle}
+.wire{stroke:var(--border);stroke-width:1.5;fill:none}
+.wire-ctl{stroke:var(--border);stroke-width:1.5;fill:none;stroke-dasharray:4 4}
+.bus-rail{stroke:var(--border);stroke-width:1.25;fill:none}
+.ram-row{fill:var(--chip);stroke:var(--border);stroke-width:1}
+.ram-addr{font-family:var(--mono);font-size:11px;fill:var(--text-light)}
+.ram-val{font-family:var(--mono);font-size:11.5px;font-weight:600;fill:var(--text-dark)}
+.cache-entry{font-family:var(--mono);font-size:10px;fill:var(--text-light)}
+.badge-txt{font-size:9px;font-weight:700;letter-spacing:.06em;text-anchor:middle}
+
+/* active states — the only things that move */
+.blk.active{stroke:var(--primary);stroke-width:2.5;fill:var(--tint)}
+.blk.active + .blk-label,.blk-label.active{fill:var(--primary-dark)}
+[data-theme="dark"] .blk-label.active{fill:var(--primary-light)}
+.reg-box.active{stroke:var(--primary);stroke-width:2}
+.reg-box.changed{animation:regflash .75s var(--ease-out)}
+@keyframes regflash{
+  0%{fill:var(--tint-strong);stroke:var(--primary);stroke-width:2.5}
+  100%{fill:var(--chip);stroke:var(--border);stroke-width:1}
+}
+.wire.hot,.wire-ctl.hot{stroke:var(--primary);stroke-width:2.5}
+.wire-ctl.hot{animation:dashflow .6s linear infinite}
+@keyframes dashflow{to{stroke-dashoffset:-16}}
+.bus-rail.hot{stroke:var(--primary);stroke-width:2}
+.ram-row.active{fill:var(--tint-strong);stroke:var(--primary);stroke-width:2}
+.blk.miss{stroke:var(--warning);stroke-width:2.5;fill:rgba(245,158,11,.10)}
+.blk.hit{stroke:var(--success);stroke-width:2.5;fill:rgba(16,185,129,.12)}
+.clock-wave{stroke:var(--primary);stroke-width:2;fill:none;opacity:.35}
+.clock-wave.ticking{opacity:1;animation:wave .9s linear infinite}
+@keyframes wave{to{stroke-dashoffset:-32}}
+
+.packet-body{stroke-width:1.5}
+.packet-txt{font-family:var(--mono);font-size:11.5px;font-weight:700;text-anchor:middle;dominant-baseline:middle}
+
+/* ── Narration + controls ──────────────────────────────────── */
+.narration{
+  display:flex;align-items:flex-start;gap:1rem;
+  margin-top:1.1rem;padding:1rem 1.15rem;
+  border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-light);
+  min-height:82px;
+}
+.phase{
+  flex:none;display:flex;flex-direction:column;align-items:center;gap:.2rem;
+  min-width:88px;padding:.35rem .5rem;border-radius:var(--radius-ctl);
+  background:var(--bg-white);border:1px solid var(--border);
+}
+.phase-name{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--primary)}
+.phase-cycle{font-family:var(--mono);font-size:.72rem;color:var(--text-light)}
+.narr-txt{font-size:.95rem;line-height:1.6}
+.narr-txt .op{font-family:var(--mono);font-weight:600;font-size:.9em;
+  background:var(--chip);padding:.08rem .35rem;border-radius:var(--radius-ctl)}
+.narr-note{display:block;font-size:.83rem;color:var(--text-light);margin-top:.35rem}
+
+.controls{display:flex;align-items:center;gap:.55rem;margin-top:1.1rem;flex-wrap:wrap}
+.controls .gap{margin-left:auto}
+.btn{
+  display:inline-flex;align-items:center;gap:.45rem;
+  padding:.55rem 1.1rem;border-radius:var(--radius-ctl);
+  font-size:.88rem;font-weight:600;transition:background .15s,border-color .15s,color .15s;
+}
+.btn svg{flex:none}
+.btn-primary{background:var(--primary);color:#fff;border:1px solid var(--primary)}
+.btn-primary:hover{background:var(--primary-dark);border-color:var(--primary-dark)}
+.btn-ghost{background:transparent;color:var(--text-dark);border:1px solid var(--primary-light)}
+.btn-ghost:hover{background:var(--tint)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:disabled:hover{background:transparent}
+.btn-primary:disabled:hover{background:var(--primary)}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:var(--radius-ctl);overflow:hidden}
+.seg button{padding:.5rem .8rem;font-size:.8rem;font-weight:600;color:var(--text-light)}
+.seg button + button{border-left:1px solid var(--border)}
+.seg button[aria-pressed="true"]{background:var(--tint);color:var(--primary-dark)}
+[data-theme="dark"] .seg button[aria-pressed="true"]{color:var(--primary-light)}
+.seg-label{font-size:.78rem;color:var(--text-light);margin-right:-.2rem}
+
+/* ── Readouts ──────────────────────────────────────────────── */
+.readouts{display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:1rem;margin-top:1.25rem}
+.panel{border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-light);overflow:hidden}
+.panel-h{
+  font-size:.7rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-light);
+  padding:.65rem .9rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.45rem;
+}
+.panel-h .count{margin-left:auto;font-family:var(--mono);letter-spacing:0;text-transform:none;font-size:.75rem}
+.panel-b{padding:.5rem .55rem;max-height:250px;overflow-y:auto}
+
+.log-row{display:flex;gap:.6rem;padding:.35rem .4rem;border-radius:var(--radius-ctl);font-size:.82rem;line-height:1.45}
+.log-row .c{font-family:var(--mono);color:var(--text-light);flex:none;width:2.1rem;text-align:right;font-size:.76rem}
+.log-row .t{font-family:var(--mono);font-size:.79rem}
+.log-row.ph-FETCH .t{color:var(--info)}
+.log-row.ph-DECODE .t{color:var(--primary)}
+.log-row.ph-EXECUTE .t{color:var(--success)}
+.log-row.now{background:var(--tint)}
+.log-empty{font-size:.83rem;color:var(--text-light);padding:.6rem .4rem}
+
+.prog-row{
+  display:flex;gap:.7rem;align-items:center;padding:.35rem .5rem;border-radius:var(--radius-ctl);
+  font-family:var(--mono);font-size:.82rem;
+}
+.prog-row .a{color:var(--text-light);font-size:.76rem}
+.prog-row.now{background:var(--tint);font-weight:700}
+.prog-note{font-size:.78rem;color:var(--text-light);padding:.5rem .5rem 0;line-height:1.5}
+
+.stat{padding:.75rem .9rem;border-bottom:1px solid var(--border)}
+.stat:last-child{border-bottom:none}
+.stat-k{font-size:.72rem;color:var(--text-light)}
+.stat-v{font-family:var(--mono);font-size:1.15rem;font-weight:700;margin-top:.1rem}
+.stat-n{font-size:.76rem;color:var(--text-light);line-height:1.5;margin-top:.2rem}
+
+/* ── Payoff ────────────────────────────────────────────────── */
+.payoff{margin-top:1.5rem;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1.25rem 1.4rem;background:var(--bg-light)}
+.payoff h3{font-size:1rem;font-weight:600;margin:0 0 .35rem}
+.payoff .lead{font-size:.9rem;color:var(--text-light);margin-bottom:1rem;max-width:70ch}
+.marklist{display:grid;gap:.6rem}
+.mark{
+  display:grid;grid-template-columns:26px 1fr;gap:.75rem;align-items:start;
+  padding:.75rem .9rem;border:1px solid var(--border);border-radius:var(--radius-ctl);
+  background:var(--bg-white);opacity:.5;transition:opacity .3s var(--ease-out),border-color .3s
+}
+.mark.earned{opacity:1;border-color:var(--success)}
+.mark-tick{
+  width:26px;height:26px;border-radius:50%;border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;color:var(--text-light);
+}
+.mark.earned .mark-tick{border-color:var(--success);color:var(--success);background:rgba(16,185,129,.1)}
+.mark-t{font-size:.88rem;font-weight:600}
+.mark-d{font-size:.84rem;color:var(--text-light);line-height:1.55;margin-top:.15rem}
+.mark-cy{font-family:var(--mono);font-size:.76rem;color:var(--primary);margin-top:.3rem}
+
+.note{
+  margin-top:1.25rem;font-size:.85rem;color:var(--text-light);line-height:1.6;
+  max-width:78ch;
+}
+
+/* ── Highlight when jumped to from vocabulary ──────────────── */
+.spotlight{animation:spot 1.6s var(--ease-out)}
+@keyframes spot{0%,100%{filter:none}25%,60%{filter:drop-shadow(0 0 10px var(--primary))}}
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media (max-width:1080px){
+  .grid{grid-template-columns:1fr}
+  .rail{position:static;flex-direction:row;flex-wrap:wrap}
+  .sidebox{flex:1 1 260px}
+  .readouts{grid-template-columns:1fr 1fr}
+}
+@media (max-width:760px){
+  .shell{padding:1rem .9rem 3rem}
+  .reading,.machine{padding:1.5rem 1.15rem}
+  .reading h1{font-size:1.4rem}
+  .readouts{grid-template-columns:1fr}
+  .narration{flex-direction:column;gap:.7rem}
+  .controls .gap{margin-left:0;width:100%}
+}
+
+/* ── Reduced motion: values still change, nothing travels ──── */
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .reg-box.changed{animation:none;fill:var(--tint-strong);stroke:var(--primary)}
+  .wire-ctl.hot,.clock-wave.ticking,.spotlight{animation:none}
+  .clock-wave.ticking{opacity:1}
+  *{transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="crumb">
+    Computer Science (2027)
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    A1.1 Computer fundamentals
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    <b>A1.1.1</b>
+  </span>
+  <span class="pill">Prototype</span>
+  <span class="spacer"></span>
+  <button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode" title="Toggle dark mode">
+    <svg id="themeIcon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+
+<div class="shell">
+
+<!-- ═══════════════════════════════════════════════════════════
+     PART 1 — the existing reading page, content unchanged
+     ═══════════════════════════════════════════════════════════ -->
+<article class="card reading">
+  <div class="topic-no">A1.1.1</div>
+  <h1>Describe the functions and interactions of the main CPU components</h1>
+  <div class="meta">
+    <span>20 min read</span><span class="dot"></span>
+    <span>Key concept: CPU architecture and functionality</span><span class="dot"></span>
+    <span>SL &amp; HL</span>
+  </div>
+  <div class="rule"></div>
+
+  <div class="grid">
+    <div class="prose">
+      <h2>Understanding the Central Processing Unit (CPU)</h2>
+
+      <p>The Central Processing Unit (CPU) is often described as the “brain” of the computer because it performs all the essential processing tasks. It carries out instructions from programs by controlling the flow of data, performing calculations, and managing communication between different parts of the computer. The CPU is made up of several core components, including the control unit, arithmetic logic unit, registers, cache memory, and an internal clock. These elements work together to process data and execute instructions accurately and efficiently.</p>
+
+      <p>At the heart of the CPU is the Control Unit (CU). Its role is to manage and coordinate the actions of the CPU by directing the flow of data between the processor, memory, and input/output devices. It fetches instructions from memory, decodes them into signals that other components can understand, and ensures that they are carried out in the correct order. The control unit does not process or store data itself, but it orchestrates all the operations that occur within the CPU.</p>
+
+      <p>Another important part of the CPU is the Arithmetic Logic Unit (ALU), which is responsible for carrying out all mathematical and logical operations. These include basic arithmetic like addition and subtraction, as well as logical comparisons such as checking if one value is greater than or equal to another. The ALU receives instructions from the control unit and processes data that is temporarily stored in special locations called registers.</p>
+
+      <p>Registers are small, fast storage units located within the CPU. They are used to hold data and instructions while they are being used or processed. Each register has a specific purpose. For example, the Program Counter (PC) keeps track of the address of the next instruction to be executed, while the Instruction Register (IR) holds the current instruction. The Memory Address Register (MAR) stores the address in memory that the CPU wants to access, and the Memory Data Register (MDR) holds the data being transferred to or from memory. The Accumulator (ACC) is used to store the results of operations performed by the ALU. These registers work together to keep data flowing smoothly within the CPU and help ensure instructions are processed quickly.</p>
+
+      <p>To speed up processing even further, CPUs include a special type of memory called cache. Cache is much faster than main memory (RAM), but it is also much smaller. Cache stores copies of frequently accessed data so the CPU can retrieve it more quickly than if it had to fetch it from RAM every time. There are typically three levels of cache. L1 cache is the smallest and fastest, located directly on the CPU core. L2 cache is larger and slightly slower, often shared by a few cores. L3 cache is the largest and slowest, usually shared across all cores of a multi-core processor. When the CPU needs data, it checks the cache levels in order before reaching out to RAM, which helps reduce delays and increase efficiency.</p>
+
+      <p>An important factor in the performance of a CPU is its clock speed, which is measured in hertz (Hz). The clock speed indicates how many cycles the CPU can complete per second. For example, a CPU running at 3 gigahertz (GHz) can carry out up to three billion cycles every second. Each cycle represents an opportunity to fetch, decode, or execute an instruction, or move data around inside the CPU. A higher clock speed generally allows a processor to perform more tasks in less time, but it also generates more heat and consumes more power. Therefore, clock speed must be balanced with other design features like the number of cores and the size of cache memory.</p>
+
+      <p>The CPU also interacts closely with both primary memory (RAM) and secondary memory (such as hard drives or solid-state drives). When a program is running, data and instructions are loaded from secondary memory into RAM. The CPU then fetches this data using the MAR and MDR, processes it, and may temporarily store results in registers. If the data is not needed immediately, it can be written back to RAM or saved to a secondary storage device. These interactions are coordinated through a system of buses that transfer data, control signals, and memory addresses between the CPU and other components.</p>
+
+      <p>In summary, the CPU is a complex but highly organized unit that ensures all parts of a computer work together to perform tasks. By understanding how its internal components—control unit, ALU, registers, cache, and clock—function and interact with memory, students gain insight into the fundamental processes that power modern computing systems.</p>
+
+      <figure>
+        <img src="cpu-1.png" alt="Labelled diagram of a CPU showing the control unit, ALU, registers and cache" loading="lazy">
+      </figure>
+
+      <p><b>Approaches to Learning (ATL)</b></p>
+      <p>Thinking skills: Decomposition of CPU processes; analyzing cache hierarchies.</p>
+      <p>Communication skills: Diagramming CPU internals with labeled components and data flow arrows.</p>
+      <p>Research skills: Investigating real-world CPU models and comparing their cache architecture.</p>
+
+      <figure>
+        <img src="cpu-2.png" alt="CPU architecture diagram showing data flow between the CPU, memory and buses" loading="lazy">
+      </figure>
+
+      <h2>Practice questions</h2>
+
+      <div class="qblock" id="q1">
+        <div class="qhead">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Question 1
+        </div>
+        <p>Describe how the Control Unit (CU), Arithmetic Logic Unit (ALU), and registers interact during the fetch–decode–execute cycle for a simple addition instruction.</p>
+        <p class="marks">[3 marks • SL]</p>
+        <details class="ms">
+          <summary>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            Show the markscheme
+          </summary>
+          <div class="ms-body">1 mark: explains CU role (fetches instruction to IR, decodes opcode, issues control signals).
+
+1 mark: describes register involvement (e.g. PC → MAR, MDR → IR; operands loaded from registers or memory).
+
+1 mark: explains ALU execution and result storage (ALU performs add; result stored in ACC or a destination register; PC updated for next instruction).</div>
+        </details>
+      </div>
+
+      <div class="qblock" id="q2">
+        <div class="qhead">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Question 2
+        </div>
+        <p>Draw a simple diagram of the CPU showing the Control Unit (CU), ALU, and at least three registers.</p>
+        <p>Label arrows to indicate:</p>
+        <p>(1) control signals from CU;<br>(2) data moving to/from ALU;<br>(3) instruction flow into the IR.</p>
+        <p class="marks">[3 marks • SL]</p>
+        <details class="ms">
+          <summary>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            Show the markscheme
+          </summary>
+          <div class="ms-body">1 mark: CU, ALU, and at least three correctly named registers (e.g., PC, MAR, MDR, IR, ACC) are present and labelled.
+
+1 mark: correctly labelled control/data flow (e.g., CU control lines; data paths between registers and ALU).
+
+1 mark: instruction path is shown from memory/MDR into IR, or IR clearly marked as instruction holder.</div>
+        </details>
+      </div>
+    </div><!-- /.prose -->
+
+    <aside class="rail">
+      <div class="sidebox">
+        <h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>Key concept</h3>
+        <p>CPU architecture and functionality</p>
+      </div>
+
+      <div class="sidebox">
+        <h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Fun fact</h3>
+        <p>Fun fact: a CPU’s clock speed tells you how many cycles it can do per second — modern chips run at gigahertz, so a 3 GHz CPU can do about three billion cycles every second. But clock speed isn’t everything: clever designs (more cores, bigger cache, smarter instruction scheduling) let a slower-clocked CPU sometimes beat a faster one — like a team of efficient workers outpacing a single sprinter.</p>
+      </div>
+
+      <div class="sidebox">
+        <h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>Study tip</h3>
+        <p>Remember, the control unit in a CPU acts as the conductor of an orchestra, ensuring that all parts of the CPU interact harmoniously. It doesn't handle data directly but manages the execution of instructions by coordinating other components.</p>
+      </div>
+
+      <div class="sidebox">
+        <h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Theory of knowledge</h3>
+        <p>Can we consider the CPU as "thinking"? What are the limitations of comparing computer processing with human thought?</p>
+      </div>
+
+      <div class="sidebox">
+        <h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>International-mindedness</h3>
+        <p>How do global economic disparities affect access to modern computing power?</p>
+        <p>Who benefits when CPUs become faster and smaller?</p>
+        <p>Consider environmental and labour impacts in CPU manufacturing.</p>
+      </div>
+
+      <div class="sidebox">
+        <h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>ATL skills</h3>
+        <p>Thinking skills: Decomposition of CPU processes; analyzing cache hierarchies.</p>
+        <p>Communication skills: Diagramming CPU internals with labeled components and data flow arrows.</p>
+        <p>Research skills: Investigating real-world CPU models and comparing their cache architecture.</p>
+      </div>
+
+      <div class="sidebox">
+        <h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Applied work</h3>
+        <p><b>Activity: Exploring CPU components.</b> Objective: understand the function of each CPU component and how they interact.</p>
+        <p><b>Identify &amp; describe:</b> list the key components of the CPU and describe their roles. Focus on the control unit, ALU, registers, cache, and the clock.</p>
+        <p><b>Mapping interactions:</b> create a flowchart that maps how data moves through the CPU, from fetching instructions to executing and storing results. Highlight the role of the control unit in managing this process.</p>
+        <p><b>Hands-on exercise:</b> use a CPU simulation tool to observe how the ALU processes instructions and how registers store data. Note how cache levels influence performance.</p>
+        <p><b>Experimentation:</b> measure the effect of clock speed adjustments on CPU performance using a simulation or real CPU under controlled conditions. Discuss the balance between speed, heat, and power.</p>
+        <p><b>Compare &amp; contrast:</b> compare different CPU architectures and their approach to handling data and instructions. Focus on differences in cache, cores, and clock speed efficiency.</p>
+      </div>
+    </aside>
+  </div><!-- /.grid -->
+
+  <section class="vocab">
+    <h2><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Vocabulary</h2>
+    <dl class="vlist" id="vlist">
+      <div class="vitem"><dt>Central Processing Unit (CPU) <button class="seeit" data-see="cpu">See it run</button></dt><dd>The part of a computer that executes program instructions and coordinates the activity of other components; it processes data and controls information flow.</dd></div>
+      <div class="vitem"><dt>Control Unit (CU) <button class="seeit" data-see="cu">See it run</button></dt><dd>The CPU subcomponent that fetches and decodes instructions and sends control signals so the ALU, registers, memory and I/O act in the correct sequence.</dd></div>
+      <div class="vitem"><dt>Arithmetic Logic Unit (ALU) <button class="seeit" data-see="alu">See it run</button></dt><dd>The portion of the CPU that performs arithmetic (e.g., add, subtract) and logical (e.g., compare) operations on data supplied by registers.</dd></div>
+      <div class="vitem"><dt>Register</dt><dd>A very small, very fast storage location inside the CPU used to hold instructions, addresses, operands or intermediate results while they are processed.</dd></div>
+      <div class="vitem"><dt>Program Counter (PC) <button class="seeit" data-see="PC">See it run</button></dt><dd>A register that holds the address of the next instruction to be fetched from memory.</dd></div>
+      <div class="vitem"><dt>Instruction Register (IR) <button class="seeit" data-see="IR">See it run</button></dt><dd>A register that holds the instruction currently being decoded and executed.</dd></div>
+      <div class="vitem"><dt>Memory Address Register (MAR) <button class="seeit" data-see="MAR">See it run</button></dt><dd>A register that holds the memory address the CPU will read from or write to.</dd></div>
+      <div class="vitem"><dt>Memory Data Register (MDR) <button class="seeit" data-see="MDR">See it run</button></dt><dd>A register that temporarily holds data being transferred between CPU and memory.</dd></div>
+      <div class="vitem"><dt>Accumulator (ACC) <button class="seeit" data-see="ACC">See it run</button></dt><dd>A register commonly used to store intermediate results produced by the ALU.</dd></div>
+      <div class="vitem"><dt>Cache <button class="seeit" data-see="cache">See it run</button></dt><dd>A small amount of very fast memory near the CPU that stores frequently used instructions and data so the CPU can access them more quickly than from RAM.</dd></div>
+      <div class="vitem"><dt>Clock speed (clock rate) <button class="seeit" data-see="clock">See it run</button></dt><dd>The frequency of the CPU’s internal clock, measured in hertz; it sets how many basic cycles the CPU can perform per second.</dd></div>
+      <div class="vitem"><dt>Clock cycle</dt><dd>One tick of the CPU clock when part of an instruction can be processed; many instructions require multiple cycles.</dd></div>
+      <div class="vitem"><dt>Bus <button class="seeit" data-see="bus">See it run</button></dt><dd>The set of signal lines used to transfer data, addresses and control signals between the CPU, memory and peripherals.</dd></div>
+    </dl>
+  </section>
+</article>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PART 2 — the same content, running
+     ═══════════════════════════════════════════════════════════ -->
+<section class="card machine" id="machine">
+  <div class="machine-head">
+    <h2>Run the machine</h2>
+    <p>Everything described above, executing. Same five registers, same control unit, same cache levels — but now you can watch a value move through them. Step one clock cycle at a time, or let it run.</p>
+  </div>
+
+  <div class="stage-wrap">
+    <svg class="stage" id="stage" viewBox="0 0 1200 600" role="img"
+         aria-label="Animated diagram of a CPU, cache hierarchy and RAM. A live text description of each step is given below the diagram.">
+      <!-- measuring layer: paths used only for geometry -->
+      <g id="measure" style="visibility:hidden"></g>
+
+      <!-- ── CPU chassis ── -->
+      <g id="g-cpu">
+        <rect class="chassis-fill" x="24" y="48" width="536" height="504" rx="16"/>
+        <rect class="chassis" id="cpu-chassis" x="24" y="48" width="536" height="504" rx="16"/>
+        <text class="zone-label" x="44" y="38">Central Processing Unit</text>
+      </g>
+
+      <!-- ── wires (drawn under the blocks) ── -->
+      <!-- control spine from CU down the left of the registers -->
+      <path class="wire-ctl" id="w-ctl-spine" d="M220,148 H240 V468"/>
+      <path class="wire-ctl" id="w-ctl-pc"  d="M240,132 H272"/>
+      <path class="wire-ctl" id="w-ctl-ir"  d="M240,216 H272"/>
+      <path class="wire-ctl" id="w-ctl-mar" d="M240,300 H272"/>
+      <path class="wire-ctl" id="w-ctl-mdr" d="M240,384 H272"/>
+      <path class="wire-ctl" id="w-ctl-acc" d="M240,468 H272"/>
+      <path class="wire-ctl" id="w-ctl-alu" d="M136,200 V300"/>
+      <!-- data spine between the register file and the ALU -->
+      <path class="wire" id="w-data-spine" d="M256,132 V468"/>
+      <path class="wire" d="M256,132 H272"/>
+      <path class="wire" d="M256,216 H272"/>
+      <path class="wire" d="M256,300 H272"/>
+      <path class="wire" d="M256,384 H272"/>
+      <path class="wire" d="M256,468 H272"/>
+      <path class="wire" id="w-alu-data" d="M206,360 H256"/>
+
+      <!-- ── memory channel: three rails from the CPU out to RAM ── -->
+      <g id="g-bus">
+        <path class="bus-rail" id="rail-addr" d="M536,288 H1000"/>
+        <path class="bus-rail" id="rail-data" d="M536,300 H1000"/>
+        <path class="bus-rail" id="rail-ctl"  d="M536,312 H1000"/>
+        <text class="blk-sub" x="566" y="342">address · data · control bus</text>
+      </g>
+
+      <!-- ── Control unit ── -->
+      <rect class="blk" id="blk-cu" x="52" y="96" width="168" height="104" rx="10"/>
+      <text class="blk-label" id="lbl-cu" x="136" y="140" text-anchor="middle">Control Unit</text>
+      <text class="blk-sub" x="136" y="160" text-anchor="middle">issues control signals</text>
+      <text class="blk-sub" x="136" y="176" text-anchor="middle">holds no data</text>
+
+      <!-- ── ALU (classic notched shape) ── -->
+      <path class="blk" id="blk-alu" d="M52,300 L112,300 L136,328 L160,300 L220,300 L192,420 L80,420 Z"/>
+      <text class="blk-label" id="lbl-alu" x="136" y="368" text-anchor="middle">ALU</text>
+      <text class="blk-sub" id="alu-op" x="136" y="388" text-anchor="middle">arithmetic + logic</text>
+
+      <!-- ── Clock ── -->
+      <rect class="blk" id="blk-clock" x="52" y="456" width="168" height="68" rx="10"/>
+      <text class="blk-sub" x="68" y="478">Clock</text>
+      <path class="clock-wave" id="clockWave" d="M68,506 h12 v-16 h16 v16 h16 v-16 h16 v16 h16 v-16 h16 v16 h16 v-16 h16 v16 h12"
+            stroke-dasharray="4 4"/>
+      <text class="reg-val" id="clockCount" x="196" y="474" text-anchor="end" style="font-size:12px">0</text>
+
+      <!-- ── Register file ── -->
+      <text class="zone-label" x="272" y="80">Registers</text>
+      <g id="regs"></g>
+
+      <!-- ── Cache levels: box height is drawn to capacity ── -->
+      <text class="zone-label" x="596" y="176">Cache</text>
+      <rect class="blk" id="blk-L1" x="596" y="262" width="96" height="76" rx="8"/>
+      <text class="blk-label" x="644" y="282" text-anchor="middle" style="font-size:12px">L1</text>
+      <g id="cache-L1"></g>
+      <text class="badge-txt" id="badge-L1" x="644" y="352" opacity="0"></text>
+
+      <rect class="blk" id="blk-L2" x="716" y="238" width="96" height="124" rx="8"/>
+      <text class="blk-label" x="764" y="258" text-anchor="middle" style="font-size:12px">L2</text>
+      <g id="cache-L2"></g>
+      <text class="badge-txt" id="badge-L2" x="764" y="376" opacity="0"></text>
+
+      <rect class="blk" id="blk-L3" x="836" y="214" width="96" height="172" rx="8"/>
+      <text class="blk-label" x="884" y="234" text-anchor="middle" style="font-size:12px">L3</text>
+      <g id="cache-L3"></g>
+      <text class="badge-txt" id="badge-L3" x="884" y="400" opacity="0"></text>
+
+      <text class="blk-sub" x="596" y="428">smallest and fastest</text>
+      <text class="blk-sub" x="596" y="444">→ largest and slowest</text>
+
+      <!-- ── RAM ── -->
+      <rect class="blk" id="blk-ram" x="976" y="48" width="200" height="504" rx="12"/>
+      <text class="blk-label" x="996" y="76">RAM</text>
+      <text class="blk-sub" x="1156" y="76" text-anchor="end">main memory</text>
+      <g id="ram"></g>
+
+      <!-- packets ride on top of everything -->
+      <g id="packets"></g>
+    </svg>
+  </div>
+
+  <div class="narration" aria-live="polite">
+    <div class="phase">
+      <span class="phase-name" id="phaseName">READY</span>
+      <span class="phase-cycle" id="phaseCycle">cycle 0</span>
+    </div>
+    <div class="narr-txt" id="narration">
+      The program in RAM adds two numbers and stores the result. Press <b>Step</b> to advance one clock cycle, or <b>Run</b> to watch the whole thing.
+      <span class="narr-note">Each step below is one clock cycle — the same “tick” described in the clock speed paragraph above.</span>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" id="runBtn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <span id="runLabel">Run</span>
+    </button>
+    <button class="btn btn-ghost" id="stepBtn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+      Step one cycle
+    </button>
+    <button class="btn btn-ghost" id="resetBtn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+      Reset
+    </button>
+    <span class="gap"></span>
+    <span class="seg-label">Speed</span>
+    <div class="seg" role="group" aria-label="Playback speed">
+      <button data-speed="1.7" aria-pressed="false">Slow</button>
+      <button data-speed="1" aria-pressed="true">Normal</button>
+      <button data-speed="0.45" aria-pressed="false">Fast</button>
+    </div>
+  </div>
+
+  <div class="readouts">
+    <div class="panel">
+      <div class="panel-h">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        Cycle trace <span class="count" id="logCount"></span>
+      </div>
+      <div class="panel-b" id="log"><div class="log-empty">Nothing has run yet.</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        Program in memory
+      </div>
+      <div class="panel-b">
+        <div id="prog"></div>
+        <p class="prog-note"><b>LDA</b> load into ACC · <b>ADD</b> add to ACC · <b>STA</b> store ACC · <b>HLT</b> stop. Addresses <span style="font-family:var(--mono)">0x10</span>–<span style="font-family:var(--mono)">0x12</span> hold the data.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        This run
+      </div>
+      <div>
+        <div class="stat">
+          <div class="stat-k">Clock cycles used</div>
+          <div class="stat-v" id="statCycles">0</div>
+          <div class="stat-n" id="statCyclesNote">A 3 GHz CPU completes three billion of these every second.</div>
+        </div>
+        <div class="stat">
+          <div class="stat-k">Memory reads</div>
+          <div class="stat-v" id="statReads">0</div>
+          <div class="stat-n" id="statReadsNote">Cache hits avoid the trip to RAM entirely.</div>
+        </div>
+        <div class="stat">
+          <div class="stat-k">Cache hits / misses</div>
+          <div class="stat-v" id="statCache">0 / 0</div>
+          <div class="stat-n">A hit is served by L1; a miss walks L1 → L2 → L3 → RAM.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="payoff">
+    <h3>The trace you just produced is the answer to Question 1</h3>
+    <p class="lead">Question 1 asks you to describe how the CU, ALU and registers interact during the fetch–decode–execute cycle for a simple addition. Run the program and each mark lights up as the machine earns it.</p>
+    <div class="marklist">
+      <div class="mark" id="mark1">
+        <span class="mark-tick">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </span>
+        <div>
+          <div class="mark-t">The control unit fetches and decodes</div>
+          <div class="mark-d">Fetches the instruction into the IR, decodes the opcode, and issues the control signals — without processing data itself.</div>
+          <div class="mark-cy" id="mark1cy"></div>
+        </div>
+      </div>
+      <div class="mark" id="mark2">
+        <span class="mark-tick">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </span>
+        <div>
+          <div class="mark-t">The registers carry the instruction and its operands</div>
+          <div class="mark-d">PC → MAR, memory → MDR, MDR → IR, and the PC advances to the next address.</div>
+          <div class="mark-cy" id="mark2cy"></div>
+        </div>
+      </div>
+      <div class="mark" id="mark3">
+        <span class="mark-tick">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </span>
+        <div>
+          <div class="mark-t">The ALU executes and the result is stored</div>
+          <div class="mark-d">The ALU performs the addition and the result is written into the accumulator — the mark is capped if the destination isn't named.</div>
+          <div class="mark-cy" id="mark3cy"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note" id="closingNote"></p>
+</section>
+
+</div><!-- /.shell -->
+
+<script>
+(function(){
+'use strict';
+const NS='http://www.w3.org/2000/svg';
+const $=id=>document.getElementById(id);
+const reduced=()=>window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ── theme ─────────────────────────────────────────────────── */
+const sun='<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+const moon='<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+$('themeBtn').addEventListener('click',()=>{
+  const dark=document.documentElement.getAttribute('data-theme')==='dark';
+  document.documentElement.setAttribute('data-theme',dark?'light':'dark');
+  $('themeIcon').innerHTML=dark?moon:sun;
+});
+
+/* ── the program (what the prose describes, made concrete) ─── */
+const hex=n=>'0x'+n.toString(16).toUpperCase().padStart(2,'0');
+const PROGRAM=[
+  {addr:0x00,op:'LDA',operand:0x10},
+  {addr:0x01,op:'ADD',operand:0x11},
+  {addr:0x02,op:'ADD',operand:0x11},
+  {addr:0x03,op:'STA',operand:0x12},
+  {addr:0x04,op:'HLT',operand:null},
+];
+const DATA=[{addr:0x10,value:3},{addr:0x11,value:4},{addr:0x12,value:0}];
+const text=i=>i.op+(i.operand===null?'':' '+hex(i.operand));
+
+let mem;                       // addr -> {kind, text, value}
+function buildMem(){
+  mem={};
+  PROGRAM.forEach(i=>mem[i.addr]={kind:'instr',text:text(i),value:null,op:i.op,operand:i.operand});
+  DATA.forEach(d=>mem[d.addr]={kind:'data',text:String(d.value),value:d.value});
+}
+
+/* ── SVG geometry (viewBox coordinates, fixed by design) ───── */
+const REGS=[
+  {k:'PC', y:132, name:'PC',  desc:'next instruction address'},
+  {k:'IR', y:216, name:'IR',  desc:'current instruction'},
+  {k:'MAR',y:300, name:'MAR', desc:'address to access'},
+  {k:'MDR',y:384, name:'MDR', desc:'data in transit'},
+  {k:'ACC',y:468, name:'ACC', desc:'result of ALU work'},
+];
+const RX=396, RW=124, RH=44, RCX=RX+RW/2;   // register value box
+const SPINE=256, CU=[136,148], ALU=[136,360];
+const L={L1:644,L2:764,L3:884}, RAMX=958, ALUX=206;
+
+/* register rows */
+(function buildRegs(){
+  const g=$('regs');
+  REGS.forEach(r=>{
+    const row=document.createElementNS(NS,'g');
+    row.innerHTML=
+      `<rect class="reg-row" x="272" y="${r.y-36}" width="264" height="72" rx="10"/>
+       <text class="reg-name" x="290" y="${r.y-4}">${r.name}</text>
+       <text class="reg-desc" x="290" y="${r.y+12}">${r.desc}</text>
+       <rect class="reg-box" id="rb-${r.k}" x="${RX}" y="${r.y-RH/2}" width="${RW}" height="${RH}" rx="8"/>
+       <text class="reg-val" id="rv-${r.k}" x="${RCX}" y="${r.y+1}">—</text>`;
+    g.appendChild(row);
+  });
+})();
+
+/* RAM rows */
+(function buildRam(){
+  const g=$('ram');
+  let i=0;
+  const add=addr=>{
+    const y=96+i*50+(mem[addr].kind==='data'?14:0);
+    const row=document.createElementNS(NS,'g');
+    row.innerHTML=
+      `<rect class="ram-row" id="ram-${addr}" x="996" y="${y}" width="160" height="44" rx="7"/>
+       <text class="ram-addr" x="1008" y="${y+18}">${hex(addr)}</text>
+       <text class="ram-val" id="ramv-${addr}" x="1008" y="${y+34}">${mem[addr].text}</text>`;
+    g.appendChild(row);
+    i++;
+  };
+  buildMem();
+  PROGRAM.forEach(p=>add(p.addr));
+  DATA.forEach(d=>add(d.addr));
+})();
+
+/* cache entry slots */
+const CAPS={L1:2,L2:4,L3:6};
+const CACHE_GEO={L1:{x:644,y:262,h:76},L2:{x:764,y:238,h:124},L3:{x:884,y:214,h:172}};
+(function buildCacheSlots(){
+  Object.keys(CAPS).forEach(lv=>{
+    const g=$('cache-'+lv), geo=CACHE_GEO[lv];
+    for(let s=0;s<CAPS[lv];s++){
+      const t=document.createElementNS(NS,'text');
+      t.setAttribute('class','cache-entry');
+      t.setAttribute('x',geo.x); t.setAttribute('y',geo.y+40+s*18);
+      t.setAttribute('text-anchor','middle');
+      t.setAttribute('id',`ce-${lv}-${s}`);
+      t.textContent='·';
+      g.appendChild(t);
+    }
+  });
+})();
+
+/* program listing */
+(function buildProgList(){
+  $('prog').innerHTML=PROGRAM.map(p=>
+    `<div class="prog-row" id="pl-${p.addr}"><span class="a">${hex(p.addr)}</span><span>${text(p)}</span></div>`
+  ).join('');
+})();
+
+/* ── machine state ─────────────────────────────────────────── */
+let S, speed=1, running=false, busy=false, gen=null, marks;
+const cache={L1:[],L2:[],L3:[]};
+
+function resetState(){
+  buildMem();
+  S={pc:0,ir:null,mar:null,mdr:null,acc:0,cycle:0,halted:false,reads:0,hits:0,misses:0};
+  cache.L1=[];cache.L2=[];cache.L3=[];
+  marks={m1:null,m2:null,m3:null};
+  gen=cpu();
+  running=false;busy=false;
+  DATA.forEach(d=>{ const el=$('ramv-'+d.addr); if(el) el.textContent=String(mem[d.addr].value); });
+  REGS.forEach(r=>{ $('rv-'+r.k).textContent='—'; $('rb-'+r.k).classList.remove('changed','active'); });
+  $('rv-ACC').textContent='0';
+  $('rv-PC').textContent=hex(0);
+  $('log').innerHTML='<div class="log-empty">Nothing has run yet.</div>';
+  $('logCount').textContent='';
+  $('clockCount').textContent='0';
+  ['mark1','mark2','mark3'].forEach(m=>$(m).classList.remove('earned'));
+  ['mark1cy','mark2cy','mark3cy'].forEach(m=>$(m).textContent='');
+  $('closingNote').textContent='';
+  $('alu-op').textContent='arithmetic + logic';
+  clearAll();
+  paintCache();
+  updateStats();
+  setPhase('READY',0);
+  narrate('The program in RAM adds two numbers and stores the result. Press <b>Step</b> to advance one clock cycle, or <b>Run</b> to watch the whole thing.',
+          'Each step below is one clock cycle — the same “tick” described in the clock speed paragraph above.');
+  document.querySelectorAll('.prog-row').forEach(r=>r.classList.remove('now'));
+  $('runLabel').textContent='Run';
+  $('stepBtn').disabled=false;$('runBtn').disabled=false;
+}
+
+/* ── small visual helpers ──────────────────────────────────── */
+function clearAll(){
+  document.querySelectorAll('.blk.active,.blk.hit,.blk.miss').forEach(e=>e.classList.remove('active','hit','miss'));
+  document.querySelectorAll('.blk-label.active').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.wire.hot,.wire-ctl.hot,.rail.hot').forEach(e=>e.classList.remove('hot'));
+  document.querySelectorAll('.reg-box.active').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.ram-row.active').forEach(e=>e.classList.remove('active'));
+  ['L1','L2','L3'].forEach(l=>$('badge-'+l).setAttribute('opacity','0'));
+  $('clockWave').classList.remove('ticking');
+}
+function setReg(k,v){
+  const t=$('rv-'+k), b=$('rb-'+k);
+  t.textContent = v===null||v===undefined ? '—' : String(v);
+  b.classList.remove('changed');
+  void b.offsetWidth;
+  b.classList.add('changed');
+}
+function hot(...ids){ ids.forEach(i=>{const e=$(i); if(e) e.classList.add('hot');}); }
+function activate(id,labelId){
+  const e=$(id); if(e) e.classList.add('active');
+  if(labelId){const l=$(labelId); if(l) l.classList.add('active');}
+}
+function setPhase(name,cycle){
+  $('phaseName').textContent=name;
+  $('phaseCycle').textContent='cycle '+cycle;
+}
+function narrate(html,note){
+  $('narration').innerHTML=html+(note?`<span class="narr-note">${note}</span>`:'');
+}
+function badge(lv,txt,kind){
+  const b=$('badge-'+lv);
+  b.textContent=txt;
+  b.setAttribute('fill', kind==='hit'?'var(--success)':'var(--warning)');
+  b.setAttribute('opacity','1');
+}
+function paintCache(){
+  Object.keys(CAPS).forEach(lv=>{
+    for(let s=0;s<CAPS[lv];s++){
+      const el=$(`ce-${lv}-${s}`);
+      el.textContent = cache[lv][s]!==undefined ? hex(cache[lv][s]) : '·';
+      el.setAttribute('fill', cache[lv][s]!==undefined?'var(--text-dark)':'var(--text-light)');
+    }
+  });
+}
+function updateStats(){
+  $('statCycles').textContent=S.cycle;
+  $('statReads').textContent=S.reads;
+  $('statCache').textContent=S.hits+' / '+S.misses;
+  $('statCyclesNote').textContent = S.cycle
+    ? `At 3 GHz, these ${S.cycle} cycles would take about ${(S.cycle/3).toFixed(1)} nanoseconds.`
+    : 'A 3 GHz CPU completes three billion of these every second.';
+}
+function logRow(cycle,phase,op,plain){
+  const box=$('log');
+  if(box.querySelector('.log-empty')) box.innerHTML='';
+  box.querySelectorAll('.now').forEach(r=>r.classList.remove('now'));
+  const d=document.createElement('div');
+  d.className='log-row now ph-'+phase;
+  d.innerHTML=`<span class="c">${cycle}</span><span class="t">${op}</span>`;
+  d.title=plain||'';
+  box.appendChild(d);
+  box.scrollTop=box.scrollHeight;
+  $('logCount').textContent=S.cycle+' cycles';
+}
+
+/* ── packet animation along an SVG path ────────────────────── */
+const measure=$('measure'), packets=$('packets');
+function easeInOut(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
+
+function movePacket(d,label,dur,kind){
+  return new Promise(res=>{
+    if(reduced()){ setTimeout(res,90); return; }
+    const p=document.createElementNS(NS,'path');
+    p.setAttribute('d',d); measure.appendChild(p);
+    const len=p.getTotalLength();
+    const fill = kind==='ctl' ? 'var(--primary)' : kind==='addr' ? 'var(--info)' : 'var(--success)';
+    const g=document.createElementNS(NS,'g');
+    const w=Math.max(38,label.length*8.2+16);
+    g.innerHTML=`<rect class="packet-body" x="${-w/2}" y="-13" width="${w}" height="26" rx="7"
+                   fill="var(--bg-white)" stroke="${fill}"/>
+                 <text class="packet-txt" fill="${fill}">${label}</text>`;
+    packets.appendChild(g);
+    const t0=performance.now();
+    (function frame(now){
+      const k=Math.min(1,(now-t0)/dur);
+      const pt=p.getPointAtLength(easeInOut(k)*len);
+      g.setAttribute('transform',`translate(${pt.x},${pt.y})`);
+      g.setAttribute('opacity', k<.08 ? String(k/.08) : k>.92 ? String((1-k)/.08) : '1');
+      if(k<1) requestAnimationFrame(frame);
+      else{ g.remove(); p.remove(); res(); }
+    })(t0);
+  });
+}
+const wait=ms=>new Promise(r=>setTimeout(r,reduced()?Math.min(ms,60):ms));
+const D=ms=>ms*speed;
+
+/* ── memory access: walks the hierarchy, exactly as described ─ */
+function touch(lv,addr){
+  const arr=cache[lv], i=arr.indexOf(addr);
+  if(i>=0) arr.splice(i,1);
+  arr.push(addr);
+  while(arr.length>CAPS[lv]) arr.shift();
+}
+
+async function readMemory(addr,what){
+  S.reads++;
+  const inL1=cache.L1.includes(addr);
+  hot('rail-addr','rail-data');
+  $('rb-MAR').classList.add('active');
+
+  // address leaves the CPU on the address bus and arrives at L1
+  await movePacket(`M${RCX},300 H${L.L1}`,hex(addr),D(280),'addr');
+
+  if(inL1){
+    S.hits++;
+    activate('blk-L1'); $('blk-L1').classList.add('hit');
+    badge('L1','HIT','hit');
+    await wait(D(320));
+    const val=mem[addr];
+    await movePacket(`M${L.L1},300 H548 V384 H${RCX}`,val.text,D(340),'data');
+    S.mdr=val; setReg('MDR',val.text);
+    touch('L1',addr); paintCache(); updateStats();
+    return {hit:'L1',val};
+  }
+
+  S.misses++;
+  for(const lv of ['L1','L2','L3']){
+    activate('blk-'+lv); $('blk-'+lv).classList.add('miss');
+    badge(lv,'MISS','miss');
+    await wait(D(200));
+    if(lv!=='L3') await movePacket(`M${L[lv]},300 H${L[lv==='L1'?'L2':'L3']}`,hex(addr),D(240),'addr');
+  }
+  await movePacket(`M${L.L3},300 H${RAMX}`,hex(addr),D(300),'addr');
+
+  activate('blk-ram');
+  const row=$('ram-'+addr); if(row) row.classList.add('active');
+  await wait(D(320));
+
+  const val=mem[addr];
+  await movePacket(`M${RAMX},300 H548 V384 H${RCX}`,val.text,D(700),'data');
+  S.mdr=val; setReg('MDR',val.text);
+
+  ['L1','L2','L3'].forEach(lv=>touch(lv,addr));
+  paintCache(); updateStats();
+  return {hit:null,val};
+}
+
+async function writeMemory(addr,value){
+  hot('rail-addr','rail-data');
+  await movePacket(`M${RCX},384 H548 V300 H${RAMX}`,String(value),D(760),'data');
+  mem[addr]={kind:'data',text:String(value),value};
+  const el=$('ramv-'+addr); if(el) el.textContent=String(value);
+  const row=$('ram-'+addr); if(row) row.classList.add('active');
+  ['L1','L2','L3'].forEach(lv=>touch(lv,addr));
+  paintCache();
+}
+
+/* ── the fetch–decode–execute generator ────────────────────── */
+function* cpu(){
+  while(!S.halted){
+    const startPc=S.pc;
+
+    /* ── FETCH ── */
+    yield {phase:'FETCH',op:'MAR ← PC',
+      plain:`The control unit copies the address in the Program Counter into the MAR — this is the address of the next instruction.`,
+      mark:'m2',
+      run:async()=>{
+        activate('blk-cu','lbl-cu'); hot('w-ctl-spine','w-ctl-pc','w-ctl-mar','w-data-spine');
+        await movePacket(`M${RCX},132 H${SPINE} V300 H${RCX}`,hex(S.pc),D(560),'addr');
+        S.mar=S.pc; setReg('MAR',hex(S.mar));
+      }};
+
+    yield {phase:'FETCH',op:'MDR ← Memory[MAR]',
+      plain:`The address goes out on the address bus. The CPU checks each cache level in order before reaching out to RAM.`,
+      mark:'m2',
+      run:async()=>{
+        const r=await readMemory(S.mar,'instruction');
+        narrate(
+          `The address goes out on the address bus. <span class="op">MDR ← Memory[${hex(S.mar)}]</span>`,
+          r.hit ? `Found in <b>L1 cache</b> — no trip to RAM needed. This is what the text means by “stores copies of frequently accessed data”.`
+                : `Not in L1, L2 or L3, so the CPU had to reach all the way out to RAM — the slowest path, and you can see how much longer it takes.`);
+      }};
+
+    yield {phase:'FETCH',op:'IR ← MDR ; PC ← PC + 1',
+      plain:`The instruction arrives in the Instruction Register and the Program Counter advances to the next address.`,
+      mark:'m2',
+      run:async()=>{
+        activate('blk-cu','lbl-cu'); hot('w-data-spine','w-ctl-ir');
+        await movePacket(`M${RCX},384 H${SPINE} V216 H${RCX}`,S.mdr.text,D(520),'data');
+        S.ir=S.mdr; setReg('IR',S.ir.text);
+        S.pc=S.pc+1; setReg('PC',hex(S.pc));
+        document.querySelectorAll('.prog-row').forEach(r=>r.classList.remove('now'));
+        const pl=$('pl-'+S.mar); if(pl) pl.classList.add('now');
+      }};
+
+    /* ── DECODE ── */
+    const instr=S.ir;
+    yield {phase:'DECODE',op:`decode ${instr.text}`,
+      plain:`The control unit decodes the opcode in the IR into control signals.`,
+      mark:'m1',
+      run:async()=>{
+        activate('blk-cu','lbl-cu');
+        hot('w-ctl-spine','w-ctl-pc','w-ctl-ir','w-ctl-mar','w-ctl-mdr','w-ctl-acc','w-ctl-alu');
+        narrate(
+          `The control unit reads <span class="op">${instr.text}</span> out of the IR and decodes it into control signals.`,
+          `Notice the control unit never touches the data — it only tells the other components what to do next. That is the “conductor of an orchestra” in the study tip above.`);
+        await wait(D(700));
+      }};
+
+    /* ── EXECUTE ── */
+    if(instr.op==='HLT'){
+      yield {phase:'EXECUTE',op:'HLT',
+        plain:'The halt instruction stops the cycle.',
+        run:async()=>{
+          activate('blk-cu','lbl-cu');
+          S.halted=true;
+          narrate(`<span class="op">HLT</span> — the control unit stops the clock. The program is finished.`,
+                  `The result is in memory at <span class="op">0x12</span>, and in the accumulator.`);
+          await wait(D(400));
+        }};
+      continue;
+    }
+
+    yield {phase:'EXECUTE',op:`MAR ← ${hex(instr.operand)}`,
+      plain:`The control unit puts the operand address into the MAR.`,
+      mark:'m2',
+      run:async()=>{
+        activate('blk-cu','lbl-cu'); hot('w-ctl-spine','w-ctl-mar');
+        await movePacket(`M${RCX},216 H${SPINE} V300 H${RCX}`,hex(instr.operand),D(520),'addr');
+        S.mar=instr.operand; setReg('MAR',hex(S.mar));
+      }};
+
+    if(instr.op==='LDA'||instr.op==='ADD'){
+      yield {phase:'EXECUTE',op:'MDR ← Memory[MAR]',
+        plain:'The operand is read from memory through the cache hierarchy.',
+        mark:'m2',
+        run:async()=>{
+          const r=await readMemory(S.mar,'operand');
+          narrate(`Reading the operand at <span class="op">${hex(S.mar)}</span> into the MDR.`,
+            r.hit ? `<b>L1 hit</b> — this address was read a moment ago, so it is still in the fastest cache. Compare how long this took against the read before it.`
+                  : `<b>Cache miss</b> at every level, so the value came from RAM.`);
+        }};
+
+      if(instr.op==='LDA'){
+        yield {phase:'EXECUTE',op:'ACC ← MDR',
+          plain:'The value is copied into the accumulator.',
+          run:async()=>{
+            hot('w-data-spine','w-ctl-acc');
+            await movePacket(`M${RCX},384 H${SPINE} V468 H${RCX}`,S.mdr.text,D(520),'data');
+            S.acc=S.mdr.value; setReg('ACC',S.acc);
+            narrate(`<span class="op">ACC ← ${S.acc}</span> — the value is now held in the accumulator, ready to be worked on.`);
+          }};
+      }else{
+        yield {phase:'EXECUTE',op:`ACC ← ACC + MDR`,
+          plain:'The ALU adds the operand to the accumulator and the result is stored back in the accumulator.',
+          mark:'m3',
+          run:async()=>{
+            const a=S.acc, b=S.mdr.value;
+            activate('blk-alu','lbl-alu'); activate('blk-cu','lbl-cu');
+            hot('w-ctl-alu','w-alu-data','w-data-spine');
+            $('alu-op').textContent=`${a} + ${b}`;
+            narrate(`The ALU receives both operands: <span class="op">${a}</span> from the accumulator and <span class="op">${b}</span> from the MDR.`,
+                    `The control unit told it to add — the ALU does the arithmetic, the registers hold the values.`);
+            await Promise.all([
+              movePacket(`M${RCX},468 H${SPINE} V360 H${ALUX}`,String(a),D(560),'data'),
+              movePacket(`M${RCX},384 H${SPINE} V360 H${ALUX}`,String(b),D(560),'data'),
+            ]);
+            await wait(D(280));
+            S.acc=a+b;
+            $('alu-op').textContent=`= ${S.acc}`;
+            await movePacket(`M${ALUX},360 H${SPINE} V468 H${RCX}`,String(S.acc),D(560),'data');
+            setReg('ACC',S.acc);
+            narrate(`<span class="op">${a} + ${b} = ${S.acc}</span> — the result is stored in the accumulator.`,
+                    `The markscheme caps this mark if you do not say where the result goes.`);
+            setTimeout(()=>{$('alu-op').textContent='arithmetic + logic';},1400);
+          }};
+      }
+    }
+
+    if(instr.op==='STA'){
+      yield {phase:'EXECUTE',op:'MDR ← ACC',
+        plain:'The result is copied from the accumulator into the MDR, ready to go out on the data bus.',
+        mark:'m2',
+        run:async()=>{
+          hot('w-data-spine','w-ctl-mdr');
+          await movePacket(`M${RCX},468 H${SPINE} V384 H${RCX}`,String(S.acc),D(520),'data');
+          S.mdr={kind:'data',text:String(S.acc),value:S.acc}; setReg('MDR',S.acc);
+        }};
+      yield {phase:'EXECUTE',op:`Memory[${hex(instr.operand)}] ← MDR`,
+        plain:'The value is written back to memory.',
+        run:async()=>{
+          activate('blk-ram');
+          await writeMemory(instr.operand,S.acc);
+          narrate(`<span class="op">${S.acc}</span> is written back to memory at <span class="op">${hex(instr.operand)}</span>.`,
+                  `This is the “written back to RAM” step in the paragraph about primary and secondary memory.`);
+        }};
+    }
+
+    if(startPc===S.pc) S.halted=true;  // safety
+  }
+}
+
+/* ── driving the cycle ─────────────────────────────────────── */
+async function stepOnce(){
+  if(busy) return false;
+  const n=gen.next();
+  if(n.done||!n.value){ finish(); return false; }
+  busy=true;
+  const st=n.value;
+  clearAll();
+  S.cycle++;
+  $('clockWave').classList.add('ticking');
+  $('clockCount').textContent=S.cycle;
+  setPhase(st.phase,S.cycle);
+  narrate(st.plain);
+  logRow(S.cycle,st.phase,st.op,st.plain);
+  if(st.mark && marks[st.mark]===null){ marks[st.mark]=S.cycle; paintMarks(); }
+  try{ await st.run(); }catch(e){ /* keep the page usable */ }
+  updateStats();
+  busy=false;
+  if(S.halted){ finish(); return false; }
+  return true;
+}
+
+function paintMarks(){
+  const map={m1:['mark1','mark1cy'],m2:['mark2','mark2cy'],m3:['mark3','mark3cy']};
+  Object.entries(marks).forEach(([k,cy])=>{
+    if(cy===null) return;
+    const [box,label]=map[k];
+    $(box).classList.add('earned');
+    $(label).textContent='first shown at cycle '+cy;
+  });
+}
+
+function finish(){
+  running=false;
+  $('runLabel').textContent='Run';
+  $('stepBtn').disabled=true; $('runBtn').disabled=true;
+  clearAll();
+  setPhase('DONE',S.cycle);
+  const ns=(S.cycle/3).toFixed(1), per=Math.round(3e9/S.cycle/1e6);
+  $('closingNote').innerHTML=
+    `That whole program — fetch, decode, execute, ${S.reads} memory reads and one write — took <b>${S.cycle} clock cycles</b>. `+
+    `A 3 GHz CPU runs three billion cycles every second, so it would finish this in about <b>${ns} nanoseconds</b> `+
+    `and could repeat it roughly <b>${per} million times a second</b>. `+
+    `${S.hits} of the ${S.reads} reads ${S.hits===1?'was':'were'} served by L1 cache instead of RAM — `+
+    `the rest had to travel all the way out to main memory.`;
+}
+
+async function runLoop(){
+  while(running){
+    const more=await stepOnce();
+    if(!more) break;
+    await wait(D(420));
+  }
+}
+
+/* ── controls ──────────────────────────────────────────────── */
+$('stepBtn').addEventListener('click',()=>{ running=false; $('runLabel').textContent='Run'; stepOnce(); });
+$('runBtn').addEventListener('click',()=>{
+  if(running){ running=false; $('runLabel').textContent='Run'; return; }
+  running=true; $('runLabel').textContent='Pause'; runLoop();
+});
+$('resetBtn').addEventListener('click',()=>{ running=false; resetState(); });
+document.querySelectorAll('.seg button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-pressed','false'));
+    b.setAttribute('aria-pressed','true');
+    speed=parseFloat(b.dataset.speed);
+  });
+});
+
+/* vocabulary → highlight the matching part of the machine */
+const SEE={
+  cpu:'cpu-chassis', cu:'blk-cu', alu:'blk-alu', clock:'blk-clock', cache:'blk-L1', bus:'rail-data',
+  PC:'rb-PC', IR:'rb-IR', MAR:'rb-MAR', MDR:'rb-MDR', ACC:'rb-ACC'
+};
+document.querySelectorAll('.seeit').forEach(b=>{
+  b.addEventListener('click',()=>{
+    const id=SEE[b.dataset.see]; if(!id) return;
+    $('machine').scrollIntoView({behavior:reduced()?'auto':'smooth',block:'start'});
+    const el=$(id);
+    setTimeout(()=>{
+      el.classList.add('spotlight');
+      setTimeout(()=>el.classList.remove('spotlight'),1700);
+    },reduced()?0:450);
+  });
+});
+
+resetState();
+})();
+</script>
+</body>
+</html>

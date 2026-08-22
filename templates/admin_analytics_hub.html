@@ -1,0 +1,575 @@
+{% extends "admin_base.html" %}
+{% block title %}Analytics{% endblock %}
+
+{% block content %}
+<style>
+    .hub-container { max-width: 1200px; margin: 0 auto; }
+    .hub-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
+    .hub-header h1 { font-size: 1.5rem; margin: 0; }
+    .hub-filters { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+    .hub-filters label { font-size: 0.85rem; font-weight: 600; color: var(--text-dark); }
+    .hub-filters select { padding: 0.45rem 0.7rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-white); color: var(--text-dark); }
+
+    .hub-pills { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .hub-pill { padding: 0.4rem 1rem; border-radius: 999px; border: 1px solid var(--border); background: var(--bg-white); color: var(--text-dark); font-size: 0.85rem; font-weight: 600; text-decoration: none; }
+    .hub-pill:hover { border-color: var(--primary, #8366e8); color: var(--primary, #8366e8); }
+
+    .hub-section { margin-bottom: 2.5rem; scroll-margin-top: 1rem; }
+    .hub-section > h2 { font-size: 1.1rem; margin: 0 0 0.25rem 0; }
+    .hub-section .sub { font-size: 0.85rem; color: var(--text-light); margin: 0 0 1rem 0; }
+    .hub-section .sub a { color: var(--primary, #8366e8); }
+
+    /* Tabs: only the active panel is in the layout; switching cross-fades + slides */
+    .hub-section[hidden] { display: none; }
+    .hub-section {
+        animation: hubFadeIn 0.22s ease;
+    }
+    @keyframes hubFadeIn {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
+    .stat-tile { background: var(--bg-white); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.1rem; }
+    .stat-tile .k { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-light); margin-bottom: 0.3rem; }
+    .stat-tile .v { font-size: 1.5rem; font-weight: 800; color: var(--text-dark); }
+
+    .hub-card { background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .hub-table-wrap { overflow-x: auto; }
+    table.hub-table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+    .hub-table th, .hub-table td { padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+    .hub-table th { background: var(--bg-light); color: var(--text-dark); }
+    .hub-table td.num, .hub-table th.num { text-align: right; }
+    .hub-empty { text-align: center; padding: 2rem; color: var(--text-light); }
+
+    /* Confidence distribution — horizontal bars, one hue, direct labels */
+    .conf-dist { display: flex; flex-direction: column; gap: 0.5rem; padding: 1.25rem; }
+    .conf-row { display: grid; grid-template-columns: 130px 1fr 48px; align-items: center; gap: 0.75rem; }
+    .conf-label { font-size: 0.85rem; color: var(--text-dark); white-space: nowrap; }
+    .conf-track { height: 18px; background: var(--bg-light); border-radius: 4px; overflow: hidden; }
+    .conf-fill { height: 100%; background: #9d4edd; border-radius: 0 4px 4px 0; min-width: 2px; }
+    .conf-count { font-size: 0.85rem; color: var(--text-light); text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* Quiz matrix (same visual language as the standalone page) — full matrix, scrolls both ways */
+    #quizTableWrap { max-height: 70vh; overflow: auto; }
+    .qa-cell { display: inline-block; min-width: 52px; padding: 0.25rem 0.5rem; border-radius: 6px; font-weight: 700; }
+    .qa-cell.none { color: var(--text-light); font-weight: 400; }
+    .qa-pending { font-size: 0.7rem; color: var(--text-light); display: block; font-weight: 400; }
+    th.topic { max-width: 160px; white-space: normal !important; font-size: 0.75rem; vertical-align: bottom; text-align: center !important; }
+    th.topic .book { display: block; color: var(--text-light); font-weight: 400; font-size: 0.7rem; }
+    td.center { text-align: center !important; }
+    #quizTable th { position: sticky; top: 0; z-index: 2; }
+    #quizTable td.student, #quizTable th.student { position: sticky; left: 0; z-index: 1; background: var(--bg-white); text-align: left; font-weight: 600; }
+    #quizTable th.student { z-index: 3; background: var(--bg-light); }
+
+    /* Tab bar */
+    .hub-pill { cursor: pointer; }
+    .hub-pill.active { background: var(--primary, #8366e8); border-color: var(--primary, #8366e8); color: #fff; }
+
+    /* Difficulty word cloud */
+    .difficulty-heatmap { padding: 1.25rem; }
+    .difficulty-legend {
+        display: flex;
+        gap: 1.5rem;
+        justify-content: center;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+        font-size: 0.85rem;
+    }
+    .difficulty-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .difficulty-legend-word { font-weight: 800; }
+    .difficulty-legend-word.easy { color: #10b981; font-size: 0.85rem; }
+    .difficulty-legend-word.medium { color: #f59e0b; font-size: 1rem; }
+    .difficulty-legend-word.hard { color: #ef4444; font-size: 1.15rem; }
+    .difficulty-empty { text-align: center; padding: 2rem; color: var(--text-light); }
+</style>
+
+{% include "_word_cloud.html" %}
+
+<div class="hub-container">
+    <div class="hub-header">
+        <h1>📊 Analytics</h1>
+        <div class="hub-filters">
+            <label for="hubClass">Class</label>
+            <select id="hubClass" onchange="onClassChange()"><option value="">All classes</option></select>
+            <label for="hubStudent">Student</label>
+            <select id="hubStudent" onchange="refreshAll()"><option value="">All students</option></select>
+            <label for="hubDays">Period</label>
+            <select id="hubDays" onchange="loadReading()">
+                <option value="7">Last 7 days</option>
+                <option value="30" selected>Last 30 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="all">All time</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="hub-pills" role="tablist">
+        <a class="hub-pill active" data-tab="reading" href="#reading" role="tab" aria-selected="true">📖 Reading</a>
+        <a class="hub-pill" data-tab="confidence" href="#confidence" role="tab" aria-selected="false">🙂 Confidence</a>
+        <a class="hub-pill" data-tab="quiz" href="#quiz" role="tab" aria-selected="false">📝 Quiz</a>
+        <a class="hub-pill" data-tab="flashcards" href="#flashcards" role="tab" aria-selected="false">🃏 Flashcards</a>
+        <a class="hub-pill" data-tab="difficulty" href="#difficulty" role="tab" aria-selected="false">🔥 Word Difficulty</a>
+        <a class="hub-pill" data-tab="tests" href="#tests" role="tab" aria-selected="false">🧪 Tests</a>
+    </div>
+
+    <!-- ── Reading ── -->
+    <section class="hub-section" id="reading">
+        <h2>📖 Reading</h2>
+        <p class="sub">Time on pages and coverage for the selected class and period. <a href="{{ url_for('admin_reading_analytics') }}">Detailed view →</a></p>
+        <div class="stat-row" id="readingStats"></div>
+        <div class="hub-card hub-table-wrap">
+            <table class="hub-table" id="readingTable"></table>
+            <div class="hub-empty" id="readingEmpty" style="display:none;">No reading activity for this selection.</div>
+        </div>
+    </section>
+
+    <!-- ── Confidence ── -->
+    <section class="hub-section" id="confidence" hidden>
+        <h2>🙂 Confidence</h2>
+        <p class="sub">Self-reported confidence (1–5) across rated pages. <a href="{{ url_for('admin.confidence_matrix') }}">Per-assignment matrix →</a></p>
+        <div class="hub-card">
+            <div class="conf-dist" id="confDist"></div>
+        </div>
+    </section>
+
+    <!-- ── Quiz ── -->
+    <section class="hub-section" id="quiz" hidden>
+        <h2 id="quizHeading">📝 Quiz — class ability</h2>
+        <p class="sub" id="quizSub">Correct / answered per topic. Reviewed marks are final; others use the provisional auto-mark. <a href="{{ url_for('quiz.quiz_review') }}">Review queue →</a></p>
+        <div class="hub-card" id="quizMatrixCard">
+            <div class="hub-table-wrap" id="quizTableWrap">
+                <table class="hub-table" id="quizTable"></table>
+                <div class="hub-empty" id="quizEmpty" style="display:none;">No quiz answers yet for this selection.</div>
+            </div>
+        </div>
+        <!-- Full per-student drill-down, shown when a single student is selected -->
+        <div id="quizStudentDrill" style="display:none;"></div>
+    </section>
+
+    <!-- ── Flashcards ── -->
+    <section class="hub-section" id="flashcards" hidden>
+        <h2>🃏 Flashcards — study performance</h2>
+        <p class="sub">Tries, time spent, best time, and improvement per student and set. Click a set for its detail page.</p>
+        <div class="hub-card">
+            <div class="hub-table-wrap">
+                <table class="hub-table" id="flashcardsTable"></table>
+                <div class="hub-empty" id="flashcardsEmpty" style="display:none;">No flashcard activity yet for this selection.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Word Difficulty ── -->
+    <section class="hub-section" id="difficulty" hidden>
+        <h2>🔥 Word Difficulty — cloud</h2>
+        <p class="sub">Red = students are struggling; Green = students find it easy. Bigger = harder. Hover a word for its stats.</p>
+        <div class="hub-card">
+            <div class="difficulty-heatmap">
+                <div class="difficulty-legend" id="difficultyLegend">
+                    <div class="difficulty-legend-item">
+                        <span class="difficulty-legend-word easy">easy</span>
+                        <span>(0–33%)</span>
+                    </div>
+                    <div class="difficulty-legend-item">
+                        <span class="difficulty-legend-word medium">medium</span>
+                        <span>(33–66%)</span>
+                    </div>
+                    <div class="difficulty-legend-item">
+                        <span class="difficulty-legend-word hard">hard</span>
+                        <span>(66–100%)</span>
+                    </div>
+                </div>
+                <div id="difficultyCloud"></div>
+                <div class="difficulty-empty" id="difficultyEmpty" style="display:none;">No difficulty data for this selection.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Tests ── -->
+    <section class="hub-section" id="tests" hidden>
+        <h2 id="testsHeading">🧪 Tests — class ability</h2>
+        <p class="sub" id="testsSub">Assigned, submitted, and class average per test paper. <a href="{{ url_for('test_builder.test_review_page') }}">Review queue →</a></p>
+        <div class="hub-card" id="testsClassCard">
+            <div class="hub-table-wrap">
+                <table class="hub-table" id="testsTable"></table>
+                <div class="hub-empty" id="testsEmpty" style="display:none;">No tests assigned yet for this selection.</div>
+            </div>
+        </div>
+        <div id="testsStudentDrill" style="display:none;"></div>
+    </section>
+</div>
+
+<script>
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+}
+
+function fmtTime(seconds) {
+    const m = Math.round((seconds || 0) / 60);
+    if (m < 60) return m + 'm';
+    return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+}
+
+function classId() { return document.getElementById('hubClass').value; }
+function studentId() { return document.getElementById('hubStudent').value; }
+
+async function loadClasses() {
+    const res = await fetch('/admin/api/classes');
+    const classes = await res.json();
+    const sel = document.getElementById('hubClass');
+    classes.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name;
+        sel.appendChild(opt);
+    });
+    await loadStudents();
+}
+
+async function loadStudents() {
+    const res = await fetch('/admin/api/students' + (classId() ? `?class_id=${classId()}` : ''));
+    const students = await res.json();
+    const sel = document.getElementById('hubStudent');
+    sel.innerHTML = '<option value="">All students</option>';
+    students.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = s.name;
+        sel.appendChild(opt);
+    });
+}
+
+async function onClassChange() {
+    await loadStudents();  // narrows the student list; selection resets to All
+    refreshAll();
+}
+
+// ── Reading + Confidence (one API feeds both sections) ──
+async function loadReading() {
+    const days = document.getElementById('hubDays').value;
+    const params = new URLSearchParams({ days });
+    if (classId()) params.set('class_id', classId());
+    if (studentId()) params.set('student_id', studentId());
+    const res = await fetch('/admin/api/reading-analytics?' + params);
+    const d = await res.json();
+
+    document.getElementById('readingStats').innerHTML = `
+        <div class="stat-tile"><div class="k">Students</div><div class="v">${d.total_students}</div></div>
+        <div class="stat-tile"><div class="k">Total reading time</div><div class="v">${fmtTime(d.total_seconds)}</div></div>
+        <div class="stat-tile"><div class="k">Avg per student</div><div class="v">${fmtTime(d.avg_seconds_per_student)}</div></div>
+        <div class="stat-tile"><div class="k">Pages read</div><div class="v">${d.total_pages}</div></div>`;
+
+    const students = d.students || [];
+    const table = document.getElementById('readingTable');
+    const empty = document.getElementById('readingEmpty');
+    if (!students.length) {
+        table.innerHTML = ''; empty.style.display = 'block';
+    } else {
+        empty.style.display = 'none';
+        table.innerHTML = '<thead><tr><th>Student</th><th class="num">Time</th><th class="num">Pages read</th><th class="num">Avg confidence</th><th>Last active</th></tr></thead><tbody>' +
+            students.map(s => `
+                <tr>
+                    <td>${escapeHtml(s.name)}</td>
+                    <td class="num">${fmtTime(s.total_seconds)}</td>
+                    <td class="num">${s.pages_read}</td>
+                    <td class="num">${s.avg_confidence != null ? s.avg_confidence + ' / 5' : '—'}</td>
+                    <td>${s.last_active ? s.last_active.slice(0, 10) : '—'}</td>
+                </tr>`).join('') + '</tbody>';
+    }
+
+    // Confidence distribution
+    const labels = { 1: '😟 Not confident', 2: '😕 Unsure', 3: '😐 Neutral', 4: '🙂 Confident', 5: '😄 Very confident' };
+    const dist = d.confidence_distribution || {};
+    const max = Math.max(1, ...Object.values(dist));
+    const total = Object.values(dist).reduce((a, b) => a + b, 0);
+    document.getElementById('confDist').innerHTML = total === 0
+        ? '<div class="hub-empty">No confidence ratings for this selection.</div>'
+        : [5, 4, 3, 2, 1].map(level => {
+            const n = dist[level] || 0;
+            return `
+                <div class="conf-row">
+                    <span class="conf-label">${labels[level]}</span>
+                    <div class="conf-track"><div class="conf-fill" style="width:${(100 * n / max)}%;"></div></div>
+                    <span class="conf-count">${n}</span>
+                </div>`;
+        }).join('');
+}
+
+// ── Quiz matrix ──
+function cellColour(pct) {
+    if (pct >= 80) return 'rgba(16,185,129,0.25)';
+    if (pct >= 50) return 'rgba(245,158,11,0.25)';
+    return 'rgba(239,68,68,0.2)';
+}
+
+async function loadQuiz() {
+    const sid = studentId();
+    const matrixCard = document.getElementById('quizMatrixCard');
+    const drill = document.getElementById('quizStudentDrill');
+    const heading = document.getElementById('quizHeading');
+    const sub = document.getElementById('quizSub');
+
+    // A single student → the full per-student drill-down (same view the
+    // student sees). No student → the class-ability matrix.
+    if (sid) {
+        const name = document.getElementById('hubStudent').selectedOptions[0].textContent;
+        heading.textContent = `📝 Quiz — ${name}`;
+        sub.innerHTML = 'Strengths, focus areas, and a unit → section → page breakdown. Click a page for the full question-by-question detail.';
+        matrixCard.style.display = 'none';
+        drill.style.display = 'block';
+        drill.innerHTML = '<div class="hub-empty">Loading…</div>';
+        const r = await fetch('/admin/api/student-quiz-analytics/' + sid);
+        drill.innerHTML = await r.text();
+        return;
+    }
+    heading.textContent = '📝 Quiz — class ability';
+    sub.innerHTML = 'Correct / answered per topic. Reviewed marks are final; others use the provisional auto-mark. <a href="{{ url_for('quiz.quiz_review') }}">Review queue →</a>';
+    drill.style.display = 'none';
+    drill.innerHTML = '';
+    matrixCard.style.display = '';
+
+    const qp = new URLSearchParams();
+    if (classId()) qp.set('class_id', classId());
+    const res = await fetch('/admin/api/quiz-analytics' + (qp.toString() ? '?' + qp : ''));
+    const d = await res.json();
+    const pages = d.pages || [], students = d.students || [];
+    const table = document.getElementById('quizTable');
+    const empty = document.getElementById('quizEmpty');
+
+    if (!pages.length || !students.length) {
+        table.innerHTML = ''; empty.style.display = 'block';
+        return;
+    }
+    empty.style.display = 'none';
+
+    let html = '<thead><tr><th class="student">Student</th><th class="topic">Overall</th>';
+    pages.forEach(p => {
+        html += `<th class="topic"><span class="book">${escapeHtml(p.book_title)}</span>${escapeHtml(p.page_title)}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+    students.forEach(s => {
+        html += `<tr><td class="student">${escapeHtml(s.name)}</td>`;
+        if (s.answered) {
+            const pct = Math.round(100 * s.correct / s.answered);
+            html += `<td class="center"><span class="qa-cell" style="background:${cellColour(pct)};">${pct}%</span></td>`;
+        } else {
+            html += '<td class="center"><span class="qa-cell none">—</span></td>';
+        }
+        pages.forEach(p => {
+            const c = (s.cells || {})[p.key];
+            if (!c || !c.answered) {
+                html += '<td class="center"><span class="qa-cell none">—</span></td>';
+            } else {
+                const pct = Math.round(100 * c.correct / c.answered);
+                html += `<td class="center"><span class="qa-cell" style="background:${cellColour(pct)};" title="${c.correct} correct of ${c.answered} answered">${c.correct}/${c.answered}</span>` +
+                        (c.pending ? `<span class="qa-pending">${c.pending} pending</span>` : '') + '</td>';
+            }
+        });
+        html += '</tr>';
+    });
+    document.getElementById('quizTable').innerHTML = html + '</tbody>';
+}
+
+// ── Flashcards ──
+function fmtDur(seconds) {
+    if (seconds === null || seconds === undefined) return '—';
+    if (seconds < 60) return Math.round(seconds) + 's';
+    return Math.floor(seconds / 60) + 'm ' + Math.round(seconds % 60) + 's';
+}
+
+async function loadFlashcards() {
+    const qp = new URLSearchParams();
+    if (classId()) qp.set('class_id', classId());
+    if (studentId()) qp.set('student_id', studentId());
+    const res = await fetch('/admin/api/flashcards/analytics' + (qp.toString() ? '?' + qp : ''));
+    const d = await res.json();
+    const rows = (d.rows || []);
+    const table = document.getElementById('flashcardsTable');
+    const empty = document.getElementById('flashcardsEmpty');
+    if (!rows.length) { table.innerHTML = ''; empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+
+    table.innerHTML = '<thead><tr><th>Student</th><th>Set</th><th class="num">Mastered</th><th class="num">Tries</th><th class="num">Completed</th><th class="num">Time</th><th class="num">Best time</th><th>Improvement</th><th>Last studied</th></tr></thead><tbody>' +
+        rows.map(r => {
+            const imp = [];
+            if (r.time_improvement) {
+                const faster = r.time_improvement > 0;
+                imp.push(`<span style="color:${faster ? '#10b981' : '#ef4444'}; font-weight:600;">${faster ? '▲' : '▼'} ${Math.abs(r.time_improvement).toFixed(0)}s</span>`);
+            }
+            if (r.accuracy_improvement) {
+                const up = r.accuracy_improvement > 0;
+                imp.push(`<span style="color:${up ? '#10b981' : '#ef4444'}; font-weight:600;">${up ? '▲' : '▼'} ${Math.abs(r.accuracy_improvement)}%</span>`);
+            }
+            const last = r.last_session_at ? r.last_session_at.slice(0, 10) : '—';
+            return `<tr>
+                <td><a href="/admin/analytics/student/${r.student_id}">${escapeHtml(r.student_name)}</a></td>
+                <td><a href="/admin/flashcards/${r.set_id}">${escapeHtml(r.title)}</a></td>
+                <td class="num">${r.mastered}/${r.card_count}</td>
+                <td class="num">${r.attempts}</td>
+                <td class="num">${r.completions}</td>
+                <td class="num">${fmtDur(r.total_seconds)}</td>
+                <td class="num">${fmtDur(r.best_seconds)}</td>
+                <td>${imp.length ? imp.join(' · ') : '—'}</td>
+                <td>${last}</td>
+            </tr>`;
+        }).join('') + '</tbody>';
+}
+
+// ── Difficulty heatmap ──
+async function loadDifficulty() {
+    const qp = new URLSearchParams();
+    if (classId()) qp.set('class_id', classId());
+    if (studentId()) qp.set('student_id', studentId());
+    const res = await fetch('/admin/api/flashcards/card-difficulty' + (qp.toString() ? '?' + qp : ''));
+    const d = await res.json();
+    const cloud = document.getElementById('difficultyCloud');
+    const empty = document.getElementById('difficultyEmpty');
+
+    if (!d.cards || !d.cards.length) {
+        cloud.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+    }
+    empty.style.display = 'none';
+
+    function fmtDwellTime(seconds) {
+        if (seconds < 1) return Math.round(seconds * 1000) + 'ms';
+        if (seconds < 60) return seconds.toFixed(1) + 's';
+        return (seconds / 60).toFixed(1) + 'm';
+    }
+
+    renderWordCloud(cloud, d.cards, {
+        limit: 80,
+        controls: true,
+        tooltip: c => `${c.difficulty}% hard · ${c.incorrect_count}✗ of ${c.total_attempts} attempts<br>` +
+            `${c.studied_by_count} student${c.studied_by_count !== 1 ? 's' : ''} · avg dwell ⏱ ${fmtDwellTime(c.avg_dwell_seconds || 0)}`,
+    });
+}
+
+// ── Tests ──
+async function loadTests() {
+    const sid = studentId();
+    const classCard = document.getElementById('testsClassCard');
+    const drill = document.getElementById('testsStudentDrill');
+    const heading = document.getElementById('testsHeading');
+    const sub = document.getElementById('testsSub');
+
+    if (sid) {
+        const name = document.getElementById('hubStudent').selectedOptions[0].textContent;
+        heading.textContent = `🧪 Tests — ${name}`;
+        sub.innerHTML = 'Every test this student has taken, including provisional AI-marked scores awaiting approval.';
+        classCard.style.display = 'none';
+        drill.style.display = 'block';
+        drill.innerHTML = '<div class="hub-empty">Loading…</div>';
+
+        const res = await fetch(`/admin/api/test-analytics?student_id=${sid}`);
+        const d = await res.json();
+        const rows = d.submissions || [];
+        if (!rows.length) {
+            drill.innerHTML = '<div class="hub-empty">No tests taken yet.</div>';
+            return;
+        }
+        drill.innerHTML = `<div class="hub-card hub-table-wrap"><table class="hub-table">
+            <thead><tr><th>Test</th><th>Status</th><th class="num">Score</th><th>Submitted</th><th></th></tr></thead>
+            <tbody>${rows.map(r => `
+                <tr>
+                    <td>${escapeHtml(r.paper_title)}</td>
+                    <td>${r.status === 'marked' ? 'Approved' : r.status === 'submitted' ? 'Provisional' : r.status === 'in_progress' ? 'In progress' : r.status}</td>
+                    <td class="num">${r.percentage !== null ? `${r.marks_awarded}/${r.marks_possible} (${r.percentage}%)` : '—'}</td>
+                    <td>${r.submitted_at || '—'}</td>
+                    <td>${r.percentage !== null ? `<a href="/assessment/test-submissions/${r.submission_id}/report" target="_blank">View report →</a>` : ''}</td>
+                </tr>`).join('')}</tbody>
+        </table></div>`;
+        return;
+    }
+
+    heading.textContent = '🧪 Tests — class ability';
+    sub.innerHTML = 'Assigned, submitted, and class average per test paper. <a href="{{ url_for("test_builder.test_review_page") }}">Review queue →</a>';
+    drill.style.display = 'none';
+    drill.innerHTML = '';
+    classCard.style.display = '';
+
+    const qp = new URLSearchParams();
+    if (classId()) qp.set('class_id', classId());
+    const res = await fetch('/admin/api/test-analytics' + (qp.toString() ? '?' + qp : ''));
+    const d = await res.json();
+    const papers = d.papers || [];
+    const table = document.getElementById('testsTable');
+    const empty = document.getElementById('testsEmpty');
+    if (!papers.length) {
+        table.innerHTML = ''; empty.style.display = 'block';
+        return;
+    }
+    empty.style.display = 'none';
+    table.innerHTML = '<thead><tr><th>Test</th><th class="num">Assigned</th><th class="num">Submitted</th><th class="num">Avg</th><th></th></tr></thead><tbody>' +
+        papers.map(p => `
+            <tr>
+                <td>${escapeHtml(p.title)}</td>
+                <td class="num">${p.assigned_count}</td>
+                <td class="num">${p.submitted_count}</td>
+                <td class="num">${p.avg_percentage !== null ? p.avg_percentage + '%' : '—'}</td>
+                <td><a href="/assessment/test-builder/${p.paper_id}/assign">View assignments →</a></td>
+            </tr>`).join('') + '</tbody>';
+}
+
+// ── Tabs ──
+const TABS = ['reading', 'confidence', 'quiz', 'flashcards', 'difficulty', 'tests'];
+const loaded = {};
+const loaders = { reading: loadReading, confidence: loadReading, quiz: loadQuiz, flashcards: loadFlashcards, difficulty: loadDifficulty, tests: loadTests };
+
+function showTab(name) {
+    TABS.forEach(t => {
+        const section = document.getElementById(t);
+        const pill = document.querySelector(`.hub-pill[data-tab="${t}"]`);
+        if (t === name) {
+            section.hidden = false;
+            section.style.animation = 'none';
+            section.offsetHeight; // restart animation
+            section.style.animation = '';
+            pill.classList.add('active');
+            pill.setAttribute('aria-selected', 'true');
+        } else {
+            section.hidden = true;
+            pill.classList.remove('active');
+            pill.setAttribute('aria-selected', 'false');
+        }
+    });
+    if (!loaded[name]) {
+        loaders[name]();
+        if (name === 'reading' || name === 'confidence') { loaded.reading = true; loaded.confidence = true; }
+        else loaded[name] = true;
+    }
+}
+
+document.querySelectorAll('.hub-pill').forEach(pill => {
+    pill.addEventListener('click', e => {
+        e.preventDefault();
+        showTab(pill.dataset.tab);
+    });
+});
+
+function refreshAll() {
+    Object.keys(loaded).forEach(k => delete loaded[k]);
+    const active = document.querySelector('.hub-pill.active');
+    const activeTab = active ? active.dataset.tab : 'reading';
+    loaders[activeTab]();
+    if (activeTab === 'reading' || activeTab === 'confidence') {
+        loaded.reading = true;
+        loaded.confidence = true;
+    } else {
+        loaded[activeTab] = true;
+    }
+}
+loadClasses().then(refreshAll);
+</script>
+{% endblock %}

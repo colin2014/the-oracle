@@ -1,0 +1,118 @@
+{% extends "admin_base.html" %}
+{% block title %}{{ "Edit" if snippet else "New" }} Bug Hunt snippet{% endblock %}
+
+{% block content %}
+<style>
+    .be-container { max-width: 860px; margin: 0 auto; }
+    .be-container h1 { font-size: 1.5rem; margin: 0 0 1rem 0; }
+    .be-card { background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .be-card h2 { font-size: 1rem; margin: 0 0 0.75rem 0; }
+    .be-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
+    .be-field { display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 150px; }
+    .be-field label { font-size: 0.8rem; font-weight: 600; }
+    .be-field input[type="text"], .be-field select {
+        padding: 0.5rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius-control);
+        background: var(--bg-light); color: var(--text-dark); font-family: inherit; font-size: 0.9rem;
+    }
+    .be-code {
+        width: 100%; min-height: 220px; padding: 0.85rem 1rem;
+        border: 1px solid var(--border); border-radius: var(--radius-sm);
+        background: var(--bg-light); color: var(--text-dark); resize: vertical;
+        font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        font-size: 0.9rem; line-height: 1.6; tab-size: 4;
+    }
+    .be-code:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(131,102,232,0.15); }
+    .be-hint { font-size: 0.78rem; color: var(--text-light); margin-top: 0.35rem; }
+
+    .be-bug-row { display: flex; gap: 0.6rem; margin-bottom: 0.5rem; align-items: center; }
+    .be-bug-row input[type="number"] {
+        width: 84px; padding: 0.5rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius-control);
+        background: var(--bg-light); color: var(--text-dark); font-family: inherit; font-size: 0.9rem;
+    }
+    .be-bug-row input[type="text"] {
+        flex: 1; padding: 0.5rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius-control);
+        background: var(--bg-light); color: var(--text-dark); font-family: inherit; font-size: 0.9rem;
+    }
+    .be-remove {
+        border: none; background: none; color: var(--text-dark); font-weight: 600;
+        cursor: pointer; padding: 0.4rem 0.6rem; border-radius: var(--radius-control); font-family: inherit; font-size: 0.85rem;
+    }
+    .be-remove:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); }
+    .be-actions { display: flex; gap: 0.75rem; align-items: center; }
+</style>
+
+<div class="be-container">
+    <h1>{{ "Edit snippet" if snippet else "New snippet" }}</h1>
+    <form method="post">
+        <div class="be-card">
+            <div class="be-row">
+                <div class="be-field" style="flex: 2;">
+                    <label for="title">Title (shown on the board)</label>
+                    <input type="text" id="title" name="title" required value="{{ snippet.title if snippet else '' }}" placeholder="e.g. Binary search that misses the middle">
+                </div>
+                <div class="be-field">
+                    <label for="language">Language</label>
+                    <select id="language" name="language">
+                        <option value="pseudocode" {{ "selected" if snippet and snippet.language == "pseudocode" }}>IB pseudocode</option>
+                        <option value="python" {{ "selected" if snippet and snippet.language == "python" }}>Python</option>
+                    </select>
+                </div>
+                <div class="be-field">
+                    <label for="difficulty">Difficulty</label>
+                    <select id="difficulty" name="difficulty">
+                        {% for d in ["easy", "medium", "hard"] %}
+                        <option value="{{ d }}" {{ "selected" if snippet and snippet.difficulty == d }}>{{ d }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="be-field">
+                    <label for="topic_label">Topic label (optional)</label>
+                    <input type="text" id="topic_label" name="topic_label" value="{{ snippet.topic_label or '' if snippet else '' }}" placeholder="e.g. Searching">
+                </div>
+            </div>
+            <div class="be-field">
+                <label for="description">Description for students (optional)</label>
+                <textarea style="width: 100%; min-height: 80px; padding: 0.85rem 1rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-light); color: var(--text-dark); font-family: inherit; font-size: 0.9rem; resize: vertical;" id="description" name="description" placeholder="Describe what this code does. Students see this before hunting for bugs.">{{ snippet.description or '' if snippet else '' }}</textarea>
+                <div class="be-hint">This helps students understand the code's purpose before looking for bugs.</div>
+            </div>
+            <div class="be-field">
+                <label for="code">Code (with the bugs planted)</label>
+                <textarea class="be-code" id="code" name="code" required
+                          spellcheck="false">{{ snippet.code if snippet else "" }}</textarea>
+                <div class="be-hint">Line numbers count from 1, exactly as the board will show them.</div>
+            </div>
+        </div>
+
+        <div class="be-card">
+            <h2>Planted bugs</h2>
+            <div id="bugRows">
+                {% set bugs = snippet.bugs_list() if snippet else [{"line": "", "description": ""}] %}
+                {% for b in bugs %}
+                <div class="be-bug-row">
+                    <input type="number" name="bug_line" min="1" placeholder="Line" value="{{ b.line }}" aria-label="Bug line number">
+                    <input type="text" name="bug_desc" placeholder="What's wrong — this is your marking note, hidden from the board" value="{{ b.description }}" aria-label="Bug description">
+                    <button type="button" class="be-remove" onclick="this.parentElement.remove()">Remove</button>
+                </div>
+                {% endfor %}
+            </div>
+            <button type="button" class="admin-btn-ghost" onclick="addBugRow()">Add a bug</button>
+        </div>
+
+        <div class="be-actions">
+            <button type="submit" class="admin-btn">Save snippet</button>
+            <a class="admin-btn-text" href="{{ url_for('games.bughunt_snippets') }}">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+function addBugRow() {
+    const row = document.createElement("div");
+    row.className = "be-bug-row";
+    row.innerHTML = `<input type="number" name="bug_line" min="1" placeholder="Line" aria-label="Bug line number">
+        <input type="text" name="bug_desc" placeholder="What's wrong — this is your marking note, hidden from the board" aria-label="Bug description">
+        <button type="button" class="be-remove" onclick="this.parentElement.remove()">Remove</button>`;
+    document.getElementById("bugRows").appendChild(row);
+}
+</script>
+{% endblock %}

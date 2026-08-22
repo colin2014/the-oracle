@@ -1,0 +1,152 @@
+{% if active_games %}
+<style>
+    .live-games-banner {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+        border-radius: var(--radius);
+        padding: 1.2rem 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+        color: white;
+    }
+
+    .live-games-banner h2 {
+        margin: 0 0 0.75rem 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+    }
+
+    .live-pulse {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: #fff;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .live-games-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .live-game-item {
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 6px;
+        padding: 0.9rem 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        backdrop-filter: blur(10px);
+        transition: all 0.2s ease;
+    }
+
+    .live-game-item:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: rgba(255, 255, 255, 0.5);
+        transform: translateX(4px);
+    }
+
+    .live-game-info {
+        flex: 1;
+    }
+
+    .live-game-name {
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-bottom: 0.2rem;
+    }
+
+    .live-game-meta {
+        font-size: 0.8rem;
+        opacity: 0.9;
+    }
+
+    .live-game-join-btn {
+        background: rgba(255, 255, 255, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        margin-left: 1rem;
+    }
+
+    .live-game-join-btn:hover {
+        background: rgba(255, 255, 255, 0.35);
+        border-color: rgba(255, 255, 255, 0.6);
+    }
+
+    @media (max-width: 768px) {
+        .live-games-banner {
+            padding: 1rem 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .live-games-banner h2 {
+            font-size: 1rem;
+            margin-bottom: 0.6rem;
+        }
+
+        .live-game-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.6rem;
+        }
+
+        .live-game-join-btn {
+            width: 100%;
+            margin-left: 0;
+        }
+    }
+</style>
+
+<div class="live-games-banner">
+    <h2>
+        <span class="live-pulse"></span>
+        Live Games Now
+    </h2>
+    <div class="live-games-list">
+        {% for game in active_games %}
+        <div class="live-game-item">
+            <div class="live-game-info">
+                <div class="live-game-name">
+                    {% if game.game_type == "concept_ladder" %}
+                        Concept Ladder
+                    {% elif game.game_type == "think_of_word" %}
+                        Think of a Word
+                    {% elif game.game_type == "connections" %}
+                        Connections
+                    {% else %}
+                        {{ game.game_type }}
+                    {% endif %}
+                </div>
+                <div class="live-game-meta">
+                    {% if game.class_ %}{{ game.class_.name }} · {% endif %}
+                    {% if game.status == "lobby" %}Waiting to start{% else %}In progress{% endif %}
+                    {% if game.join_code %} · Code: <strong>{{ game.join_code }}</strong>{% endif %}
+                </div>
+            </div>
+            {% if game.join_code %}
+            <a href="{{ url_for('games.join', code=game.join_code) }}" class="live-game-join-btn">
+                Join Game
+            </a>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}

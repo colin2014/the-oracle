@@ -1,0 +1,142 @@
+{% extends "student_base.html" %}
+
+{% block title %}Games - The Oracle{% endblock %}
+
+{% block content %}
+<div class="games-hub">
+    <div class="page-header">
+        <h1>Learning Games</h1>
+        <p class="subtitle">Master concepts through interactive games</p>
+    </div>
+
+    <div class="games-grid">
+        <!-- Join a class game -->
+        <a href="{{ url_for('games.join') }}" class="game-card game-card-live">
+            <div class="game-icon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="3"/><path d="M7 10v4M5 12h4M15.5 11h.01M18 13h.01"/></svg>
+            </div>
+            <h2>Join a class game</h2>
+            <p>Your teacher has a game on the board? Enter the code and play along on your own device.</p>
+            <div class="game-meta">
+                <span class="game-type">Live · Whole class</span>
+            </div>
+        </a>
+
+        <!-- Flashcards Card -->
+        <a href="{{ url_for('student_flashcards') }}" class="game-card">
+            <div class="game-icon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="14" height="12" rx="2"/><path d="M7 8V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-2"/></svg>
+            </div>
+            <h2>Flashcards</h2>
+            <p>Study vocabulary and test yourself with self-marked flashcard sets.</p>
+            <div class="game-meta">
+                <span class="game-type">Recall & Recognition</span>
+            </div>
+        </a>
+
+        <!-- Concept Chains Card -->
+        <a href="{{ url_for('concept_chains.list_chains') }}" class="game-card">
+            <div class="game-icon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            </div>
+            <h2>Concept Chains</h2>
+            <p>Build networks of connected ideas to deepen understanding of relationships.</p>
+            <div class="game-meta">
+                <span class="game-type">Synthesis & Application</span>
+            </div>
+        </a>
+    </div>
+</div>
+
+<style>
+.games-hub {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.page-header {
+    margin-bottom: 3rem;
+}
+
+.page-header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0 0 0.5rem 0;
+}
+
+.subtitle {
+    color: var(--text-light);
+    margin: 0;
+    font-size: 1rem;
+}
+
+.games-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+}
+
+.game-card {
+    display: flex;
+    flex-direction: column;
+    padding: 2rem;
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.game-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(199, 125, 255, 0.2);
+    border-color: var(--primary);
+}
+
+.game-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius-sm, 8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    background: rgba(131, 102, 232, 0.1);
+    color: var(--primary);
+}
+.game-card-live .game-icon { background: var(--primary); color: #fff; }
+
+.game-card h2 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin: 0 0 0.75rem 0;
+    color: var(--text-dark);
+}
+
+.game-card p {
+    font-size: 0.95rem;
+    color: var(--text-light);
+    margin: 0 0 1.5rem 0;
+    flex: 1;
+    line-height: 1.6;
+}
+
+.game-meta {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.game-type {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--primary);
+    background: rgba(199, 125, 255, 0.1);
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+}
+</style>
+{% endblock %}

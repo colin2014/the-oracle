@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concept Ladder — Board</title>
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script>document.documentElement.dataset.theme = localStorage.getItem('theme') || 'light';</script>
+    <style>
+        /* Board surface: same family as exam mode — a projected room. Big type,
+           violet-tinted ground, zero app chrome. Everything sizes for the back row. */
+        :root {
+            --bg: #f7f5fd; --bg-wash: rgba(131, 102, 232, 0.07);
+            --bg-elevated: #ffffff; --text: #1a1a1a; --text-light: #6b7280; --border: #e5e7eb;
+            --primary: #8366e8; --primary-dark: #6b52cc; --primary-soft: rgba(131,102,232,0.10);
+            --teal: #10b981; --teal-soft: rgba(16,185,129,0.12); --teal-ink: #047857;
+            --amber: #f59e0b; --amber-soft: rgba(245,158,11,0.12); --amber-ink: #b45309;
+            --red: #ef4444; --red-ink: #b91c1c;
+            --radius: 12px; --radius-sm: 8px; --radius-control: 6px;
+        }
+        [data-theme="dark"] {
+            --bg: #121319; --bg-wash: rgba(157, 132, 255, 0.08);
+            --bg-elevated: #17181f; --text: #ececf1; --text-light: #9a9aa8; --border: #262833;
+            --primary: #9d84ff; --primary-dark: #8366e8; --primary-soft: rgba(157,132,255,0.14);
+            --teal: #34d399; --teal-soft: rgba(52,211,153,0.14); --teal-ink: #34d399;
+            --amber: #fbbf24; --amber-soft: rgba(251,191,36,0.14); --amber-ink: #fbbf24;
+            --red: #f87171; --red-ink: #f87171;
+            color-scheme: dark;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: radial-gradient(ellipse 1100px 520px at 50% -12%, var(--bg-wash), transparent), var(--bg);
+            background-attachment: fixed; color: var(--text); line-height: 1.5; min-height: 100vh;
+        }
+
+        .lb-top {
+            display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+            padding: 0.9rem 1.6rem; background: var(--bg-elevated); border-bottom: 1px solid var(--border);
+        }
+        .lb-top-title { font-weight: 700; font-size: 1.05rem; }
+        .lb-top-meta { font-size: 0.85rem; color: var(--text-light); font-variant-numeric: tabular-nums; }
+        .lb-timer { font-size: 2rem; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+        .lb-timer.low { color: var(--red); }
+
+        .lb-layout { display: grid; grid-template-columns: 130px 1fr; gap: 1.5rem; max-width: 1300px; margin: 0 auto; padding: 1.5rem 1.6rem 7rem; }
+
+        /* The ladder rail: rungs stack bottom-up; the artifact of progress the room watches. */
+        .lb-rail { display: flex; flex-direction: column-reverse; gap: 0.5rem; align-self: start; position: sticky; top: 1.5rem; }
+        .lb-rung {
+            display: flex; align-items: center; justify-content: center; height: 44px;
+            border: 2px solid var(--border); border-radius: var(--radius-sm);
+            background: var(--bg-elevated); font-weight: 800; font-size: 1rem; color: var(--text-light);
+            font-variant-numeric: tabular-nums;
+        }
+        .lb-rung.passed { border-color: var(--teal); background: var(--teal-soft); color: var(--teal-ink); }
+        .lb-rung.cracked { border-color: var(--amber); background: var(--amber-soft); color: var(--amber-ink); }
+        .lb-rung.current { border-color: var(--primary); background: var(--primary); color: #fff; transform: scale(1.06); }
+
+        .lb-stage { min-width: 0; }
+
+        /* Lobby */
+        .lb-lobby { text-align: center; padding: 3rem 1rem; }
+        .lb-lobby h1 { font-size: 1.6rem; margin: 0 0 0.5rem; }
+        .lb-lobby .lead { color: var(--text-light); margin: 0 0 2rem; }
+        .lb-code {
+            display: inline-block; font-size: 4.5rem; font-weight: 800; letter-spacing: 0.18em;
+            padding: 0.5rem 2rem 0.5rem 2.4rem; background: var(--bg-elevated);
+            border: 2px solid var(--primary); border-radius: var(--radius); font-variant-numeric: tabular-nums;
+        }
+        .lb-join-hint { margin-top: 0.75rem; color: var(--text-light); font-size: 0.95rem; }
+        .lb-roster { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin-top: 2rem; }
+        .lb-roster .name {
+            padding: 0.35rem 0.9rem; background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: 999px; font-size: 0.9rem; font-weight: 600;
+        }
+        .lb-roster .name.hl { border-color: var(--primary); }
+
+        /* Question */
+        .lb-qcard {
+            background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius);
+            padding: 2rem 2.2rem; box-shadow: 0 8px 24px rgba(26,26,26,0.06);
+        }
+        .lb-qtabs { display: flex; gap: 0.5rem; margin-bottom: 1.2rem; }
+        .lb-qtab {
+            padding: 0.4rem 1rem; border: 1px solid var(--border); border-radius: 999px;
+            background: transparent; color: var(--text); font-weight: 700; font-size: 0.85rem; cursor: pointer;
+        }
+        .lb-qtab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+        .lb-qmeta { display: flex; gap: 0.6rem; align-items: center; margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-light); }
+        .lb-pill { font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.65rem; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em; }
+        .lb-pill.diff-easy { background: var(--teal-soft); color: var(--teal-ink); }
+        .lb-pill.diff-medium { background: var(--amber-soft); color: var(--amber-ink); }
+        .lb-pill.diff-hard { background: color-mix(in srgb, var(--red) 12%, transparent); color: var(--red-ink); }
+        .lb-pill.hl { background: var(--primary-soft); color: var(--primary); }
+        .lb-qtext { font-size: 1.7rem; font-weight: 600; line-height: 1.4; white-space: pre-wrap; margin-bottom: 1.5rem; }
+        .lb-option {
+            display: flex; align-items: center; gap: 1rem; padding: 0.9rem 1.1rem;
+            border: 1.5px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 0.6rem;
+            font-size: 1.25rem; position: relative; overflow: hidden;
+        }
+        .lb-option .letter {
+            width: 2rem; height: 2rem; border-radius: 50%; background: var(--primary-soft); color: var(--primary);
+            display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1rem; flex-shrink: 0;
+        }
+        .lb-option.correct { border-color: var(--teal); background: var(--teal-soft); }
+        .lb-option.correct .letter { background: var(--teal); color: #fff; }
+        .lb-option .bar {
+            position: absolute; inset: 0 auto 0 0; background: var(--primary-soft); z-index: 0;
+            transition: width 600ms cubic-bezier(0.23, 1, 0.32, 1); width: 0;
+        }
+        .lb-option.correct .bar { background: color-mix(in srgb, var(--teal) 18%, transparent); }
+        .lb-option > :not(.bar) { position: relative; z-index: 1; }
+        .lb-option .count { margin-left: auto; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--text-light); }
+
+        .lb-answered { text-align: center; margin: 1.2rem 0 0; font-size: 1.05rem; color: var(--text-light); font-variant-numeric: tabular-nums; }
+
+        /* Reveal verdict */
+        .lb-verdict { text-align: center; padding: 1.2rem; border-radius: var(--radius); margin-bottom: 1.2rem; font-weight: 800; font-size: 1.5rem; }
+        .lb-verdict.pass { background: var(--teal-soft); color: var(--teal-ink); }
+        .lb-verdict.fail { background: var(--amber-soft); color: var(--amber-ink); }
+        .lb-verdict .sub { display: block; font-size: 0.95rem; font-weight: 600; margin-top: 0.25rem; color: inherit; opacity: 0.85; }
+
+        /* Finished */
+        .lb-done { text-align: center; padding: 3rem 1rem; }
+        .lb-done h1 { font-size: 2rem; margin: 0 0 1rem; }
+        .lb-done .summary { font-size: 1.15rem; color: var(--text-light); }
+
+        /* Teacher controls — quiet, pinned bottom, out of the room's eye-line */
+        .lb-controls {
+            position: fixed; inset: auto 0 0 0; display: flex; justify-content: center; gap: 0.6rem;
+            padding: 0.9rem 1.5rem; background: var(--bg-elevated); border-top: 1px solid var(--border);
+        }
+        .lb-btn {
+            padding: 0.6rem 1.3rem; border: none; border-radius: var(--radius-control);
+            background: var(--primary); color: #fff; font-weight: 700; font-size: 0.9rem;
+            font-family: inherit; cursor: pointer; transition: background 150ms ease;
+        }
+        .lb-btn:hover { background: var(--primary-dark); }
+        .lb-btn:disabled { opacity: 0.35; cursor: default; }
+        .lb-btn.ghost {
+            background: transparent; color: var(--text); border: 1px solid var(--border);
+        }
+        .lb-btn.ghost:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+
+        @media (prefers-reduced-motion: reduce) {
+            .lb-option .bar { transition: none; }
+            .lb-rung.current { transform: none; }
+        }
+        @media (max-width: 760px) {
+            .lb-layout { grid-template-columns: 1fr; }
+            .lb-rail { flex-direction: row; flex-wrap: wrap; position: static; }
+            .lb-rung { width: 44px; }
+            .lb-code { font-size: 2.6rem; }
+            .lb-qtext { font-size: 1.25rem; }
+            .lb-option { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="lb-top">
+        <div>
+            <div class="lb-top-title">Concept Ladder · {{ session_obj.class_.name if session_obj.class_ else "" }}</div>
+            <div class="lb-top-meta" id="topMeta"></div>
+        </div>
+        <div class="lb-timer" id="timer" hidden>--</div>
+    </div>
+
+    <div class="lb-layout">
+        <div class="lb-rail" id="rail"></div>
+        <div class="lb-stage" id="stage"></div>
+    </div>
+
+    <div class="lb-controls" id="controls"></div>
+
+<script>
+const SESSION_ID = {{ session_obj.id }};
+const STATE_URL = "{{ url_for('games.board_state', session_id=session_obj.id) }}";
+const ACTION_URL = "{{ url_for('games.board_action', session_id=session_obj.id) }}";
+let S = null;           // last state payload
+let activeTab = "sl";   // which variant the board is showing
+let timerHandle = null;
+
+function esc(t) { const d = document.createElement("div"); d.textContent = t == null ? "" : String(t); return d.innerHTML; }
+const LETTERS = "ABCDEFGH";
+
+async function act(action, extra) {
+    const res = await fetch(ACTION_URL, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(Object.assign({ action }, extra || {}))
+    });
+    if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        alert(body.error || "That didn't work.");
+    }
+    await refresh();
+}
+
+function railHTML() {
+    let html = "";
+    for (let i = 0; i < S.rung_count; i++) {
+        const r = (S.rung_results || [])[i];
+        let cls = "";
+        if (i === S.rung_index && S.phase !== "finished" && S.phase !== "lobby") cls = "current";
+        else if (r && r.passed) cls = "passed";
+        else if (r && r.attempts && r.attempts.length) cls = "cracked";
+        html += `<div class="lb-rung ${cls}">${i + 1}</div>`;
+    }
+    return html;
+}
+
+function optionHTML(q, showResults) {
+    const total = showResults
+        ? Object.values(q.distribution || {}).reduce((a, b) => a + b, 0) : 0;
+    return q.options.map((opt, i) => {
+        const correct = showResults && (q.correct || []).includes(i);
+        const count = showResults ? ((q.distribution || {})[i] || 0) : 0;
+        const pct = total ? Math.round(count * 100 / total) : 0;
+        return `<div class="lb-option ${correct ? "correct" : ""}">
+            ${showResults ? `<span class="bar" style="width:${pct}%"></span>` : ""}
+            <span class="letter">${LETTERS[i]}</span>
+            <span>${esc(opt)}</span>
+            ${showResults ? `<span class="count">${count}</span>` : ""}
+        </div>`;
+    }).join("");
+}
+
+function questionHTML() {
+    const qs = S.questions || {};
+    const hasHL = !!qs.hl && !!qs.sl;
+    if (!qs[activeTab]) activeTab = qs.sl ? "sl" : "hl";
+    const q = qs[activeTab];
+    if (!q) return "";
+    const showResults = S.phase === "rung_reveal";
+    return `<div class="lb-qcard">
+        ${hasHL ? `<div class="lb-qtabs">
+            <button class="lb-qtab ${activeTab === "sl" ? "active" : ""}" onclick="activeTab='sl';render()">SL question</button>
+            <button class="lb-qtab ${activeTab === "hl" ? "active" : ""}" onclick="activeTab='hl';render()">HL variant</button>
+        </div>` : ""}
+        <div class="lb-qmeta">
+            <span class="lb-pill diff-${q.difficulty}">${q.difficulty}</span>
+            ${q.is_hl_only ? `<span class="lb-pill hl">HL only</span>` : ""}
+            <span>${esc(q.subtopic)}</span>
+        </div>
+        <div class="lb-qtext">${esc(q.text)}</div>
+        ${optionHTML(q, showResults)}
+        ${S.phase === "rung_open" ? `<div class="lb-answered">${S.answered_count} of ${S.participants.length} answered</div>` : ""}
+    </div>`;
+}
+
+function verdictHTML() {
+    if (!S.reveal) return "";
+    const r = S.reveal;
+    if (!r.total) return `<div class="lb-verdict fail">No answers came in<span class="sub">Open the rung again, or move on.</span></div>`;
+    const pct = Math.round(r.correct * 100 / r.total);
+    if (r.passed) return `<div class="lb-verdict pass">Rung cleared — ${pct}% correct<span class="sub">${r.correct} of ${r.total} · threshold ${S.threshold}%</span></div>`;
+    return `<div class="lb-verdict fail">The rung cracked — ${pct}% correct<span class="sub">${r.correct} of ${r.total} · needs ${S.threshold}% · talk it through, then retry</span></div>`;
+}
+
+function stageHTML() {
+    if (S.phase === "lobby") {
+        const roster = S.participants.map(p =>
+            `<span class="name ${p.level === "HL" ? "hl" : ""}">${esc(p.name)}</span>`).join("");
+        return `<div class="lb-lobby">
+            <h1>Join the climb</h1>
+            <p class="lead">Go to the games page and enter this code${S.hl_only ? " — this ladder is HL only" : ""}:</p>
+            <div class="lb-code">${esc(S.join_code || "")}</div>
+            <div class="lb-join-hint">${S.participants.length} joined</div>
+            <div class="lb-roster">${roster}</div>
+        </div>`;
+    }
+    if (S.phase === "finished") {
+        const results = S.rung_results || [];
+        const passed = results.filter(r => r && r.passed).length;
+        return `<div class="lb-done">
+            <h1>${passed === S.rung_count ? "Top of the ladder!" : "Climb over"}</h1>
+            <p class="summary">${passed} of ${S.rung_count} rungs cleared.</p>
+        </div>`;
+    }
+    return verdictHTML() + questionHTML();
+}
+
+function controlsHTML() {
+    if (S.phase === "lobby") {
+        return `<button class="lb-btn" ${S.participants.length ? "" : "disabled"} onclick="act('open_rung')">Start the climb</button>`;
+    }
+    if (S.phase === "rung_open") {
+        return `<button class="lb-btn" onclick="act('reveal')">Close answers &amp; reveal</button>
+                <button class="lb-btn ghost" onclick="act('finish')">End game</button>`;
+    }
+    if (S.phase === "rung_reveal") {
+        const last = S.rung_index + 1 >= S.rung_count;
+        const retry = S.attempt < 2 && S.reveal && !S.reveal.passed
+            ? `<button class="lb-btn" onclick="act('retry')">Retry after discussion</button>` : "";
+        return `${retry}
+            <button class="lb-btn ${retry ? "ghost" : ""}" onclick="act('next_rung')">${last ? "Finish the climb" : "Next rung"}</button>
+            <button class="lb-btn ghost" onclick="act('finish')">End game</button>`;
+    }
+    return "";
+}
+
+function renderTimer() {
+    const el = document.getElementById("timer");
+    if (S.phase !== "rung_open" || !S.opened_at) { el.hidden = true; return; }
+    const opened = new Date(S.opened_at).getTime();
+    const serverNow = new Date(S.server_now).getTime();
+    const skew = Date.now() - serverNow;
+    const endsAt = opened + S.seconds_per_rung * 1000 + skew;
+    el.hidden = false;
+    clearInterval(timerHandle);
+    const tick = () => {
+        const left = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
+        el.textContent = String(Math.floor(left / 60)) + ":" + String(left % 60).padStart(2, "0");
+        el.classList.toggle("low", left <= 10 && left > 0);
+        if (left <= 0) clearInterval(timerHandle);
+    };
+    tick();
+    timerHandle = setInterval(tick, 500);
+}
+
+function render() {
+    if (!S) return;
+    document.getElementById("rail").innerHTML = railHTML();
+    document.getElementById("stage").innerHTML = stageHTML();
+    document.getElementById("controls").innerHTML = controlsHTML();
+    document.getElementById("topMeta").textContent =
+        S.phase === "lobby" ? "Waiting to start"
+        : S.phase === "finished" ? "Finished"
+        : `Rung ${S.rung_index + 1} of ${S.rung_count}` + (S.attempt > 1 ? " · second attempt" : "");
+    renderTimer();
+}
+
+async function refresh() {
+    try {
+        const res = await fetch(STATE_URL);
+        if (res.ok) { S = await res.json(); render(); }
+    } catch (e) { /* transient network blip — next poll wins */ }
+}
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>

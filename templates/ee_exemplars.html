@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EE / IA Exemplars | Resource Library</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/ee-exemplars.css') }}">
+  <style>
+    .back-nav {
+      display: flex; align-items: center; gap: 1rem; padding: 0.75rem 2rem;
+      background: var(--bg-secondary); border-bottom: 1px solid var(--border-light);
+    }
+    .back-nav a { color: var(--text-secondary); text-decoration: none; font-size: 0.9rem; font-weight: 600; }
+    .back-nav a:hover { color: #fff; }
+  </style>
+</head>
+<body>
+{% include "_sidebar.html" %}
+
+
+  <nav class="back-nav">
+    <a href="{{ url_for('resources_hub') }}">&larr; Resources</a>
+    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+  </nav>
+
+  <div class="app-layout">
+
+    <header class="app-header">
+      <div class="header-branding">
+        <span class="logo-mark">⚡</span>
+        <div>
+          <h1>EE / IA Exemplars</h1>
+          <p class="subtitle">Browse real, graded Extended Essays and Internal Assessments</p>
+        </div>
+      </div>
+
+      <div class="metrics-panel">
+        <div class="metric-card">
+          <div class="metric-value" id="stat-total">0</div>
+          <div class="metric-label">Total Documents</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value" id="stat-avg-mark">0.0</div>
+          <div class="metric-label">Avg Raw Mark</div>
+        </div>
+        <div class="metric-card font-highlight">
+          <div class="metric-value" id="stat-top-grade">0</div>
+          <div class="metric-label">Grade A / 7 Achieved</div>
+        </div>
+      </div>
+    </header>
+
+    <main class="app-main">
+
+      <section class="controls-section">
+        <div class="search-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-input" placeholder="Search by topic, comments or subject... (Press '/' to focus)" autocomplete="off">
+          <button class="clear-search-btn" id="clear-search-btn" title="Clear Search">✕</button>
+        </div>
+
+        <div class="filters-grid">
+          <div class="select-wrapper">
+            <label for="filter-subject">Subject</label>
+            <select id="filter-subject">
+              <option value="">All Subjects</option>
+            </select>
+          </div>
+
+          <div class="select-wrapper">
+            <label for="filter-level">Level</label>
+            <select id="filter-level">
+              <option value="">All Levels</option>
+              <option value="HL">HL (IA)</option>
+              <option value="SL">SL (IA)</option>
+              <option value="Core">Core (EE/TOK)</option>
+            </select>
+          </div>
+
+          <div class="select-wrapper">
+            <label for="filter-grade">Grade</label>
+            <select id="filter-grade">
+              <option value="">All Grades</option>
+              <option value="7">7</option>
+              <option value="6">6</option>
+              <option value="5">5</option>
+              <option value="A">A</option>
+              <option value="B">B</option>
+              <option value="C">C</option>
+            </select>
+          </div>
+
+          <div class="select-wrapper">
+            <label for="filter-language">Language</label>
+            <select id="filter-language">
+              <option value="">All Languages</option>
+            </select>
+          </div>
+
+          <div class="select-wrapper">
+            <label for="filter-session">Session</label>
+            <select id="filter-session">
+              <option value="">All Sessions</option>
+            </select>
+          </div>
+
+          <div class="select-wrapper">
+            <label for="sort-by">Sort By</label>
+            <select id="sort-by">
+              <option value="subject-asc">Subject (A-Z)</option>
+              <option value="mark-desc">Raw Mark (High-Low)</option>
+              <option value="mark-asc">Raw Mark (Low-High)</option>
+              <option value="session-desc">Session (New-Old)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filter-actions-bar">
+          <div class="results-counter" id="results-counter">Showing 0 of 0 matching records</div>
+          <button class="reset-filters-btn" id="reset-filters-btn">Reset All Filters</button>
+        </div>
+      </section>
+
+      <section class="exemplars-grid" id="exemplars-grid"></section>
+
+    </main>
+
+    <footer class="app-footer">
+      <p>EE / IA Exemplar Library · Past student papers for reference</p>
+    </footer>
+
+  </div>
+
+  <div class="modal-overlay" id="viewer-modal">
+    <div class="modal-container">
+
+      <div class="modal-sidebar">
+        <button class="close-modal-btn" id="close-modal-btn" title="Close Viewer">✕ Close</button>
+
+        <div class="modal-detail-content">
+          <span class="detail-badge" id="modal-badge-level">LEVEL</span>
+          <h2 id="modal-title">Exemplar</h2>
+
+          <div class="meta-section">
+            <div class="meta-item">
+              <span class="meta-label">Subject</span>
+              <span class="meta-val" id="modal-subject">-</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Grade achieved</span>
+              <span class="meta-val highlight-grade" id="modal-grade">-</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Raw score</span>
+              <span class="meta-val" id="modal-raw-mark">-</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Session</span>
+              <span class="meta-val" id="modal-session">-</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">DP Language</span>
+              <span class="meta-val" id="modal-language">-</span>
+            </div>
+          </div>
+
+          <div class="modal-comment-box">
+            <h3>Comments & Topic</h3>
+            <p id="modal-comments">-</p>
+          </div>
+
+          <div class="modal-actions">
+            <a href="#" id="modal-download-link" class="action-btn download" download>
+              <span>📥 Download</span>
+            </a>
+            <a href="#" id="modal-original-link" class="action-btn secondary" target="_blank">
+              <span>🌐 View Original Source</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-viewer-frame">
+        <iframe id="pdf-iframe" src="" type="application/pdf"></iframe>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/ee-exemplars.js') }}"></script>
+</body>
+</html>

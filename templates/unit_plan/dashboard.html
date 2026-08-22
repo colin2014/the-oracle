@@ -1,0 +1,36 @@
+{% extends "unit_plan/_base.html" %}
+{% block title %}Planning Dashboard{% endblock %}
+
+{% block content %}
+<header class="sem-header">
+  <div class="wrap">
+    <div class="breadcrumb"><a href="{{ url_for('unit_plan.index') }}">Home</a> / Planning Dashboard</div>
+    <h1>Planning Dashboard</h1>
+    <p class="sub">Pacing, syllabus coverage, and resource gaps across both cohorts, at a glance.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <h2 class="section-title">Exams</h2>
+  <div class="g12-stats" id="dash-exams"></div>
+
+  <h2 class="section-title" style="margin-top:36px;">Weekly plan pacing</h2>
+  <p class="section-sub">Weeks marked taught vs. the total scheduled for each term (break weeks excluded).</p>
+  <div class="dash-grid" id="dash-semesters"></div>
+
+  <h2 class="section-title" style="margin-top:36px;">Grade 12 syllabus tracker</h2>
+  <div class="g12-stats" id="dash-grade12"></div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <span>DP Computer Science unit planner</span>
+    <a href="{{ url_for('unit_plan.index') }}">← Back to course overview</a>
+  </div>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='unit_plan/app.js') }}?v={{ asset_v }}"></script>
+<script src="{{ url_for('static', filename='unit_plan/dashboard.js') }}?v={{ asset_v }}"></script>
+{% endblock %}

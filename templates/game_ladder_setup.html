@@ -1,0 +1,120 @@
+{% extends "admin_base.html" %}
+{% block title %}Concept Ladder — setup{% endblock %}
+
+{% block content %}
+<style>
+    .ls-container { max-width: 860px; margin: 0 auto; }
+    .ls-container h1 { font-size: 1.5rem; margin: 0 0 0.25rem 0; }
+    .ls-sub { font-size: 0.9rem; color: var(--text-light); margin: 0 0 1.5rem 0; }
+
+    .ls-card { background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .ls-card h2 { font-size: 1rem; margin: 0 0 0.75rem 0; }
+
+    .ls-row { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+    .ls-field { display: flex; flex-direction: column; gap: 0.3rem; }
+    .ls-field label { font-size: 0.8rem; font-weight: 600; color: var(--text-dark); }
+    .ls-field select, .ls-field input[type="number"] {
+        padding: 0.5rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius-control);
+        background: var(--bg-light); color: var(--text-dark); font-family: inherit; font-size: 0.9rem;
+    }
+    .ls-field .hint { font-size: 0.75rem; color: var(--text-light); }
+
+    .ls-topic-filter { margin-bottom: 0.75rem; display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+    .ls-topic-filter input[type="search"] {
+        flex: 1; min-width: 220px; padding: 0.5rem 0.7rem; border: 1px solid var(--border);
+        border-radius: var(--radius-control); background: var(--bg-light); color: var(--text-dark);
+        font-family: inherit; font-size: 0.9rem;
+    }
+    .ls-count { font-size: 0.8rem; color: var(--text-light); }
+
+    .ls-topics { max-height: 380px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+    .ls-topic {
+        display: flex; align-items: center; gap: 0.65rem; padding: 0.55rem 0.8rem;
+        border-bottom: 1px solid var(--border); cursor: pointer; font-size: 0.86rem;
+    }
+    .ls-topic:last-child { border-bottom: none; }
+    .ls-topic:hover { background: var(--surface-hover); }
+    .ls-topic input { accent-color: var(--primary); flex-shrink: 0; }
+    .ls-topic .code { font-weight: 700; white-space: nowrap; }
+    .ls-topic .title { color: var(--text-dark); flex: 1; }
+    .ls-topic .meta { font-size: 0.72rem; color: var(--text-light); white-space: nowrap; }
+    .ls-hl-pill {
+        font-size: 0.65rem; font-weight: 700; padding: 0.12rem 0.5rem; border-radius: 999px;
+        background: rgba(245,158,11,0.14); color: #b45309; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    [data-theme="dark"] .ls-hl-pill { color: #fbbf24; }
+
+    .ls-actions { display: flex; gap: 0.75rem; align-items: center; }
+</style>
+
+<div class="ls-container">
+    <h1>Concept Ladder</h1>
+    <p class="ls-sub">Pick the topics; the ladder is built from the bank's multiple-choice questions, easy rungs first. HL students climb HL variants where the topics have them — SL students are never shown HL-only questions.</p>
+
+    <form method="post">
+        <div class="ls-card">
+            <h2>Class &amp; ladder shape</h2>
+            <div class="ls-row">
+                <div class="ls-field">
+                    <label for="class_id">Class</label>
+                    <select name="class_id" id="class_id" required>
+                        {% for c in classes %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="ls-field">
+                    <label for="rung_count">Rungs</label>
+                    <input type="number" name="rung_count" id="rung_count" value="8" min="4" max="12">
+                    <span class="hint">4–12 · easy at the bottom, hard at the top</span>
+                </div>
+                <div class="ls-field">
+                    <label for="threshold">Pass threshold</label>
+                    <input type="number" name="threshold" id="threshold" value="70" min="30" max="100">
+                    <span class="hint">% of answers that must be correct to advance</span>
+                </div>
+                <div class="ls-field">
+                    <label for="seconds_per_rung">Seconds per rung</label>
+                    <input type="number" name="seconds_per_rung" id="seconds_per_rung" value="60" min="15" max="300">
+                    <span class="hint">Countdown shown on the board</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="ls-card">
+            <h2>Topics</h2>
+            <div class="ls-topic-filter">
+                <input type="search" id="topicSearch" placeholder="Filter topics — e.g. A1.1 or memory" aria-label="Filter topics">
+                <span class="ls-count"><span id="pickedCount">0</span> selected</span>
+            </div>
+            <div class="ls-topics" id="topicList">
+                {% for t in subtopics %}
+                <label class="ls-topic" data-search="{{ t.code|lower }} {{ t.title|lower }}">
+                    <input type="checkbox" name="topics" value="{{ t.code }}">
+                    <span class="code">{{ t.code }}</span>
+                    <span class="title">{{ t.title }}</span>
+                    {% if t.hl_only %}<span class="ls-hl-pill">HL only</span>{% endif %}
+                    <span class="meta">{{ t.mcq_count }} MCQ</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="ls-actions">
+            <button type="submit" class="admin-btn">Create ladder &amp; open board</button>
+            <a class="admin-btn-text" href="{{ url_for('games.hub') }}">Back to games</a>
+        </div>
+    </form>
+</div>
+
+<script>
+    const search = document.getElementById("topicSearch");
+    const rows = Array.from(document.querySelectorAll(".ls-topic"));
+    const picked = document.getElementById("pickedCount");
+    search.addEventListener("input", () => {
+        const q = search.value.trim().toLowerCase();
+        rows.forEach(r => { r.style.display = !q || r.dataset.search.includes(q) ? "" : "none"; });
+    });
+    document.getElementById("topicList").addEventListener("change", () => {
+        picked.textContent = rows.filter(r => r.querySelector("input").checked).length;
+    });
+</script>
+{% endblock %}

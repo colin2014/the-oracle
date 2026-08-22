@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Textbook Editor & Viewer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <style>
+        /* ============================================================
+           Editor chrome mirrors the reading page (book_page.html) so
+           clicking ✏️ Edit does not change the navigation or layout.
+           ============================================================ */
+        .editor-body {
+            background: var(--bg-light);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        /* Same three-region grid as the reader: chapters | content (+ palette in edit mode) */
+        .editor-grid {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+            background: var(--bg-light);
+        }
+
+        .editor-grid.editing {
+            grid-template-columns: 280px 1fr 280px;
+        }
+
+        .editor-grid.nav-collapsed {
+            grid-template-columns: 1fr;
+        }
+
+        .editor-grid.nav-collapsed.editing {
+            grid-template-columns: 1fr 280px;
+        }
+
+        .editor-grid.nav-collapsed .editor-sidebar-left {
+            display: none;
+        }
+
+        /* Left sidebar — identical styling to the reader's chapters sidebar */
+        .editor-sidebar-left,
+        .editor-sidebar-right {
+            background: var(--bg-white);
+            border-right: 1px solid var(--border);
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            overflow-y: auto;
+        }
+
+        .editor-sidebar-right {
+            border-right: none;
+            border-left: 1px solid var(--border);
+        }
+
+        .sidebar-panel {
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .sidebar-panel h2 {
+            margin: 0 0 1rem 0;
+            font-size: 1.1rem;
+            color: var(--text-dark);
+        }
+
+        .palette-subhead {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-light);
+            margin: 0 0 0.5rem 0;
+        }
+
+        .palette-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .btn-palette {
+            text-align: left;
+            font-size: 0.85rem;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-light);
+            color: var(--text-dark);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-palette:hover {
+            border-color: var(--primary);
+            background: var(--bg-white);
+            color: var(--primary);
+        }
+
+        /* Nav tree items styled like the reader's chapter links */
+        .nav-tree .nav-item {
+            display: block;
+            padding: 0.6rem 0.75rem;
+            border-radius: 8px;
+            color: var(--text-dark);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            margin: 0;
+        }
+
+        .nav-tree .nav-item:hover {
+            background: var(--bg-light);
+            color: var(--primary);
+        }
+
+        .nav-tree .nav-item.active {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white !important;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+        }
+
+        /* Header — identical to the reader's page header */
+        .editor-header {
+            background: var(--header-bg);
+            color: white;
+            min-height: 52px;
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .editor-header .header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 0;
+        }
+
+        .editor-header h1 {
+            font-size: 1.05rem;
+            margin: 0;
+            font-weight: 700;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .editor-header .header-nav a {
+            color: white;
+            text-decoration: none;
+            font-size: 0.9rem;
+            opacity: 0.9;
+            transition: opacity 0.2s;
+        }
+
+        .editor-header .header-nav a:hover {
+            opacity: 1;
+        }
+
+        .btn-toggle {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .editor-main-area {
+            overflow-y: auto;
+            height: 100vh;
+            min-width: 0;
+        }
+
+        /* Content card — same container as the reading page */
+        .page-container {
+            max-width: 70rem;
+            margin: 0 auto;
+            padding: 2rem 1.25rem;
+        }
+
+        .editor-content-panel {
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 2.25rem 2.5rem;
+            box-shadow: var(--shadow);
+        }
+
+        /* Heading sizes mirror the reading page's .page-body headings (and the
+           H-Styles defaults) so a heading block renders identically here and in
+           the student view. Colour/margin come from the block's inline style;
+           saved H-Styles override these with !important in both places. */
+        .editor-content-panel h1 { font-size: 2rem; font-weight: bold; }
+        .editor-content-panel h2 { font-size: 1.35rem; font-weight: bold; }
+        .editor-content-panel h3 { font-size: 1.15rem; font-weight: bold; }
+        .editor-content-panel h4 { font-size: 1rem; font-weight: bold; }
+
+        .breadcrumbs {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-bottom: 1rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Two-column page canvas: main content + side widgets (same 2:1 split as reader) */
+        .page-canvas-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+            gap: 2rem;
+            align-items: start;
+        }
+
+        .page-canvas-grid:has(.sidebar-col:empty) {
+            grid-template-columns: 1fr;
+        }
+
+        .page-canvas-grid .sidebar-col:empty {
+            display: none;
+        }
+
+        .canvas-column {
+            min-width: 0;
+        }
+
+        /* Sideboxes — copied from the reading page so they render identically */
+        .sidebar-section {
+            border-left: 4px solid var(--primary);
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            background: var(--bg-light);
+            border-radius: 0 8px 8px 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .sidebar-section h4 { margin: 0 0 0.5rem 0; }
+        .sidebar-section.study { border-color: #10b981; background: #ecfdf5; }
+        .sidebar-section.theory { border-color: #8b5cf6; background: #f5f3ff; }
+        .sidebar-section.vocab { border-color: #3b82f6; background: #eff6ff; }
+        .sidebar-section.funfact { border-color: #f59e0b; background: #fffbeb; }
+        .sidebar-section.applied { border-color: #ec4899; background: #fdf2f8; }
+
+        [data-theme="dark"] .sidebar-section { background: rgba(148, 163, 184, 0.08); }
+        [data-theme="dark"] .sidebar-section.study { background: rgba(16, 185, 129, 0.1); color: #6ee7b7; }
+        [data-theme="dark"] .sidebar-section.theory { background: rgba(139, 92, 246, 0.12); color: #c4b5fd; }
+        [data-theme="dark"] .sidebar-section.vocab { background: rgba(59, 130, 246, 0.12); color: #93c5fd; }
+        [data-theme="dark"] .sidebar-section.funfact { background: rgba(245, 158, 11, 0.1); color: #fcd34d; }
+        [data-theme="dark"] .sidebar-section.applied { background: rgba(236, 72, 153, 0.1); color: #f9a8d4; }
+
+        /* Question + task blocks (read mode) */
+        .question-block {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-light);
+        }
+
+        .question-block .q-text {
+            font-size: 1.05rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .reveal-btn {
+            font-size: 0.85rem;
+            padding: 4px 10px;
+            cursor: pointer;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+
+        .q-answer {
+            display: none;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px dashed var(--border);
+            color: #059669;
+            font-weight: 500;
+        }
+
+        .q-answer.revealed {
+            display: block;
+        }
+
+        .task-block {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--warning);
+            border-radius: 8px;
+            background: var(--bg-light);
+        }
+
+        .task-block .task-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-light);
+        }
+
+        .img-frame {
+            position: relative;
+            text-align: center;
+        }
+
+        .img-frame img {
+            max-width: 100%;
+            border-radius: 8px;
+        }
+
+        /* ---------- Edit-mode block chrome ---------- */
+        /* Floating formatting toolbar — detached from the content flow so it
+           never pushes the page down or shifts the layout. It hovers near the
+           top-centre of the viewport and overlays content while scrolling. */
+        .format-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            flex-wrap: wrap;
+            padding: 0.4rem 0.6rem;
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            position: fixed;
+            top: 64px;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: min(920px, calc(100vw - 2rem));
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+            z-index: 200;
+        }
+
+        /* Give the canvas room so the floating toolbar doesn't overlap the first
+           block when the page is at the top (edit mode only). */
+        .editor-grid.editing .page-container {
+            padding-top: 4.5rem;
+        }
+
+        .format-toolbar button,
+        .format-toolbar select,
+        .format-toolbar input[type="color"] {
+            border: 1px solid var(--border);
+            background: var(--bg-white);
+            color: var(--text-dark);
+            border-radius: 6px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .format-toolbar button:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .toolbar-divider {
+            width: 1px;
+            height: 1.25rem;
+            background: var(--border);
+            margin: 0 0.25rem;
+        }
+
+        .canvas-block {
+            position: relative;
+            margin-bottom: 0.5rem;
+        }
+
+        .editing .canvas-block {
+            border: 1px solid transparent;
+            border-radius: 8px;
+            padding: 0.35rem 0.5rem;
+        }
+
+        .editing .canvas-block:hover {
+            border-color: var(--border);
+        }
+
+        .canvas-block.block-selected {
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 0 2px rgba(131, 102, 232, 0.2);
+        }
+
+        .canvas-block.dragging {
+            opacity: 0.5;
+        }
+
+        .canvas-block.drop-before {
+            box-shadow: 0 -3px 0 0 var(--primary);
+        }
+
+        .canvas-block.drop-after {
+            box-shadow: 0 3px 0 0 var(--primary);
+        }
+
+        .drag-handle {
+            position: absolute;
+            left: -1.25rem;
+            top: 0.4rem;
+            cursor: grab;
+            color: var(--text-light);
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: opacity 0.15s;
+            user-select: none;
+        }
+
+        .canvas-block:hover .drag-handle {
+            opacity: 1;
+        }
+
+        .block-controls {
+            position: absolute;
+            right: 0.25rem;
+            top: -0.75rem;
+            display: flex;
+            gap: 0.25rem;
+            align-items: center;
+            background: var(--bg-white);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 2px 4px;
+            box-shadow: var(--shadow);
+            opacity: 0;
+            transition: opacity 0.15s;
+            z-index: 10;
+        }
+
+        .canvas-block:hover .block-controls,
+        .canvas-block.block-selected .block-controls {
+            opacity: 1;
+        }
+
+        .btn-control {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 0.85rem;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+
+        .btn-control:hover {
+            background: var(--bg-light);
+        }
+
+        .insert-zone {
+            display: flex;
+            justify-content: center;
+            height: 14px;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+
+        .insert-zone:hover {
+            opacity: 1;
+        }
+
+        .insert-btn {
+            border: 1px solid var(--primary);
+            background: var(--bg-white);
+            color: var(--primary);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            line-height: 1;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .img-resize-handle {
+            position: absolute;
+            right: 4px;
+            bottom: 4px;
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--primary);
+            border-radius: 3px;
+            background: var(--bg-white);
+            cursor: nwse-resize;
+        }
+
+        .float-left { float: left; margin-right: 1.25rem; }
+        .float-right { float: right; margin-left: 1.25rem; }
+
+        [contenteditable="true"]:empty:before {
+            content: attr(data-placeholder);
+            color: var(--text-light);
+            pointer-events: none;
+        }
+
+        @media (max-width: 900px) {
+            .editor-grid,
+            .editor-grid.editing {
+                grid-template-columns: 1fr;
+            }
+
+            .editor-sidebar-left {
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 280px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            }
+
+            .editor-sidebar-right {
+                position: static;
+                height: auto;
+                border-left: none;
+                border-top: 1px solid var(--border);
+            }
+
+            .editor-content-panel {
+                padding: 1.25rem 1rem;
+            }
+        }
+    </style>
+</head>
+<body class="editor-body">
+{% include "_sidebar.html" %}
+
+    <div id="editorGrid" class="editor-grid">
+        <!-- Left Sidebar: same chapters navigation as the reading page -->
+        <aside id="navSidebar" class="editor-sidebar-left">
+            <div class="sidebar-panel" style="border-bottom: 1px solid var(--border); flex-direction: row; align-items: center; justify-content: space-between; padding: 1rem;">
+                <h2 style="margin: 0;">📖 Chapters</h2>
+            </div>
+            <div class="sidebar-panel" style="flex: 1; overflow-y: auto;">
+                <div id="pageSelector" style="margin-bottom: 1rem; display: none;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem;">Current Page</label>
+                    <select id="pageDropdown" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem;">
+                        <option value="">Loading pages...</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
+                    <button id="newPageBtn" class="btn btn-small" style="flex: 1; font-size: 0.85rem;">+ Page</button>
+                    <button id="newSectionBtn" class="btn btn-small" style="flex: 1; font-size: 0.85rem;">+ Section</button>
+                </div>
+                <input type="search" id="navFilter" placeholder="Filter topics…" style="width: 100%; padding: 0.5rem; margin-bottom: 0.75rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem;">
+                <div id="syllabusNavTree" class="nav-tree">
+                    <!-- Clickable syllabus items populated dynamically -->
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main content area: same header + centered page card as the reading page -->
+        <div class="editor-main-area">
+            <header class="editor-header">
+                <div class="header-left">
+                    <button id="toggleNavBtn" class="btn-toggle" title="Toggle Sidebar">☰</button>
+                    <h1 id="pageTitleText">📚 Textbook Editor</h1>
+                </div>
+                <div class="header-nav" style="display: flex; gap: 1rem; align-items: center;">
+                    <a href="/dashboard" title="Dashboard">🎓 Dashboard</a>
+                    <a href="/resources" title="Resources">🗂 Resources</a>
+                    <a id="viewPageLink" href="#" title="Back to reading view" style="display: none;">👁 View</a>
+                    <button id="themeToggle" class="btn-toggle" title="Toggle dark mode">🌙</button>
+                </div>
+                <div class="header-right" id="headerActions" style="display: flex; gap: 0.5rem; align-items: center;">
+                    <!-- Save, cancel, edit buttons rendered dynamically -->
+                </div>
+            </header>
+
+            <main class="editor-content-area">
+                <div class="page-container">
+                    <div id="contentView" class="editor-content-panel">
+                        <!-- Sequential blocks content rendered here -->
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Right Sidebar: Component Palette (Edit Mode only) -->
+        <aside id="componentSidebar" class="editor-sidebar-right" style="display: none;">
+            <div class="sidebar-panel" style="height: 100%; gap: 1rem;">
+                <h2>Insert Components</h2>
+                <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; padding-right: 0.25rem;">
+                    <div class="palette-group">
+                        <h3 class="palette-subhead">Layouts & Headers</h3>
+                        <div class="palette-buttons">
+                            <button class="btn-palette" onclick="window.app.addHeadingBlock(1)">📝 Title Heading</button>
+                            <button class="btn-palette" onclick="window.app.addHeadingBlock(3)">📝 Subheading</button>
+                            <button class="btn-palette" onclick="window.app.addParagraphBlock()">✍️ Paragraph Text</button>
+                        </div>
+                    </div>
+                    <div class="palette-group">
+                        <h3 class="palette-subhead">Syllabus Boxes</h3>
+                        <div class="palette-buttons">
+                            <button class="btn-palette" onclick="window.app.addSideboxBlock('study')">💡 Study Tip</button>
+                            <button class="btn-palette" onclick="window.app.addSideboxBlock('theory')">🤔 Theory of Knowledge</button>
+                            <button class="btn-palette" onclick="window.app.addSideboxBlock('applied')">🛠️ Applied Work</button>
+                            <button class="btn-palette" onclick="window.app.addSideboxBlock('vocab')">📖 Vocabulary</button>
+                            <button class="btn-palette" onclick="window.app.addSideboxBlock('funfact')">🎉 Fun Fact</button>
+                        </div>
+                    </div>
+                    <div class="palette-group">
+                        <h3 class="palette-subhead">Interactive</h3>
+                        <div class="palette-buttons">
+                            <button class="btn-palette" onclick="window.app.addQuestionBlock()">❓ Question + Reveal Answer</button>
+                            <button class="btn-palette" onclick="window.app.addTaskBlock()">📋 Task Box</button>
+                        </div>
+                    </div>
+                    <div class="palette-group">
+                        <h3 class="palette-subhead">Media & Embeds</h3>
+                        <div class="palette-buttons">
+                            <button class="btn-palette" onclick="window.app.addImageBlock()">🖼️ Image File</button>
+                            <button class="btn-palette" onclick="window.app.addVideoBlock()">🎥 Video Player</button>
+                            <button class="btn-palette" onclick="window.app.addPptxBlock()">📊 PowerPoint Slides</button>
+                            <button class="btn-palette" onclick="window.app.addCodeBlock()">💻 Code Snippet</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Pass folder name to frontend -->
+    <script>
+        window.currentFolder = "{{ folder_name }}";
+
+        // Link back to the student reading view when editing a specific book page
+        (function () {
+            const folder = window.currentFolder || '';
+            const slash = folder.indexOf('/');
+            if (slash > 0) {
+                const link = document.getElementById('viewPageLink');
+                if (link) {
+                    link.href = '/book/' + folder.slice(0, slash) + '/page/' + folder.slice(slash + 1);
+                    link.style.display = '';
+                }
+            }
+        })();
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>
+        // Register language aliases and configure highlight.js
+        if (hljs) {
+            hljs.configure({ ignoreUnescapedHTML: true });
+        }
+    </script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

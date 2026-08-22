@@ -1,0 +1,69 @@
+{% extends "admin_base.html" %}
+{% block title %}Classes{% endblock %}
+{% block content %}
+<h1>Classes</h1>
+
+<div class="admin-card">
+    <h3 style="margin-top:0;">New Class</h3>
+    <form method="POST" action="{{ url_for('admin.classes') }}" class="admin-inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="text" name="name" placeholder="e.g. IB CS Period 3" required>
+        <button type="submit" class="admin-btn">Create</button>
+    </form>
+</div>
+
+<style>
+    .class-actions { display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center; }
+    .class-actions form { display: inline; }
+</style>
+
+<table class="admin-table">
+    <thead>
+        <tr><th>Name</th><th>Students</th><th>Assignments</th><th></th></tr>
+    </thead>
+    <tbody>
+        {% for c in classes %}
+        <tr>
+            <td>{{ c.name }}</td>
+            <td>{{ stats[c.id].student_count }}</td>
+            <td>{{ stats[c.id].assignment_count }}</td>
+            <td>
+                <div class="class-actions">
+                    <a href="{{ url_for('admin.class_detail', class_id=c.id) }}">Manage</a>
+                    <form method="POST" action="{{ url_for('admin.archive_class', class_id=c.id) }}" style="display: inline;" onsubmit="return confirm('Archive this class? Nothing is deleted — you can restore it from the archived list below.');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="admin-btn admin-btn-danger" style="font-size: 0.8rem; padding: 0.3rem 0.6rem;">Archive</button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">No classes yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if archived_classes %}
+<h3 style="margin-top: 2rem;">Archived Classes</h3>
+<table class="admin-table">
+    <thead>
+        <tr><th>Name</th><th></th></tr>
+    </thead>
+    <tbody>
+        {% for c in archived_classes %}
+        <tr>
+            <td>{{ c.name }}</td>
+            <td>
+                <div class="class-actions">
+                    <form method="POST" action="{{ url_for('admin.unarchive_class', class_id=c.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="admin-btn" style="font-size: 0.8rem; padding: 0.3rem 0.6rem;">Restore</button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endblock %}

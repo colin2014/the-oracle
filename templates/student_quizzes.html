@@ -1,0 +1,123 @@
+{% extends "student_base.html" %}
+{% block title %}Quizzes — The Oracle{% endblock %}
+
+{% block content %}
+<style>
+    .quiz-hub-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .quiz-hub-header h1 {
+        font-size: 1.6rem;
+        margin: 0 0 0.5rem 0;
+        color: var(--text-dark);
+    }
+
+    .quiz-hub-header p {
+        color: var(--text-light);
+        margin: 0;
+    }
+
+    .quiz-book {
+        margin-bottom: 1.75rem;
+    }
+
+    .quiz-book h2 {
+        font-size: 1.05rem;
+        color: var(--text-dark);
+        margin: 0 0 0.75rem 0;
+    }
+
+    .quiz-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1rem 1.1rem;
+        margin-bottom: 0.6rem;
+        text-decoration: none;
+        color: var(--text-dark);
+        transition: all 0.15s ease;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .quiz-card:active,
+    .quiz-card:hover {
+        border-color: var(--primary);
+        background: rgba(157, 132, 255, 0.06);
+    }
+
+    .quiz-card-title {
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .quiz-card-meta {
+        font-size: 0.8rem;
+        color: var(--text-light);
+    }
+
+    .quiz-card-status {
+        flex-shrink: 0;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.3rem 0.7rem;
+        border-radius: 999px;
+        white-space: nowrap;
+    }
+
+    .quiz-status-new { background: rgba(157, 132, 255, 0.15); color: var(--primary); }
+    .quiz-status-progress { background: rgba(217, 119, 6, 0.15); color: #d97706; }
+    .quiz-status-done { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+
+    @media (max-width: 768px) {
+        .quiz-hub-header h1 { font-size: 1.3rem; }
+    }
+</style>
+
+<div class="quiz-hub-header" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+    <div>
+        <h1>📝 Quizzes</h1>
+        <p>Test yourself on what you've been reading</p>
+    </div>
+    <a href="{{ url_for('quiz.student_quiz_analytics') }}" class="btn btn-secondary" style="white-space: nowrap;">📊 My quiz analytics</a>
+</div>
+
+{% include "_test_status_banner.html" %}
+
+{% if books %}
+    {% for book in books %}
+    <div class="quiz-book">
+        <h2>📚 {{ book.title }}</h2>
+        {% for quiz in book.quizzes %}
+        <a href="{{ quiz.url }}" class="quiz-card">
+            <div style="min-width: 0;">
+                <div class="quiz-card-title">{{ quiz.page_title }}</div>
+                <div class="quiz-card-meta">
+                    {{ quiz.questions }} question{{ 's' if quiz.questions != 1 }}
+                    {% if quiz.answered %} · {{ quiz.correct }}/{{ quiz.answered }} correct so far{% endif %}
+                </div>
+            </div>
+            {% if quiz.answered >= quiz.questions %}
+            <span class="quiz-card-status quiz-status-done">✓ Done</span>
+            {% elif quiz.answered > 0 %}
+            <span class="quiz-card-status quiz-status-progress">{{ quiz.answered }}/{{ quiz.questions }}</span>
+            {% else %}
+            <span class="quiz-card-status quiz-status-new">Start</span>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+    {% endfor %}
+{% else %}
+<div class="student-card" style="text-align: center; padding: 3rem 1rem;">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">📝</div>
+    <h3 style="margin-bottom: 0.5rem;">No quizzes yet</h3>
+    <p style="color: var(--text-light);">Quizzes appear here once your teacher adds questions to your reading.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Present Code — {{ paper.title }}</title>
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.svg') }}" type="image/svg+xml">
+    <style>
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0; height: 100%;
+            background: radial-gradient(circle at 50% 20%, #2a1f4d 0%, #14101f 55%, #0a0810 100%);
+            color: #f4f2fb; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            overflow-x: hidden;
+        }
+        .pres-back {
+            position: fixed; top: 1.25rem; left: 1.5rem; color: rgba(244,242,251,0.6);
+            text-decoration: none; font-size: 0.85rem; font-weight: 600; z-index: 5;
+        }
+        .pres-back:hover { color: #fff; }
+
+        .pres-shell {
+            min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; padding: 2rem 1rem; text-align: center;
+        }
+        .pres-eyebrow {
+            font-size: 0.8rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+            color: #b592ff; margin-bottom: 0.6rem;
+        }
+        .pres-title { font-size: 1.6rem; font-weight: 700; margin: 0 0 0.35rem; }
+        .pres-target { font-size: 1rem; color: rgba(244,242,251,0.55); margin: 0 0 2.5rem; }
+
+        .pres-instructions { font-size: 1.05rem; color: rgba(244,242,251,0.75); margin-bottom: 1rem; }
+        .pres-code {
+            font-family: ui-monospace, Consolas, monospace; font-weight: 800;
+            font-size: clamp(3.5rem, 12vw, 9rem); letter-spacing: 0.12em;
+            background: linear-gradient(135deg, #b592ff, #7c4dff);
+            -webkit-background-clip: text; background-clip: text; color: transparent;
+            line-height: 1.1; margin-bottom: 2rem; text-shadow: 0 0 60px rgba(181,146,255,0.35);
+        }
+        .pres-url { font-size: 1rem; color: rgba(244,242,251,0.6); margin-bottom: 3rem; }
+        .pres-url b { color: #f4f2fb; }
+
+        .pres-stats { display: flex; gap: 2.5rem; margin-bottom: 2.5rem; flex-wrap: wrap; justify-content: center; }
+        .pres-stat .n { font-size: 2rem; font-weight: 800; }
+        .pres-stat .k { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(244,242,251,0.55); }
+
+        .pres-actions { display: flex; gap: 0.75rem; }
+        .pres-actions button {
+            padding: 0.55rem 1.3rem; border-radius: 8px; border: 1px solid rgba(244,242,251,0.25);
+            background: rgba(244,242,251,0.06); color: #f4f2fb; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+        }
+        .pres-actions button:hover { background: rgba(244,242,251,0.14); }
+        .pres-done {
+            font-size: clamp(2rem, 6vw, 3.5rem); font-weight: 800; color: #6ee7b7; margin-bottom: 2rem;
+        }
+
+        /* "Time remaining" defaults to one aggregate number (the first student to
+           start — they run out soonest); the per-student breakdown is opt-in via
+           this small expand icon, not shown by default. */
+        .pres-stat .n { display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
+        .pres-expand-btn {
+            background: none; border: none; padding: 0.2rem; cursor: pointer;
+            color: rgba(244,242,251,0.4); display: inline-flex; align-items: center; justify-content: center;
+        }
+        .pres-expand-btn:hover { color: #f4f2fb; }
+        .pres-expand-icon { width: 16px; height: 16px; }
+
+        .pres-student-overlay {
+            display: none; position: fixed; inset: 0; z-index: 20;
+            background: radial-gradient(ellipse 90% 65% at 50% 30%, #1c1433 0%, #110c1f 45%, #07050c 100%);
+            padding: 2rem; overflow-y: auto;
+        }
+        /* Header pinned to the top, everything else optically centred in what
+           is left — otherwise the hero sits high with a third of the screen
+           dead underneath it, which is exactly the wrong balance on a board
+           being read from across a room. */
+        .pres-student-overlay.open { display: flex; flex-direction: column; }
+        .pres-overlay-body {
+            flex: 1 0 auto; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 2.75rem;
+            padding-bottom: 1rem;
+        }
+        .pres-student-header {
+            display: flex; align-items: center; justify-content: space-between;
+            /* Explicit width, not just max-width: the overlay is a flex column,
+               and an auto cross-axis margin cancels the default stretch, which
+               would shrink this to its content and un-anchor the title. */
+            width: 100%; max-width: 1100px; margin: 0 auto 1.5rem; text-align: left; gap: 1.5rem;
+        }
+        .pres-student-header h2 { margin: 0; font-size: 1.3rem; font-weight: 700; }
+        .pres-student-close {
+            background: rgba(244,242,251,0.08); border: none; border-radius: 8px; padding: 0.5rem;
+            color: #f4f2fb; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .pres-student-close:hover { background: rgba(244,242,251,0.16); }
+        .pres-student-close svg { width: 18px; height: 18px; }
+        /* Fixed-width tracks centred as a group, rather than stretch-to-fill:
+           with a handful of students, auto-fill/1fr blew each card out to a
+           third of the screen. */
+        .pres-student-list {
+            width: 100%; max-width: 100%; margin: 0 auto; display: grid;
+            grid-template-columns: repeat(auto-fit, 240px);
+            justify-content: center; gap: 1.1rem;
+        }
+        .pres-student-row {
+            display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+            background: rgba(244,242,251,0.05); border: 1px solid rgba(244,242,251,0.14);
+            border-radius: 14px; padding: 1.25rem 1rem; text-align: center;
+            text-decoration: none; color: inherit; cursor: pointer;
+            transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+        }
+        .pres-student-row:hover {
+            border-color: rgba(181,146,255,0.55); background: rgba(244,242,251,0.09); transform: translateY(-2px);
+        }
+        .pres-student-name { font-size: 0.9rem; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+        /* 3x the original per-card timer size (was 1.05rem). Cards run the
+           same two-step urgency ramp as the hero, but off each student's own
+           deadline — so the room can see who specifically is close to time. */
+        .pres-student-time { font-variant-numeric: tabular-nums; font-size: 3.15rem; font-weight: 800; color: #b592ff; line-height: 1; }
+        .pres-student-time.warning { color: #f5c069; }
+        .pres-student-time.ending-soon { color: #f98080; }
+        .pres-student-hint { font-size: 0.72rem; color: rgba(244,242,251,0.45); }
+        .pres-student-empty { text-align: center; color: rgba(244,242,251,0.5); padding: 2rem; grid-column: 1 / -1; }
+
+        /* ---------------------------------------------------------------
+           Fullscreen hero countdown.
+
+           The current leader (first to finish) spotlighted much bigger than
+           the compact main-page hero, with the full timer list still visible
+           underneath for context. Reading from perStudentData[0] each render
+           means this advances to whoever's next automatically once the
+           current leader submits.
+
+           Three interchangeable presentations share this shell, chosen from
+           the header picker and remembered in localStorage. Everything
+           state-dependent (the "running out" colour ramp) is expressed once
+           as custom properties on .pres-fs-hero so all three inherit the
+           same behaviour rather than each re-deriving it.
+           --------------------------------------------------------------- */
+        .pres-fs-hero {
+            display: none; text-align: center; margin: 0 auto; width: 100%;
+            max-width: 100%; position: relative;
+            --hero-accent: #c9a3f2;
+            --hero-accent-dim: rgba(181,146,255,0.35);
+            --hero-glow: rgba(147,51,234,0.55);
+        }
+        /* Two urgency steps rather than one on/off flip: the room gets a
+           quiet five-minute warning and an unmistakable final minute. */
+        .pres-fs-hero[data-urgency="soon"] {
+            --hero-accent: #f5c069; --hero-accent-dim: rgba(245,192,105,0.35);
+            --hero-glow: rgba(245,158,11,0.5);
+        }
+        .pres-fs-hero[data-urgency="critical"] {
+            --hero-accent: #f98080; --hero-accent-dim: rgba(249,128,128,0.4);
+            --hero-glow: rgba(239,68,68,0.55);
+        }
+        .pres-fs-hero .pres-hero-label { font-size: 0.95rem; margin-bottom: 1.25rem; }
+        .pres-fs-hero-stage {
+            display: flex; align-items: center; justify-content: center;
+            width: 100%; min-height: 12rem;
+        }
+
+        /* --- Style 1: split-flap ------------------------------------------
+           Mechanical departure-board flaps. Each digit is four stacked
+           halves: two static (the card at rest) and two hinged leaves that
+           only animate on the frames where that digit actually changes —
+           so the minutes tens digit sits perfectly still for ten minutes
+           at a time, which is most of what sells it as a physical object. */
+        .flip-clock {
+            --flip-h: clamp(6rem, 23vh, 16rem);
+            --flip-w: calc(var(--flip-h) * 0.72);
+            --flip-font: calc(var(--flip-h) * 0.72);
+            --flip-radius: calc(var(--flip-h) * 0.07);
+            --flip-dur: 0.16s;
+            display: flex; align-items: center; gap: calc(var(--flip-h) * 0.09);
+        }
+        .flip-group { display: flex; gap: calc(var(--flip-h) * 0.05); }
+        .flip-digit {
+            position: relative; width: var(--flip-w); height: var(--flip-h);
+            perspective: calc(var(--flip-h) * 3);
+            font-size: var(--flip-font); font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: var(--hero-accent);
+            filter: drop-shadow(0 calc(var(--flip-h) * 0.035) calc(var(--flip-h) * 0.07) rgba(0,0,0,0.6));
+        }
+        /* One rim drawn over the whole card, so the two halves read as a
+           single moulded object rather than two stacked rectangles. */
+        .flip-digit::after {
+            content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+            border-radius: var(--flip-radius);
+            box-shadow: inset 0 0 0 1px rgba(244,242,251,0.09);
+        }
+        .flip-half {
+            position: absolute; left: 0; right: 0; height: calc(50% - 1px);
+            overflow: hidden; backface-visibility: hidden;
+        }
+        .flip-half > span {
+            display: block; position: absolute; left: 0; right: 0;
+            height: var(--flip-h); line-height: var(--flip-h); text-align: center;
+        }
+        /* Top half catches a little more light than the bottom — the cheapest
+           possible cue that these are angled physical cards, not flat boxes. */
+        .flip-upper {
+            top: 0; border-radius: var(--flip-radius) var(--flip-radius) 0 0;
+            background: linear-gradient(180deg, #2a2148 0%, #201936 100%);
+        }
+        .flip-upper > span { top: 0; }
+        .flip-lower {
+            bottom: 0; border-radius: 0 0 var(--flip-radius) var(--flip-radius);
+            background: linear-gradient(180deg, #17122c 0%, #120e22 100%);
+        }
+        .flip-lower > span { bottom: 0; }
+        /* A hairline of the accent along the hinge — the only place the
+           card's edge catches light. */
+        .flip-upper::after {
+            content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--hero-accent-dim), transparent);
+        }
+        .flip-upper-anim, .flip-lower-anim { z-index: 2; opacity: 0; }
+        .flip-lower-anim { transform: rotateX(90deg); transform-origin: top center; }
+        .flip-upper-anim { transform-origin: bottom center; }
+        .flip-digit.flipping .flip-upper-anim {
+            opacity: 1; animation: flapFall var(--flip-dur) cubic-bezier(0.5, 0, 0.9, 0.35) forwards;
+        }
+        .flip-digit.flipping .flip-lower-anim {
+            opacity: 1;
+            animation: flapLand var(--flip-dur) var(--flip-dur) cubic-bezier(0.15, 0.85, 0.35, 1) forwards;
+        }
+        @keyframes flapFall { to { transform: rotateX(-90deg); } }
+        @keyframes flapLand { to { transform: rotateX(0deg); } }
+        .flip-colon {
+            display: flex; flex-direction: column; justify-content: center;
+            gap: calc(var(--flip-h) * 0.16);
+        }
+        .flip-colon span {
+            width: calc(var(--flip-h) * 0.075); height: calc(var(--flip-h) * 0.075);
+            border-radius: 50%; background: var(--hero-accent); opacity: 0.85;
+        }
+
+        /* --- Style 2: dial -------------------------------------------------
+           An instrument face. The outer hairline arc depletes across the
+           whole session so the room can read "how much of this test is
+           left" at a glance without doing arithmetic; the inner arc sweeps
+           the current minute. No glow — legibility comes from contrast and
+           the tick ring, which is what actually survives a projector. */
+        .dial {
+            position: relative; width: clamp(16rem, 44vmin, 28rem); aspect-ratio: 1;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .dial svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+        .dial-track { fill: none; stroke: rgba(244,242,251,0.09); stroke-width: 1.5; }
+        .dial-arc {
+            fill: none; stroke: var(--hero-accent); stroke-width: 3; stroke-linecap: round;
+            transition: stroke-dashoffset 0.9s linear, stroke 0.6s linear;
+        }
+        /* Seconds are a single marker riding the tick ring, not a second arc:
+           two concentric arcs of different lengths read as two competing
+           progress bars and you cannot tell at a glance which is the session. */
+        .dial-second { fill: var(--hero-accent); opacity: 0.85; }
+        .dial-ticks line { stroke: rgba(244,242,251,0.18); stroke-width: 1; }
+        .dial-ticks line.major { stroke: rgba(244,242,251,0.36); stroke-width: 1.5; }
+        .dial-readout { position: relative; text-align: center; line-height: 1; }
+        .dial-time {
+            font-variant-numeric: tabular-nums; font-weight: 300; letter-spacing: -0.02em;
+            font-size: clamp(3.5rem, 15vmin, 10rem); color: #f4f2fb;
+        }
+        .dial-caption {
+            margin-top: 0.9rem; font-size: 0.72rem; font-weight: 700;
+            letter-spacing: 0.22em; text-transform: uppercase; color: rgba(244,242,251,0.4);
+        }
+        .dial-caption b { color: var(--hero-accent); font-weight: 700; }
+
+        /* --- Style 3: pressure ---------------------------------------------
+           The number *is* the screen. A soft field behind it tightens as the
+           session drains (--pressure scales 0 → 1), and the digits take a
+           single small beat on each second so the board reads as live from
+           the back of the room without anything strobing. */
+        .pressure { position: relative; width: 100%; display: grid; place-items: center; }
+        .pressure-field {
+            position: absolute; left: 50%; top: 50%; z-index: -1; pointer-events: none;
+            width: 88%; aspect-ratio: 2.1 / 1;
+            /* Scaled, not resized: this sits behind a 90px blur and repaints
+               every second, so it must stay off the layout path. */
+            transform: translate(-50%, -50%) scale(calc(0.73 + 0.27 * var(--pressure, 0)));
+            background: radial-gradient(ellipse at center, var(--hero-glow) 0%, transparent 70%);
+            opacity: calc(0.16 + 0.3 * var(--pressure, 0));
+            filter: blur(90px);
+            transition: opacity 0.9s linear, transform 0.9s linear;
+        }
+        .pressure-time {
+            font-variant-numeric: tabular-nums; font-weight: 800; letter-spacing: -0.03em;
+            font-size: clamp(4rem, 19vw, 30rem); line-height: 0.9; color: #f7f4ff;
+            text-shadow: 0 0 0.035em var(--hero-accent-dim);
+            transform-origin: center;
+        }
+        .pressure-time.beat { animation: pressureBeat 0.5s cubic-bezier(0.2, 0.9, 0.3, 1); }
+        @keyframes pressureBeat {
+            0% { transform: scale(1.012); }
+            100% { transform: scale(1); }
+        }
+        .pressure-caption {
+            margin-top: 1.5rem; font-size: 0.72rem; font-weight: 700;
+            letter-spacing: 0.22em; text-transform: uppercase; color: rgba(244,242,251,0.4);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .flip-digit.flipping .flip-upper-anim,
+            .flip-digit.flipping .flip-lower-anim { animation-duration: 0.001s; }
+            .pressure-time.beat { animation: none; }
+            .dial-arc { transition: none; }
+        }
+
+        /* Timer-style picker: a segmented control, one filled active tier in
+           the accent per the button hierarchy — never three lit at once. */
+        .pres-header-actions { display: flex; align-items: center; gap: 1.5rem; }
+        .pres-style-picker {
+            display: flex; gap: 2px; padding: 2px;
+            background: rgba(244,242,251,0.06); border: 1px solid rgba(244,242,251,0.12);
+            border-radius: 8px;
+        }
+        .pres-style-opt {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            padding: 0.4rem 0.7rem; border: none; border-radius: 6px;
+            background: transparent; color: rgba(244,242,251,0.6);
+            font-size: 0.78rem; font-weight: 600; font-family: inherit; cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+        .pres-style-opt svg { width: 15px; height: 15px; flex-shrink: 0; }
+        .pres-style-opt:hover { color: #f4f2fb; background: rgba(244,242,251,0.08); }
+        .pres-style-opt[aria-pressed="true"] { background: #8366e8; color: #fff; }
+        .pres-style-opt[aria-pressed="true"]:hover { background: #7457dd; }
+        .pres-style-opt:focus-visible { outline: 2px solid #b592ff; outline-offset: 2px; }
+        @media (max-width: 700px) {
+            .pres-style-opt span { display: none; }
+            .pres-style-opt { padding: 0.45rem; }
+        }
+
+        /* Ambient background: slow, muted, blurred blobs — not neon, not
+           cursor-reactive, just a quiet drift so the board doesn't feel static. */
+        #bgCanvas {
+            position: fixed; inset: -10%; width: 120%; height: 120%; z-index: -1;
+            filter: blur(55px); opacity: 0.9;
+        }
+
+        /* Hero timer: the one big number on the board — time remaining until
+           the first student to start finishes. Hidden until someone is actually
+           writing (before that, the join code is the important thing to show). */
+        .pres-hero-timer { display: none; margin: 0 0 2.5rem; }
+        .pres-hero-label {
+            font-size: 0.8rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+            color: rgba(244,242,251,0.5); margin-bottom: 0.5rem;
+        }
+        .pres-hero-value {
+            font-variant-numeric: tabular-nums; font-weight: 800; letter-spacing: 0.01em;
+            font-size: clamp(3.5rem, 14vw, 8rem); line-height: 1; color: #e4defa;
+            text-shadow: 0 0 40px rgba(181,146,255,0.25);
+        }
+        .pres-hero-value.ending-soon { color: #f2a9a9; text-shadow: 0 0 40px rgba(248,113,113,0.25); }
+
+        /* Small, always-visible per-student timers — not hidden behind the
+           expand icon; the fullscreen view (below) is just a bigger look at
+           the same data for when the room has a lot of students. */
+        .pres-mini-timers {
+            display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center;
+            max-width: 720px; margin: 0 auto 2.5rem;
+        }
+        .pres-mini-timer {
+            display: flex; align-items: center; gap: 0.45rem;
+            background: rgba(244,242,251,0.05); border: 1px solid rgba(244,242,251,0.12);
+            border-radius: 999px; padding: 0.35rem 0.85rem; font-size: 0.8rem;
+        }
+        .pres-mini-timer .name { color: rgba(244,242,251,0.65); }
+        .pres-mini-timer .time { font-variant-numeric: tabular-nums; font-weight: 700; color: #b592ff; }
+        .pres-mini-timer .time.warning { color: #f5c069; }
+        .pres-mini-timer .time.ending-soon { color: #f98080; }
+    </style>
+</head>
+<body>
+    <canvas id="bgCanvas"></canvas>
+    <a href="/assessment/test-builder/{{ paper.id }}/assign" class="pres-back">&larr; Back</a>
+    <div class="pres-shell">
+        <div class="pres-eyebrow">Test starting</div>
+        <h1 class="pres-title">{{ paper.title }}</h1>
+        <p class="pres-target">{{ assignment.target_label() }}</p>
+
+        <div class="pres-hero-timer" id="heroTimer">
+            <div class="pres-hero-label">Time remaining — first to finish</div>
+            <div class="pres-hero-value" id="heroTimerValue">–:–</div>
+        </div>
+
+        <div id="liveArea">
+            <p class="pres-instructions">Log in, then enter this code to start:</p>
+            <div class="pres-code" id="codeDisplay">{{ assignment.access_code or '' }}</div>
+            <p class="pres-url">at <b>/student/quizzes</b></p>
+        </div>
+        <div id="doneArea" style="display:none;">
+            <div class="pres-done">✓ Everyone has submitted</div>
+        </div>
+
+        <div class="pres-stats">
+            <div class="pres-stat"><div class="n" id="statJoined">0</div><div class="k">Joined</div></div>
+            <div class="pres-stat"><div class="n" id="statInProgress">0</div><div class="k">Writing</div></div>
+            <div class="pres-stat"><div class="n" id="statFinished">0</div><div class="k">Finished</div></div>
+            <div class="pres-stat">
+                <div class="n">
+                    <span id="statTimeRemaining">–:–</span>
+                    <button type="button" class="pres-expand-btn" id="perStudentToggle" title="View each student's time remaining" aria-label="View each student's time remaining">
+                        <svg class="pres-expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M21 8V5a2 2 0 0 0-2-2h-3"></path><path d="M3 16v3a2 2 0 0 0 2 2h3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>
+                    </button>
+                </div>
+                <div class="k">Time remaining</div>
+            </div>
+        </div>
+
+        <div class="pres-mini-timers" id="miniTimers"></div>
+
+        <div class="pres-actions">
+            <button id="regenBtn">Regenerate code</button>
+        </div>
+    </div>
+
+    <div class="pres-student-overlay" id="perStudentOverlay">
+        <div class="pres-student-header">
+            <h2>Time remaining per student</h2>
+            <div class="pres-header-actions">
+                <div class="pres-style-picker" id="timerStylePicker" role="group" aria-label="Countdown style">
+                    <button type="button" class="pres-style-opt" data-style="flip" aria-pressed="false" title="Split-flap board">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><line x1="3" y1="12" x2="21" y2="12"></line></svg>
+                        <span>Flip</span>
+                    </button>
+                    <button type="button" class="pres-style-opt" data-style="dial" aria-pressed="false" title="Instrument dial">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 6.8 12 12 15.6 14.1"></polyline></svg>
+                        <span>Dial</span>
+                    </button>
+                    <button type="button" class="pres-style-opt" data-style="pressure" aria-pressed="false" title="Full-bleed numerals">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.5"></circle><path d="M6.7 6.7a7.5 7.5 0 0 0 0 10.6"></path><path d="M17.3 6.7a7.5 7.5 0 0 1 0 10.6"></path></svg>
+                        <span>Pressure</span>
+                    </button>
+                </div>
+                <button type="button" class="pres-student-close" id="perStudentClose" aria-label="Close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+        </div>
+        <div class="pres-overlay-body">
+            <div class="pres-fs-hero" id="fsHero">
+                <div class="pres-hero-label" style="display:flex; align-items:center; justify-content:center; gap:0.5rem;">
+                    <span id="fsHeroAvatar"></span>
+                    <span><span id="fsHeroName">–</span> — first to finish</span>
+                </div>
+                <div class="pres-fs-hero-stage" id="fsHeroStage"></div>
+            </div>
+            <div class="pres-student-list" id="perStudentList"></div>
+        </div>
+    </div>
+
+    <script>
+        const ASSIGNMENT_ID = {{ assignment.id | tojson }};
+        const MONITOR_URL = {{ url_for('test_builder.monitor_test_page', paper_id=paper.id) | tojson }};
+        const AVATAR_EMOJI = {{ AVATAR_BY_KEY | tojson }};
+        let earliestDeadline = null;
+        let perStudentData = []; // [{student_name, student_avatar, deadline_iso}], soonest-deadline first
+        let perStudentOpen = false;
+
+        function escapeHtml(s) {
+            const d = document.createElement('div');
+            d.textContent = s || '';
+            return d.innerHTML;
+        }
+
+        function avatarHtml(key, size) {
+            size = size || 28;
+            const a = AVATAR_EMOJI[key];
+            const emoji = a ? a.emoji : '';
+            return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:50%;background:rgba(181,146,255,0.18);font-size:${Math.round(size * 0.6)}px;flex-shrink:0;">${emoji}</span>`;
+        }
+
+        function formatRemaining(deadlineIso) {
+            if (!deadlineIso) return '–:–';
+            const msLeft = new Date(deadlineIso) - new Date();
+            if (msLeft <= 0) return '00:00';
+            const totalSeconds = Math.floor(msLeft / 1000);
+            const mins = Math.floor(totalSeconds / 60);
+            const secs = totalSeconds % 60;
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function renderPerStudentList() {
+            const list = document.getElementById('perStudentList');
+            const heroBlock = document.getElementById('fsHero');
+            if (!perStudentData.length) {
+                list.innerHTML = '<div class="pres-student-empty">No one is currently writing.</div>';
+                heroBlock.style.display = 'none';
+                return;
+            }
+
+            // perStudentData arrives sorted soonest-deadline-first from the
+            // server, so [0] is always "first to finish" — once they submit,
+            // the next poll drops them and this naturally advances to whoever
+            // is next, with no extra logic needed here.
+            const leader = perStudentData[0];
+            heroBlock.style.display = 'block';
+            document.getElementById('fsHeroAvatar').innerHTML = avatarHtml(leader.student_avatar, 56);
+            document.getElementById('fsHeroName').textContent = leader.student_name;
+            heroTimer.update();
+
+            list.innerHTML = perStudentData.map(s => `
+                <a class="pres-student-row" href="${MONITOR_URL}" target="_blank" rel="noopener" title="Open Monitor to see ${escapeHtml(s.student_name)}'s progress">
+                    <span class="pres-student-name">${avatarHtml(s.student_avatar, 40)}${escapeHtml(s.student_name)}</span>
+                    <span class="pres-student-time" data-deadline="${s.deadline_iso}">${formatRemaining(s.deadline_iso)}</span>
+                    <span class="pres-student-hint">See progress →</span>
+                </a>
+            `).join('');
+        }
+
+        // Small chips, always visible (not gated behind the expand icon) — as a
+        // new student joins, the next refreshStatus() poll rebuilds this row so
+        // their chip just appears, no reload needed.
+        function renderMiniTimers() {
+            const row = document.getElementById('miniTimers');
+            row.innerHTML = perStudentData.map(s => `
+                <div class="pres-mini-timer">
+                    ${avatarHtml(s.student_avatar, 22)}
+                    <span class="name">${escapeHtml(s.student_name)}</span>
+                    <span class="time" data-deadline="${s.deadline_iso}">${formatRemaining(s.deadline_iso)}</span>
+                </div>
+            `).join('');
+        }
+
+        function tickTimeRemaining() {
+            const hero = document.getElementById('heroTimer');
+            const heroValue = document.getElementById('heroTimerValue');
+            const hasRunners = perStudentData.length > 0;
+            hero.style.display = hasRunners ? 'block' : 'none';
+            if (hasRunners) {
+                const secondsLeft = (new Date(earliestDeadline) - new Date()) / 1000;
+                heroValue.textContent = formatRemaining(earliestDeadline);
+                heroValue.classList.toggle('ending-soon', secondsLeft <= 60);
+            }
+
+            document.getElementById('statTimeRemaining').textContent = formatRemaining(earliestDeadline);
+
+            // Same two-step ramp as the hero, but off each student's own
+            // deadline, so the room can see who specifically is close to time.
+            document.querySelectorAll('[data-deadline]').forEach(el => {
+                const secondsLeft = (new Date(el.dataset.deadline) - new Date()) / 1000;
+                el.textContent = formatRemaining(el.dataset.deadline);
+                el.classList.toggle('ending-soon', secondsLeft <= 60);
+                el.classList.toggle('warning', secondsLeft > 60 && secondsLeft <= 300);
+            });
+
+            if (perStudentOpen) heroTimer.update();
+        }
+
+        async function refreshStatus() {
+            const res = await fetch(`/admin/api/test-assignments/${ASSIGNMENT_ID}/status`);
+            const data = await res.json();
+            const isDone = !data.access_code;
+            document.getElementById('liveArea').style.display = isDone ? 'none' : 'block';
+            document.getElementById('doneArea').style.display = isDone ? 'block' : 'none';
+            document.getElementById('regenBtn').textContent = isDone ? 'Reopen with a new code' : 'Regenerate code';
+            if (!isDone) document.getElementById('codeDisplay').textContent = data.access_code;
+            document.getElementById('statJoined').textContent = data.joined;
+            document.getElementById('statInProgress').textContent = data.in_progress;
+            document.getElementById('statFinished').textContent = data.finished;
+            earliestDeadline = data.earliest_deadline_iso;
+            perStudentData = data.students || [];
+            renderMiniTimers();
+            tickTimeRemaining();
+            if (perStudentOpen) renderPerStudentList();
+        }
+
+        document.getElementById('regenBtn').addEventListener('click', async () => {
+            if (!confirm('Generate a new code? Anyone who hasn\'t joined yet will need the new one.')) return;
+            await fetch(`/admin/api/test-assignments/${ASSIGNMENT_ID}/regenerate-code`, { method: 'POST' });
+            refreshStatus();
+        });
+
+        /* ------------------------------------------------------------------
+           Hero countdown renderer.
+
+           Three presentations of the same data, one live at a time, chosen
+           from the header picker. Each exposes mount() (build DOM once) and
+           paint(ctx) (per-tick update), so the 1s tick never rebuilds
+           markup — which matters most for the flip board, where recreating
+           the digit elements every second would restart every hinge
+           animation and destroy the illusion of physical cards.
+           ------------------------------------------------------------------ */
+        const TIMER_STYLES = ['flip', 'dial', 'pressure'];
+        const TIMER_STYLE_KEY = 'presTimerStyle';
+
+        const heroTimer = (function () {
+            const stage = document.getElementById('fsHeroStage');
+            const hero = document.getElementById('fsHero');
+
+            // Style 1 — split-flap. Only the digits that actually changed get
+            // a hinge animation, so the minutes-tens flap sits dead still for
+            // ten minutes at a stretch, exactly like the real thing.
+            const flip = (function () {
+                let root = null, groups = [], shape = null;
+
+                function buildDigit() {
+                    const d = document.createElement('div');
+                    d.className = 'flip-digit';
+                    d.dataset.d = '';
+                    d.innerHTML =
+                        '<div class="flip-half flip-upper flip-upper-static"><span></span></div>' +
+                        '<div class="flip-half flip-lower flip-lower-static"><span></span></div>' +
+                        '<div class="flip-half flip-upper flip-upper-anim"><span></span></div>' +
+                        '<div class="flip-half flip-lower flip-lower-anim"><span></span></div>';
+                    // Once the landing leaf settles, the static bottom half takes
+                    // over the new digit so the next flip starts from rest.
+                    d.querySelector('.flip-lower-anim').addEventListener('animationend', () => {
+                        d.querySelector('.flip-lower-static > span').textContent = d.dataset.d;
+                    });
+                    return d;
+                }
+
+                // Rebuilt only when the shape of the string changes (e.g. a
+                // 2h test ticking down past 99 minutes), never per second.
+                function build(counts) {
+                    root.innerHTML = '';
+                    groups = counts.map((n, i) => {
+                        if (i > 0) {
+                            const colon = document.createElement('div');
+                            colon.className = 'flip-colon';
+                            colon.innerHTML = '<span></span><span></span>';
+                            root.appendChild(colon);
+                        }
+                        const group = document.createElement('div');
+                        group.className = 'flip-group';
+                        const digits = [];
+                        for (let k = 0; k < n; k++) {
+                            const digit = buildDigit();
+                            digits.push(digit);
+                            group.appendChild(digit);
+                        }
+                        root.appendChild(group);
+                        return digits;
+                    });
+                    shape = counts.join(',');
+                }
+
+                function setDigit(el, next) {
+                    const prev = el.dataset.d;
+                    if (prev === next) return;
+                    el.dataset.d = next;
+                    const upperStatic = el.querySelector('.flip-upper-static > span');
+                    const lowerStatic = el.querySelector('.flip-lower-static > span');
+                    const upperLeaf = el.querySelector('.flip-upper-anim > span');
+                    const lowerLeaf = el.querySelector('.flip-lower-anim > span');
+                    if (prev === '') {
+                        // First paint: seat the digit without a flip, so opening
+                        // the overlay doesn't start with a burst of animation.
+                        upperStatic.textContent = next;
+                        lowerStatic.textContent = next;
+                        return;
+                    }
+                    upperStatic.textContent = next;  // revealed as the top leaf falls away
+                    lowerStatic.textContent = prev;  // still the old digit until the leaf lands
+                    upperLeaf.textContent = prev;
+                    lowerLeaf.textContent = next;
+                    el.classList.remove('flipping');
+                    void el.offsetWidth;             // reflow, so the animation restarts
+                    el.classList.add('flipping');
+                }
+
+                return {
+                    mount(host) {
+                        root = document.createElement('div');
+                        root.className = 'flip-clock';
+                        host.appendChild(root);
+                        shape = null;
+                    },
+                    paint(ctx) {
+                        const parts = ctx.text.split(':');
+                        const counts = parts.map(p => p.length);
+                        if (counts.join(',') !== shape) build(counts);
+                        parts.forEach((part, gi) => {
+                            part.split('').forEach((ch, di) => setDigit(groups[gi][di], ch));
+                        });
+                    },
+                };
+            })();
+
+            // Style 2 — instrument dial. Outer hairline depletes across the
+            // whole session (so the room reads "how much of this test is
+            // left" without arithmetic); inner hairline sweeps the current
+            // minute. No glow: on a projector, contrast is what survives.
+            const dial = (function () {
+                const R_OUTER = 88, R_MARKER = 92.5;
+                const C_OUTER = 2 * Math.PI * R_OUTER;
+                let arc = null, marker = null, timeEl = null, captionEl = null, lastTotal = null;
+
+                return {
+                    mount(host) {
+                        const ticks = [];
+                        for (let i = 0; i < 60; i++) {
+                            const major = i % 5 === 0;
+                            const a = (i / 60) * Math.PI * 2;
+                            const outer = 97, inner = major ? 88 : 92;
+                            ticks.push(
+                                `<line class="${major ? 'major' : ''}"` +
+                                ` x1="${(100 + Math.cos(a) * outer).toFixed(2)}" y1="${(100 + Math.sin(a) * outer).toFixed(2)}"` +
+                                ` x2="${(100 + Math.cos(a) * inner).toFixed(2)}" y2="${(100 + Math.sin(a) * inner).toFixed(2)}"></line>`
+                            );
+                        }
+                        const wrap = document.createElement('div');
+                        wrap.className = 'dial';
+                        wrap.innerHTML =
+                            '<svg viewBox="0 0 200 200" aria-hidden="true">' +
+                                `<g class="dial-ticks">${ticks.join('')}</g>` +
+                                `<circle class="dial-track" cx="100" cy="100" r="${R_OUTER}"></circle>` +
+                                `<circle class="dial-arc" cx="100" cy="100" r="${R_OUTER}" stroke-dasharray="${C_OUTER}" stroke-dashoffset="0"></circle>` +
+                                `<circle class="dial-second" cx="100" cy="${100 - R_MARKER}" r="3.2"></circle>` +
+                            '</svg>' +
+                            '<div class="dial-readout">' +
+                                '<div class="dial-time">--:--</div>' +
+                                '<div class="dial-caption">Remaining</div>' +
+                            '</div>';
+                        host.appendChild(wrap);
+                        arc = wrap.querySelector('.dial-arc');
+                        marker = wrap.querySelector('.dial-second');
+                        timeEl = wrap.querySelector('.dial-time');
+                        captionEl = wrap.querySelector('.dial-caption');
+                        lastTotal = null;
+                    },
+                    paint(ctx) {
+                        timeEl.textContent = ctx.text;
+                        arc.style.strokeDashoffset = C_OUTER * (1 - ctx.fraction);
+                        // Marker walks anticlockwise through the current minute;
+                        // the svg is already rotated -90deg so angle 0 is noon.
+                        const a = ((ctx.secondsLeft % 60) / 60) * Math.PI * 2;
+                        marker.setAttribute('cx', (100 + Math.cos(a) * R_MARKER).toFixed(2));
+                        marker.setAttribute('cy', (100 + Math.sin(a) * R_MARKER).toFixed(2));
+                        if (ctx.totalMinutes !== lastTotal) {
+                            lastTotal = ctx.totalMinutes;
+                            captionEl.innerHTML = ctx.totalMinutes
+                                ? `Remaining of <b>${ctx.totalMinutes} min</b>`
+                                : 'Remaining';
+                        }
+                    },
+                };
+            })();
+
+            // Style 3 — pressure. The number is the screen. The field behind
+            // it tightens and brightens as the session drains, and the digits
+            // take one small beat per second so the board reads as live from
+            // the back of the room without anything strobing.
+            const pressure = (function () {
+                let root = null, timeEl = null;
+
+                return {
+                    mount(host) {
+                        root = document.createElement('div');
+                        root.className = 'pressure';
+                        root.innerHTML =
+                            '<div class="pressure-field"></div>' +
+                            '<div class="pressure-time">--:--</div>' +
+                            '<div class="pressure-caption">Time remaining</div>';
+                        host.appendChild(root);
+                        timeEl = root.querySelector('.pressure-time');
+                        timeEl.addEventListener('animationend', () => timeEl.classList.remove('beat'));
+                    },
+                    paint(ctx) {
+                        if (timeEl.textContent !== ctx.text) {
+                            timeEl.textContent = ctx.text;
+                            timeEl.classList.remove('beat');
+                            void timeEl.offsetWidth;
+                            timeEl.classList.add('beat');
+                        }
+                        root.style.setProperty('--pressure', (1 - ctx.fraction).toFixed(3));
+                    },
+                };
+            })();
+
+            const IMPLS = { flip, dial, pressure };
+            let currentStyle = null;
+            let impl = null;
+
+            // The leader is perStudentData[0] (server-sorted soonest-first), so
+            // this follows whoever is currently closest to finishing.
+            function readContext() {
+                const leader = perStudentData[0];
+                if (!leader) return null;
+                const secondsLeft = Math.max(0, Math.floor((new Date(leader.deadline_iso) - new Date()) / 1000));
+                const totalSeconds = (leader.time_limit_minutes || 0) * 60;
+                return {
+                    text: formatRemaining(leader.deadline_iso),
+                    secondsLeft,
+                    // A missing/zero limit degrades the dial to a full ring
+                    // rather than dividing by zero.
+                    fraction: totalSeconds > 0 ? Math.min(1, secondsLeft / totalSeconds) : 1,
+                    totalMinutes: totalSeconds > 0 ? Math.round(totalSeconds / 60) : null,
+                };
+            }
+
+            // Two urgency steps, not one on/off flip: a quiet five-minute
+            // warning, then an unmistakable final minute. All three styles
+            // inherit the colour ramp from custom properties on .pres-fs-hero.
+            function urgencyFor(secondsLeft) {
+                if (secondsLeft <= 60) return 'critical';
+                if (secondsLeft <= 300) return 'soon';
+                return 'normal';
+            }
+
+            function update() {
+                if (!impl) return;
+                const ctx = readContext();
+                if (!ctx) return;
+                hero.dataset.urgency = urgencyFor(ctx.secondsLeft);
+                impl.paint(ctx);
+            }
+
+            function apply(styleId) {
+                if (!TIMER_STYLES.includes(styleId)) styleId = TIMER_STYLES[0];
+                if (styleId === currentStyle) return;
+                currentStyle = styleId;
+                impl = IMPLS[styleId];
+                stage.innerHTML = '';
+                impl.mount(stage);
+                document.querySelectorAll('#timerStylePicker .pres-style-opt').forEach(btn => {
+                    btn.setAttribute('aria-pressed', String(btn.dataset.style === styleId));
+                });
+                try { localStorage.setItem(TIMER_STYLE_KEY, styleId); } catch (err) { /* private browsing */ }
+                update();
+            }
+
+            return { apply, update };
+        })();
+
+        document.getElementById('timerStylePicker').addEventListener('click', (e) => {
+            const btn = e.target.closest('.pres-style-opt');
+            if (btn) heroTimer.apply(btn.dataset.style);
+        });
+
+        (function initTimerStyle() {
+            let stored = null;
+            try { stored = localStorage.getItem(TIMER_STYLE_KEY); } catch (err) { /* private browsing */ }
+            heroTimer.apply(stored || TIMER_STYLES[0]);
+        })();
+
+        function openPerStudent() {
+            perStudentOpen = true;
+            renderPerStudentList();
+            document.getElementById('perStudentOverlay').classList.add('open');
+        }
+        function closePerStudent() {
+            perStudentOpen = false;
+            document.getElementById('perStudentOverlay').classList.remove('open');
+        }
+        document.getElementById('perStudentToggle').addEventListener('click', openPerStudent);
+        document.getElementById('perStudentClose').addEventListener('click', closePerStudent);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && perStudentOpen) closePerStudent();
+        });
+
+        refreshStatus();
+        setInterval(refreshStatus, 4000);
+        setInterval(tickTimeRemaining, 1000);
+
+        // Ambient background: a handful of soft, muted blobs drifting slowly on
+        // independent elliptical paths. Blur is applied via CSS (filter: blur)
+        // on the canvas element itself rather than per-shape, so this stays cheap
+        // even on a projector/classroom machine. No cursor interaction by design.
+        (function initBackground() {
+            const canvas = document.getElementById('bgCanvas');
+            const ctx = canvas.getContext('2d');
+            const colors = ['#8366e8', '#5b4b8a', '#9d7fd6', '#6b5b95', '#7c5cc4'];
+            let blobs = [];
+
+            function resize() {
+                canvas.width = window.innerWidth * 1.2;
+                canvas.height = window.innerHeight * 1.2;
+                blobs = colors.map((color) => ({
+                    color,
+                    baseX: Math.random() * canvas.width,
+                    baseY: Math.random() * canvas.height,
+                    radius: 220 + Math.random() * 180,
+                    speed: 0.00012 + Math.random() * 0.00015,
+                    phase: Math.random() * Math.PI * 2,
+                    ampX: 140 + Math.random() * 160,
+                    ampY: 110 + Math.random() * 150,
+                }));
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            function draw(time) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                blobs.forEach((b) => {
+                    const x = b.baseX + Math.cos(time * b.speed + b.phase) * b.ampX;
+                    const y = b.baseY + Math.sin(time * b.speed * 1.3 + b.phase) * b.ampY;
+                    const gradient = ctx.createRadialGradient(x, y, 0, x, y, b.radius);
+                    gradient.addColorStop(0, b.color);
+                    gradient.addColorStop(1, 'transparent');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(x - b.radius, y - b.radius, b.radius * 2, b.radius * 2);
+                });
+                requestAnimationFrame(draw);
+            }
+            requestAnimationFrame(draw);
+        })();
+    </script>
+</body>
+</html>

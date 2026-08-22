@@ -1,0 +1,95 @@
+{% extends "student_base.html" if not current_user.is_admin() else "admin_base.html" %}
+{% from '_avatar_macro.html' import avatar_svg with context %}
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<style>
+    .prof-container { max-width: 720px; margin: 0 auto; }
+    .prof-header h1 { font-size: 1.5rem; margin: 0 0 0.3rem; }
+    .prof-header p { color: var(--text-light); margin: 0 0 1.5rem; font-size: 0.9rem; }
+
+    .prof-card {
+        background: var(--bg-white); border: 1px solid var(--border); border-radius: 8px;
+        padding: 1.25rem; margin-bottom: 1.25rem;
+    }
+    .prof-current { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; }
+    .prof-current .avatar-icon { width: 64px; height: 64px; flex-shrink: 0; }
+    .prof-current-name { font-size: 1.1rem; font-weight: 700; color: var(--text-dark); }
+    .prof-current-note { font-size: 0.8rem; color: var(--text-light); margin-top: 0.15rem; }
+
+    .prof-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 0.6rem;
+        margin-top: 1rem;
+    }
+    .prof-avatar-btn {
+        display: flex; flex-direction: column; align-items: center; gap: 0.35rem;
+        background: none; border: 2px solid transparent; border-radius: 10px; padding: 0.5rem 0.3rem;
+        cursor: pointer; font-family: inherit;
+    }
+    .prof-avatar-btn:hover { background: rgba(131,102,232,0.06); }
+    .prof-avatar-btn.selected { border-color: var(--primary); background: rgba(131,102,232,0.08); }
+    .prof-avatar-btn .avatar-icon { width: 48px; height: 48px; }
+    .prof-avatar-btn .label { font-size: 0.72rem; color: var(--text-light); }
+    .prof-avatar-btn.selected .label { color: var(--primary); font-weight: 600; }
+    .prof-avatar-btn.taken { opacity: 0.35; cursor: not-allowed; }
+    .prof-avatar-btn.taken:hover { background: none; }
+    .prof-status { font-size: 0.85rem; color: var(--text-light); margin-top: 0.75rem; min-height: 1.2em; }
+</style>
+
+<div class="prof-container">
+    <div class="prof-header">
+        <h1>Your Profile</h1>
+        <p>Pick a profile picture. Your name is set by your teacher and can't be changed here.</p>
+    </div>
+
+    <div class="prof-card">
+        <div class="prof-current">
+            <span id="profCurrentIcon">{{ avatar_svg(current_user.avatar, 64) }}</span>
+            <div>
+                <div class="prof-current-name">{{ current_user.name }}</div>
+                <div class="prof-current-note">This is how your teacher sees you — it can't be edited here.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="prof-card">
+        <h2 style="font-size:1.05rem; margin-top:0;">Choose your avatar</h2>
+        <div class="prof-grid" id="profGrid">
+            {% for a in avatar_catalog %}
+            {% set is_taken = a.key in taken_avatars %}
+            <button type="button" class="prof-avatar-btn {{ 'selected' if current_user.avatar == a.key else '' }} {{ 'taken' if is_taken else '' }}" data-key="{{ a.key }}" title="{{ a.label ~ ' — already taken' if is_taken else a.label }}" {{ 'disabled' if is_taken else '' }}>
+                {{ avatar_svg(a.key, 48) }}
+                <span class="label">{{ a.label }}{{ ' (taken)' if is_taken else '' }}</span>
+            </button>
+            {% endfor %}
+        </div>
+        <div class="prof-status" id="profStatus"></div>
+    </div>
+</div>
+
+<script>
+document.getElementById('profGrid').addEventListener('click', async (e) => {
+    const btn = e.target.closest('.prof-avatar-btn');
+    if (!btn) return;
+    const key = btn.dataset.key;
+    const status = document.getElementById('profStatus');
+    status.textContent = 'Saving…';
+    try {
+        const res = await fetch('/api/profile/avatar', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({avatar: key}),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'Could not save.');
+
+        document.querySelectorAll('.prof-avatar-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        document.getElementById('profCurrentIcon').innerHTML = btn.querySelector('svg').outerHTML.replace('width="48" height="48"', 'width="64" height="64"');
+        status.textContent = 'Saved.';
+        setTimeout(() => { status.textContent = ''; }, 2000);
+    } catch (err) {
+        status.textContent = err.message;
+    }
+});
+</script>
+{% endblock %}

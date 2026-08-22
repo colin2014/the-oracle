@@ -1,0 +1,266 @@
+{% extends "admin_base.html" %}
+{% block title %}Assign Test — Admin{% endblock %}
+
+{% block content %}
+<style>
+    .ta-container { max-width: 800px; margin: 0 auto; }
+    .ta-card { background: var(--bg-white); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem; }
+    .ta-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    .ta-row label { font-size: 0.8rem; font-weight: 600; color: var(--text-light); display: block; margin-bottom: 0.25rem; }
+    .ta-row select, .ta-row input {
+        padding: 0.5rem 0.65rem; border: 1px solid var(--border); border-radius: 6px;
+        background: var(--bg-white); color: var(--text-dark); font-size: 0.9rem; font-family: inherit;
+    }
+    .ta-target-toggle { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .ta-target-toggle button {
+        flex: 1; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;
+        background: var(--bg-white); color: var(--text-dark); cursor: pointer; font-weight: 600; font-size: 0.85rem;
+    }
+    .ta-target-toggle button.active { background: rgba(131,102,232,0.14); border-color: var(--primary); color: var(--primary); }
+    .ta-assignment-row {
+        border: 1px solid var(--border); border-radius: 8px; padding: 0.85rem 1.1rem; margin-bottom: 0.6rem;
+        display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;
+    }
+    .ta-code {
+        font-family: ui-monospace, Consolas, monospace; font-size: 1.4rem; font-weight: 700;
+        letter-spacing: 0.12em; color: var(--primary); background: rgba(131,102,232,0.08);
+        padding: 0.3rem 0.7rem; border-radius: 6px;
+    }
+    .ta-pill-done {
+        font-size: 0.78rem; font-weight: 700; color: #10b981; background: rgba(16,185,129,0.12);
+        padding: 0.3rem 0.7rem; border-radius: 999px; white-space: nowrap;
+    }
+    .ta-meta { font-size: 0.8rem; color: var(--text-light); }
+    .ta-empty { text-align: center; padding: 1.5rem; color: var(--text-light); }
+    .ta-warning {
+        background: rgba(245, 158, 11, 0.12); color: #b45309; border-left: 3px solid #b45309;
+        padding: 0.6rem 0.8rem; border-radius: 0 6px 6px 0; font-size: 0.85rem; margin-top: 0.75rem;
+    }
+</style>
+
+<div class="ta-container">
+    <p><a href="/assessment/test-builder/{{ paper.id }}" class="admin-btn-text">&larr; Back to <span id="backLinkTitle">{{ paper.title }}</span></a></p>
+    <div class="ta-header">
+        <h1 id="assignPageTitle" style="font-size:1.4rem; margin:0 0 0.3rem;">Assign "{{ paper.title }}"</h1>
+        <p style="color:var(--text-light); font-size:0.9rem; margin:0 0 1.5rem;">Creates a join code students enter (once logged in) to open the test.</p>
+    </div>
+
+    <div class="ta-card">
+        <div class="ta-target-toggle">
+            <button type="button" id="targetClassBtn" class="active">A whole class</button>
+            <button type="button" id="targetStudentBtn">A specific student</button>
+        </div>
+        <div class="ta-row" id="classPickerRow">
+            <div style="flex:2; min-width:180px;">
+                <label for="classSelect">Class</label>
+                <select id="classSelect" style="width:100%;">
+                    <option value="">Select a class…</option>
+                    {% for c in classes %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="levelSelect">Level</label>
+                <select id="levelSelect" style="width:100%;">
+                    <option value="">Both HL &amp; SL</option>
+                    <option value="HL">HL only</option>
+                    <option value="SL">SL only</option>
+                </select>
+            </div>
+        </div>
+        <div class="ta-row" id="studentPickerRow" style="display:none;">
+            <div style="flex:1;">
+                <label for="studentSelect">Student</label>
+                <select id="studentSelect" style="width:100%;">
+                    <option value="">Select a student…</option>
+                    {% for s in students %}
+                    <option value="{{ s.id }}">{{ s.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="ta-row">
+            <div>
+                <label for="timeLimit">Time limit (minutes)</label>
+                <input type="number" id="timeLimit" value="{{ paper.time_limit_minutes }}" min="5" style="width:100px;">
+                <div style="font-size:0.75rem; color:var(--text-light); margin-top:0.3rem;">Starts counting down the moment each student enters the code.</div>
+            </div>
+        </div>
+        <button class="admin-btn" id="createAssignmentBtn">Generate join code</button>
+        <span id="createStatus" style="margin-left:0.6rem; font-size:0.85rem; color:var(--text-light);"></span>
+        <div id="createWarning" style="display:none;"></div>
+    </div>
+
+    <div class="ta-card">
+        <h2 style="font-size:1.1rem; margin-top:0;">Existing assignments</h2>
+        <div id="assignmentsList"><div class="ta-empty">Loading…</div></div>
+    </div>
+
+    <div class="ta-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+            <h2 style="font-size:1.1rem; margin:0;">Submissions</h2>
+            <a href="/assessment/test-builder/{{ paper.id }}/monitor" class="admin-btn-ghost" style="text-decoration:none;">🔴 Monitor live</a>
+        </div>
+        <div id="submissionsList"><div class="ta-empty">Loading…</div></div>
+    </div>
+</div>
+
+<script>
+const PAPER_ID = {{ paper.id | tojson }};
+let currentPaperTitle = {{ paper.title | tojson }};
+const AVATAR_EMOJI = {{ AVATAR_BY_KEY | tojson }};
+
+function avatarHtml(key, size) {
+    size = size || 26;
+    const a = AVATAR_EMOJI[key];
+    const emoji = a ? a.emoji : '';
+    return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:50%;background:rgba(131,102,232,0.12);font-size:${Math.round(size * 0.6)}px;flex-shrink:0;">${emoji}</span>`;
+}
+
+function looksLikeBareCode(title) {
+    // Matches things like "A1.1.1", "a1.1.2", "1.1.4" — a subtopic code typed
+    // in the moment, not a name a student would recognize on a test list.
+    return /^[A-Za-z]?\d+(\.\d+)*$/.test((title || '').trim());
+}
+
+async function fetchJson(url, opts) {
+    const res = await fetch(url, opts);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+    return data;
+}
+
+document.getElementById('targetClassBtn').addEventListener('click', () => {
+    document.getElementById('targetClassBtn').classList.add('active');
+    document.getElementById('targetStudentBtn').classList.remove('active');
+    document.getElementById('classPickerRow').style.display = 'flex';
+    document.getElementById('studentPickerRow').style.display = 'none';
+});
+document.getElementById('targetStudentBtn').addEventListener('click', () => {
+    document.getElementById('targetStudentBtn').classList.add('active');
+    document.getElementById('targetClassBtn').classList.remove('active');
+    document.getElementById('studentPickerRow').style.display = 'flex';
+    document.getElementById('classPickerRow').style.display = 'none';
+});
+
+document.getElementById('createAssignmentBtn').addEventListener('click', async () => {
+    const status = document.getElementById('createStatus');
+    const warningEl = document.getElementById('createWarning');
+    warningEl.style.display = 'none';
+
+    if (looksLikeBareCode(currentPaperTitle)) {
+        const renamed = prompt("Give this test a name your students will recognize? (Leave as-is and press OK to assign anyway.)", currentPaperTitle);
+        if (renamed === null) return; // cancelled — abandon the assignment
+        const trimmed = renamed.trim();
+        if (trimmed && trimmed !== currentPaperTitle) {
+            try {
+                await fetchJson(`/admin/api/test-papers/${PAPER_ID}`, {
+                    method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({title: trimmed}),
+                });
+                currentPaperTitle = trimmed;
+                document.getElementById('assignPageTitle').textContent = `Assign "${trimmed}"`;
+                document.getElementById('backLinkTitle').textContent = trimmed;
+            } catch (e) { status.textContent = e.message; return; }
+        }
+    }
+
+    const isClass = document.getElementById('targetClassBtn').classList.contains('active');
+    const payload = {
+        target_type: isClass ? 'class' : 'student',
+        class_id: isClass ? document.getElementById('classSelect').value : null,
+        student_id: isClass ? null : document.getElementById('studentSelect').value,
+        level: isClass ? (document.getElementById('levelSelect').value || null) : null,
+        time_limit_minutes: parseInt(document.getElementById('timeLimit').value, 10) || 60,
+    };
+    status.textContent = 'Generating…';
+    try {
+        const data = await fetchJson(`/admin/api/test-papers/${PAPER_ID}/assignments`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload),
+        });
+        status.textContent = `Code: ${data.assignment.access_code}`;
+        if (data.warning) {
+            warningEl.className = 'ta-warning';
+            warningEl.textContent = '⚠ ' + data.warning;
+            warningEl.style.display = 'block';
+        }
+        loadAssignments();
+    } catch (e) {
+        status.textContent = e.message;
+    }
+});
+
+async function loadAssignments() {
+    const el = document.getElementById('assignmentsList');
+    const data = await fetchJson(`/admin/api/test-papers/${PAPER_ID}/assignments`);
+    if (!data.assignments.length) {
+        el.innerHTML = '<div class="ta-empty">No assignments yet.</div>';
+        return;
+    }
+    el.innerHTML = data.assignments.map(a => `
+        <div class="ta-assignment-row">
+            <a href="/assessment/test-assignments/${a.id}/results" style="text-decoration:none; color:inherit; flex:1; min-width:180px;">
+                <div><b>${a.target_label}</b></div>
+                <div class="ta-meta">
+                    Assigned to ${a.assigned_count} student${a.assigned_count === 1 ? '' : 's'} · went live ${a.created_at} ·
+                    ${a.submitted_count}/${a.assigned_count} completed · ${a.time_limit_minutes} min
+                </div>
+            </a>
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+                ${a.access_code
+                    ? `<span class="ta-code">${a.access_code}</span>
+                       <a class="admin-btn-ghost" style="text-decoration:none;" href="/assessment/test-assignments/${a.id}/present" target="_blank">📽 Present</a>`
+                    : `<span class="ta-pill-done">✓ Completed</span>`}
+                <button class="admin-btn-text" onclick="regenerateCode(${a.id})">${a.access_code ? 'Regenerate' : 'Reopen'}</button>
+                <button class="admin-btn-text" style="color:#ef4444;" onclick="deleteAssignment(${a.id})">Delete</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function regenerateCode(id) {
+    if (!confirm('Generate a new code? The old one will stop working.')) return;
+    await fetchJson(`/admin/api/test-assignments/${id}/regenerate-code`, {method: 'POST'});
+    loadAssignments();
+}
+
+async function deleteAssignment(id) {
+    if (!confirm('Delete this assignment? Students using its code will lose access.')) return;
+    await fetchJson(`/admin/api/test-assignments/${id}`, {method: 'DELETE'});
+    loadAssignments();
+}
+
+function submissionStatusLabel(s) {
+    if (s.status === 'marked') {
+        const pct = s.marks_possible ? Math.round(100 * s.marks_awarded / s.marks_possible) : 0;
+        return `<span class="ta-code" style="font-size:0.95rem;">${s.marks_awarded}/${s.marks_possible} (${pct}%)</span>`;
+    }
+    if (s.status === 'in_progress') return '<span class="ta-meta">In progress…</span>';
+    return `<span class="ta-meta">Submitted — ${s.pending_answers} answer(s) awaiting review</span>`;
+}
+
+async function loadSubmissions() {
+    const el = document.getElementById('submissionsList');
+    const data = await fetchJson(`/admin/api/test-papers/${PAPER_ID}/submissions`);
+    if (!data.submissions.length) {
+        el.innerHTML = '<div class="ta-empty">No submissions yet.</div>';
+        return;
+    }
+    el.innerHTML = data.submissions.map(s => `
+        <div class="ta-assignment-row">
+            <div>
+                <div style="display:flex; align-items:center; gap:0.5rem;">${avatarHtml(s.student_avatar)}<b>${s.student_name}</b></div>
+                <div class="ta-meta">${s.submitted_at || 'Not yet submitted'}</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+                ${submissionStatusLabel(s)}
+                ${s.status === 'marked' ? `<a href="/assessment/test-submissions/${s.id}/report" target="_blank" class="admin-btn-text">View report</a>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+loadAssignments();
+loadSubmissions();
+</script>
+{% endblock %}

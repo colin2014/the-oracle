@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reading Page - A1.1.6 Pipelining</title>
+    <link rel="stylesheet" href="../styles/page-navigation.css">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #fff;
+            color: #1f2937;
+        }
+
+        .reading-container {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+            gap: 0;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar-nav {
+            background-color: #fafafa;
+            border-right: 1px solid #e5e7eb;
+            overflow-y: auto;
+            padding: 16px 0;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+
+        .sidebar-nav h3 {
+            margin: 0 16px 12px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #6b7280;
+            letter-spacing: 0.5px;
+        }
+
+        /* Main Content Area */
+        .content-area {
+            padding: 40px;
+            background-color: #fff;
+            overflow-y: auto;
+        }
+
+        .page-header {
+            margin-bottom: 32px;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 20px;
+        }
+
+        .page-header h1 {
+            margin: 0 0 8px 0;
+            font-size: 28px;
+            color: #111827;
+        }
+
+        .page-header .breadcrumb {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .page-header .breadcrumb a {
+            color: #3b82f6;
+            text-decoration: none;
+        }
+
+        .page-header .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .content {
+            max-width: 900px;
+            line-height: 1.7;
+        }
+
+        .content h2 {
+            margin-top: 32px;
+            margin-bottom: 16px;
+            font-size: 20px;
+            color: #111827;
+            border-left: 4px solid #3b82f6;
+            padding-left: 16px;
+        }
+
+        .content p {
+            margin: 16px 0;
+            color: #374151;
+        }
+
+        .content code {
+            background-color: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        /* Navigation Stats */
+        .nav-stats {
+            padding: 12px 16px;
+            margin: 16px 0;
+            background-color: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            font-size: 12px;
+            color: #1e40af;
+        }
+
+        /* Mobile Layout */
+        @media (max-width: 1024px) {
+            .reading-container {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar-nav {
+                position: relative;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid #e5e7eb;
+                max-height: 300px;
+                overflow-y: auto;
+            }
+
+            .content-area {
+                padding: 24px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .content-area {
+                padding: 16px;
+            }
+
+            .page-header h1 {
+                font-size: 22px;
+            }
+
+            .content h2 {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="reading-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar-nav">
+            <h3>📚 Navigation</h3>
+
+            <nav class="navigation-tree">
+                <!-- Introduction -->
+                <div class="nav-item" data-hierarchy-level="2">
+                    <a href="/books/93/6840">Introduction</a>
+                </div>
+
+                <!-- Theme A -->
+                <div class="nav-item" data-hierarchy-level="1">
+                    <a href="/books/93/5438">Theme A Concepts of computer science</a>
+                </div>
+
+                <!-- A1 Computer Fundamentals -->
+                <div class="nav-item" data-hierarchy-level="2">
+                    <a href="/books/93/5438">A1 Computer fundamentals</a>
+                </div>
+
+                <!-- A1.1 Computer Hardware -->
+                <div class="nav-item" data-hierarchy-level="3">
+                    <a href="/books/93/5438">A1.1 Computer hardware and operation</a>
+                </div>
+
+                <!-- A1.1 Topics -->
+                <div class="nav-item" data-hierarchy-level="4">
+                    <a href="/books/93/5438">A1.1.1 CPU components</a>
+                </div>
+                <div class="nav-item" data-hierarchy-level="4">
+                    <a href="/books/93/5439">A1.1.2 GPU role</a>
+                </div>
+                <div class="nav-item" data-hierarchy-level="4">
+                    <a href="/books/93/5440">A1.1.3 CPU vs GPU differences</a>
+                </div>
+                <div class="nav-item" data-hierarchy-level="4">
+                    <a href="/books/93/5442">A1.1.4 Primary memory types</a>
+                </div>
+                <div class="nav-item" data-hierarchy-level="4">
+                    <a href="/books/93/5443">A1.1.5 Fetch-decode-execute cycle</a>
+                </div>
+                <div class="nav-item" data-hierarchy-level="4">
+                    <a href="/books/93/5444" class="active" aria-current="page">A1.1.6 Pipelining in multi-core</a>
+                </div>
+                <div class="nav-item" data-hierarchy-level="4">
+                    <a href="/books/93/5445">A1.1.7 Secondary memory storage</a>
+                </div>
+                <div class="nav-item" data-hierarchy-level="4">
+                    <a href="/books/93/5446">A1.1.8 Compression</a>
+                </div>
+                <div class="nav-item" data-hierarchy-level="4">
+                    <a href="/books/93/5447">A1.1.9 Cloud computing services</a>
+                </div>
+
+                <!-- A1.2 Data Representation -->
+                <div class="nav-item" data-hierarchy-level="3">
+                    <a href="/books/93/5448">A1.2 Data representation and logic</a>
+                </div>
+
+                <div class="nav-item" data-hierarchy-level="4">
+                    <a href="/books/93/5448">A1.2.1 Data representation methods</a>
+                </div>
+                <div class="nav-item" data-hierarchy-level="4">
+                    <a href="/books/93/5449">A1.2.2 Binary data storage</a>
+                </div>
+
+                <!-- Theme B -->
+                <div class="nav-item" data-hierarchy-level="1">
+                    <a href="/books/93/5513">Theme B Computational thinking</a>
+                </div>
+
+                <div class="nav-item" data-hierarchy-level="2">
+                    <a href="/books/93/5513">B1 Problem solving</a>
+                </div>
+
+                <div class="nav-item" data-hierarchy-level="3">
+                    <a href="/books/93/5513">B1.1 Problem specification</a>
+                </div>
+
+                <div class="nav-item" data-hierarchy-level="4">
+                    <a href="/books/93/5513">B1.1.1 Construct problem specs</a>
+                </div>
+                <div class="nav-item" data-hierarchy-level="4">
+                    <a href="/books/93/5514">B1.1.2 Computational thinking concepts</a>
+                </div>
+            </nav>
+
+            <div class="nav-stats">
+                📍 You are on page <strong>57 of 114</strong>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="content-area">
+            <div class="page-header">
+                <h1>A1.1.6 Pipelining in Multi-core Architectures</h1>
+                <div class="breadcrumb">
+                    <a href="/books/93/6840">Introduction</a>
+                    <span> / </span>
+                    <a href="/books/93/5438">Theme A</a>
+                    <span> / </span>
+                    <a href="/books/93/5438">A1 Computer Fundamentals</a>
+                    <span> / </span>
+                    <a href="/books/93/5438">A1.1 Hardware</a>
+                    <span> / </span>
+                    <strong>A1.1.6 Pipelining</strong>
+                </div>
+            </div>
+
+            <article class="content">
+                <h2>What is Pipelining?</h2>
+                <p>
+                    Pipelining is a technique used in multi-core CPU architectures to improve instruction throughput.
+                    Instead of waiting for one instruction to complete before starting the next, pipelining allows
+                    multiple instructions to be processed simultaneously in different stages of the execution pipeline.
+                </p>
+
+                <h2>How It Works</h2>
+                <p>
+                    A typical pipeline has several stages:
+                </p>
+                <ul>
+                    <li><code>Fetch</code> - Retrieve instruction from memory</li>
+                    <li><code>Decode</code> - Interpret the instruction</li>
+                    <li><code>Execute</code> - Perform the operation</li>
+                    <li><code>Memory</code> - Access data if needed</li>
+                    <li><code>Write-back</code> - Store results</li>
+                </ul>
+
+                <h2>Benefits of Pipelining</h2>
+                <p>
+                    Pipelining increases CPU efficiency by:
+                </p>
+                <ul>
+                    <li>Allowing multiple instructions to be in progress simultaneously</li>
+                    <li>Keeping all CPU units busy most of the time</li>
+                    <li>Reducing average instruction execution time</li>
+                </ul>
+
+                <h2>Challenges</h2>
+                <p>
+                    Despite its benefits, pipelining introduces complexity:
+                </p>
+                <ul>
+                    <li><strong>Pipeline Hazards:</strong> Data, control, and structural hazards can stall the pipeline</li>
+                    <li><strong>Branch Misprediction:</strong> Incorrect branch predictions require pipeline flushing</li>
+                    <li><strong>Cache Misses:</strong> Memory latency can cause significant delays</li>
+                </ul>
+
+                <p style="margin-top: 48px; padding-top: 24px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 13px;">
+                    <strong>Next Section:</strong> <a href="/books/93/5445" style="color: #3b82f6;">A1.1.7 Secondary Memory Storage →</a>
+                </p>
+            </article>
+        </main>
+    </div>
+
+    <script>
+        // Simple smooth scroll on navigation links
+        document.querySelectorAll('.nav-item a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                // In real application, this would navigate
+                // For demo, just update active state
+                document.querySelectorAll('.nav-item a').forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

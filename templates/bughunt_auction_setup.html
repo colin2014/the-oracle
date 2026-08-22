@@ -1,0 +1,325 @@
+{% extends "admin_base.html" %}
+{% block title %}Bug Hunt Auction — setup{% endblock %}
+
+{% block content %}
+<style>
+    .bh-container { max-width: 860px; margin: 0 auto; }
+    .bh-container h1 { font-size: 1.5rem; margin: 0 0 0.25rem 0; }
+    .bh-sub { font-size: 0.9rem; color: var(--text-light); margin: 0 0 1.5rem 0; }
+    .bh-card { background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .bh-card h2 { font-size: 1rem; margin: 0 0 0.75rem 0; }
+    .bh-row { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+    .bh-field { display: flex; flex-direction: column; gap: 0.3rem; }
+    .bh-field label { font-size: 0.8rem; font-weight: 600; }
+    .bh-field input {
+        padding: 0.5rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius-control);
+        background: var(--bg-light); color: var(--text-dark); font-family: inherit; font-size: 0.9rem;
+    }
+    .bh-field .hint { font-size: 0.75rem; color: var(--text-light); }
+
+    .bh-team-row { display: flex; gap: 0.6rem; margin-bottom: 0.5rem; align-items: center; }
+    .bh-team-row input { flex: 1; max-width: 320px; }
+    .bh-remove { border: none; background: none; color: var(--text-dark); font-weight: 600; cursor: pointer; padding: 0.4rem 0.6rem; border-radius: var(--radius-control); font-family: inherit; font-size: 0.85rem; }
+    .bh-remove:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); }
+
+    .bh-snippet {
+        display: flex; align-items: center; gap: 0.65rem; padding: 0.55rem 0.8rem;
+        border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 0.45rem;
+        cursor: pointer; font-size: 0.88rem;
+    }
+    .bh-snippet:hover { background: var(--surface-hover); }
+    .bh-snippet input { accent-color: var(--primary); }
+    .bh-snippet .t { font-weight: 600; flex: 1; }
+    .bh-snippet .m { font-size: 0.75rem; color: var(--text-light); white-space: nowrap; }
+    .bh-none { color: var(--text-light); font-size: 0.88rem; }
+    .bh-none a { color: var(--primary); font-weight: 600; }
+    .bh-actions { display: flex; gap: 0.75rem; align-items: center; }
+
+    /* Bidding rules section */
+    .bh-rules { background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
+    .bh-rules-title { display: flex; align-items: center; gap: 0.6rem; cursor: pointer; font-weight: 600; font-size: 0.95rem; margin: 0; user-select: none; }
+    .bh-rules-title:hover { color: var(--primary); }
+    .bh-rules-toggle { font-size: 1.2rem; transition: transform 150ms ease; }
+    .bh-rules-toggle.open { transform: rotate(180deg); }
+    .bh-rules-content { display: none; margin-top: 1rem; font-size: 0.9rem; line-height: 1.7; }
+    .bh-rules-content.open { display: block; }
+
+    /* Snippet preview: full-height panel docked to the right */
+    .sp-scrim {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+        opacity: 0; pointer-events: none; transition: opacity 200ms ease; z-index: 1000;
+    }
+    .sp-scrim.open { opacity: 1; pointer-events: auto; }
+    .sp-panel {
+        position: fixed; top: 0; right: 0; height: 100vh; width: min(56vw, 820px);
+        display: flex; flex-direction: column;
+        background: var(--bg-white); border-left: 1px solid var(--border);
+        box-shadow: -8px 0 32px rgba(0,0,0,0.18);
+        transform: translateX(100%); transition: transform 240ms ease; z-index: 1001;
+    }
+    .sp-scrim.open .sp-panel { transform: translateX(0); }
+    @media (max-width: 900px) { .sp-panel { width: 100vw; } }
+    @media (prefers-reduced-motion: reduce) {
+        .sp-scrim, .sp-panel { transition: none; }
+    }
+    .sp-head {
+        display: flex; align-items: flex-start; gap: 1rem;
+        padding: 1.1rem 1.25rem; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .sp-head h2 { font-size: 1.15rem; font-weight: 700; margin: 0 0 0.2rem; }
+    .sp-head .sp-meta { font-size: 0.82rem; color: var(--text-light); }
+    .sp-close {
+        margin-left: auto; background: none; border: none; font-size: 1.6rem; line-height: 1;
+        cursor: pointer; color: var(--text-light); padding: 0 0.2rem; flex-shrink: 0;
+    }
+    .sp-close:hover { color: var(--text-dark); }
+    .sp-code {
+        flex: 1; overflow: auto; margin: 0; padding: 1.1rem 1.25rem;
+        font-family: var(--mono); font-size: 0.92rem; line-height: 1.65;
+        background: var(--bg-light); white-space: pre; tab-size: 4;
+    }
+    .sp-code .ln {
+        display: inline-block; width: 2.2em; margin-right: 1rem;
+        color: var(--text-light); text-align: right; user-select: none;
+    }
+    .sp-body { flex: 1; overflow-y: auto; padding: 1.1rem 1.25rem; }
+    .sp-bugs { font-size: 0.9rem; }
+    .sp-bugs h3 { margin: 0.8rem 0 0.5rem; font-size: 0.95rem; font-weight: 700; }
+    .sp-bug-item {
+        background: var(--bg-light); padding: 0.6rem 0.8rem; border-radius: var(--radius-sm);
+        margin-bottom: 0.4rem; font-size: 0.88rem;
+    }
+    .sp-bug-item .sp-ln { font-family: var(--mono); font-weight: 700; color: var(--primary); }
+    .sp-bugs-list { display: block; }
+    .sp-bugs-list.hidden { display: none; }
+    .bh-rules-content h4 { margin: 1rem 0 0.4rem; font-size: 0.9rem; font-weight: 700; }
+    .bh-rules-content p { margin: 0 0 0.8rem; }
+    .bh-rules-content ul { margin: 0 0 0.8rem; padding-left: 1.5rem; }
+    .bh-rules-content li { margin-bottom: 0.4rem; }
+    .bh-example { background: var(--bg-light); border-left: 3px solid var(--primary); padding: 0.8rem 1rem; border-radius: var(--radius-sm); margin: 0.8rem 0; font-size: 0.85rem; font-family: var(--mono); }
+</style>
+
+<div class="bh-container">
+    <h1>Bug Hunt Auction</h1>
+    <p class="bh-sub">Teams bid points on how confident they are, then hunt the planted bugs against the clock. Runs entirely on the board — students don't need devices.</p>
+
+    <!-- Bidding Rules Explainer -->
+    <div class="bh-rules">
+        <button class="bh-rules-title" onclick="toggleRules()" type="button">
+            <span class="bh-rules-toggle" id="rulesToggle">▼</span>
+            <span>How bidding works</span>
+        </button>
+        <div class="bh-rules-content" id="rulesContent">
+            <h4>The Flow</h4>
+            <ol>
+                <li><strong>Setup:</strong> Show the code snippet on the board. Teams have time to read and understand it.</li>
+                <li><strong>Bidding:</strong> Each team bids points (from their current pool) on how confident they are to find <em>all</em> the bugs.</li>
+                <li><strong>Hunting:</strong> The highest bidder gets the hunt attempt. They have a fixed time limit to identify every bug.</li>
+                <li><strong>Scoring:</strong> If they find all bugs → they win the pot. If they miss any → their bid goes into the pot.</li>
+                <li><strong>Pot grows:</strong> Each round's planted bugs are worth 20 points × bug count to the pot. Losing bids also feed it.</li>
+            </ol>
+
+            <h4>Why Bid? The Strategy</h4>
+            <p>Bidding does two things:</p>
+            <ul>
+                <li><strong>Risky bet:</strong> Bid high if your team is confident (you gain the pot on success). Bid low if unsure (you protect points).</li>
+                <li><strong>Defensive move:</strong> Even a low bid blocks other teams from hunting that round. Sometimes it's worth the risk.</li>
+            </ul>
+
+            <h4>Example Round (4 bugs, 5-bug pot, 120 second hunt)</h4>
+            <div class="bh-example">
+Pot: 80 points (from previous rounds)
+Bugs worth: 4 × 20 = 80 points
+
+Team Alpha bids 30 points
+Team Beta bids 50 points ← highest bid (hunts)
+Team Gamma bids 10 points
+
+Beta hunts for 120 seconds...
+→ Beta finds 3 bugs but misses 1
+
+Result:
+  • Beta loses their 50-point bid → pot becomes 80 + 50 = 130
+  • Alpha and Gamma keep their bids (they weren't attempting)
+  • Next round: pot = 130, ready to grow again
+            </div>
+
+            <h4>If Beta Had Won</h4>
+            <div class="bh-example">
+Beta finds all 4 bugs in time
+
+Result:
+  • Beta wins the entire pot (130 points!)
+  • Pot resets to 0 for the next round
+            </div>
+
+            <h4>Teacher Tips</h4>
+            <ul>
+                <li>Show team points and the pot on the board the whole time — it builds tension.</li>
+                <li>Hunt time should be 60–180 seconds depending on complexity. Start with 120.</li>
+                <li>Emphasize <em>all</em> bugs must be found — missing one costs the bid.</li>
+                <li>If a team bids 0, they skip that round. You can still move to the next round without running out of bidders.</li>
+            </ul>
+        </div>
+    </div>
+
+    <form method="post">
+        <div class="bh-card">
+            <h2>Teams</h2>
+            <div id="teamRows">
+                <div class="bh-team-row"><input type="text" name="team_name" placeholder="Team name" value="Team Alpha" aria-label="Team name"></div>
+                <div class="bh-team-row"><input type="text" name="team_name" placeholder="Team name" value="Team Beta" aria-label="Team name"></div>
+            </div>
+            <button type="button" class="admin-btn-ghost" onclick="addTeam()">Add a team</button>
+        </div>
+
+        <div class="bh-card">
+            <h2>Rules</h2>
+            <div class="bh-row">
+                <div class="bh-field">
+                    <label for="starting_points">Starting points per team</label>
+                    <input type="number" id="starting_points" name="starting_points" value="100" min="50" max="500">
+                </div>
+                <div class="bh-field">
+                    <label for="hunt_seconds">Hunt time (seconds)</label>
+                    <input type="number" id="hunt_seconds" name="hunt_seconds" value="120" min="30" max="600">
+                    <span class="hint">The clock the winning bidder hunts against</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bh-card">
+            <h2>Rounds (one snippet each)</h2>
+            {% if snippets %}
+                {% for sn in snippets %}
+                <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.45rem;">
+                    <label class="bh-snippet" style="margin-bottom: 0; flex: 1;">
+                        <input type="checkbox" name="snippet_ids" value="{{ sn.id }}">
+                        <span class="t">{{ sn.title }}</span>
+                        <span class="m">{{ sn.difficulty }} · {{ sn.bugs_list()|length }} bug{{ "s" if sn.bugs_list()|length != 1 }} · {{ sn.line_count() }} lines</span>
+                    </label>
+                    <button type="button" class="admin-btn-text" data-snippet-id="{{ sn.id }}"
+                            onclick="previewSnippet(this.dataset.snippetId)"
+                            style="font-size: 0.85rem; padding: 0.3rem 0.6rem; white-space: nowrap;">Preview</button>
+                </div>
+                {% endfor %}
+                <script>
+                    const SNIPPET_PREVIEWS = {
+                        {%- for sn in snippets %}
+                        {{ sn.id | string | tojson }}: {{ {
+                            'title': sn.title,
+                            'language': sn.language,
+                            'difficulty': sn.difficulty,
+                            'lineCount': sn.line_count(),
+                            'bugCount': sn.bugs_list()|length,
+                            'code': sn.code,
+                            'bugs': sn.bugs_list()
+                        } | tojson }}{{ "," if not loop.last }}
+                        {%- endfor %}
+                    };
+                </script>
+            {% else %}
+                <p class="bh-none">No snippets yet — <a href="{{ url_for('games.bughunt_snippets') }}">write one or add the samples</a> first.</p>
+            {% endif %}
+        </div>
+
+        <div class="bh-actions">
+            <button type="submit" class="admin-btn" {{ "disabled" if not snippets }}>Start the auction</button>
+            <a class="admin-btn-text" href="{{ url_for('games.hub') }}">Back to games</a>
+        </div>
+    </form>
+</div>
+
+<script>
+function addTeam() {
+    const row = document.createElement("div");
+    row.className = "bh-team-row";
+    row.innerHTML = `<input type="text" name="team_name" placeholder="Team name" aria-label="Team name">
+        <button type="button" class="bh-remove" onclick="this.parentElement.remove()">Remove</button>`;
+    document.getElementById("teamRows").appendChild(row);
+}
+
+function toggleRules() {
+    const content = document.getElementById('rulesContent');
+    const toggle = document.getElementById('rulesToggle');
+    content.classList.toggle('open');
+    toggle.classList.toggle('open');
+}
+
+function previewSnippet(snippetId) {
+    const data = SNIPPET_PREVIEWS[snippetId];
+    if (!data) return;
+
+    closeSnippetPreview();
+
+    const isPython = data.language && data.language.toLowerCase().includes('python');
+    const lines = data.code.split('\n').map((line, i) => {
+        let displayLine = escapeHtml(line);
+        if (isPython) {
+            // Replace leading spaces with visible dots, tabs with → for Python
+            displayLine = displayLine.replace(/^ +/g, (match) => '·'.repeat(match.length));
+            displayLine = displayLine.replace(/\t/g, '→');
+        }
+        return `<span class="ln">${i + 1}</span>${displayLine}`;
+    }).join('\n');
+
+    const bugsHtml = data.bugs && data.bugs.length > 0
+        ? `<h3 style="margin: 0.8rem 0 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+            <button type="button" class="sp-bug-toggle" onclick="this.parentElement.nextElementSibling.classList.toggle('hidden'); this.textContent = this.parentElement.nextElementSibling.classList.contains('hidden') ? '▶' : '▼';" style="background: none; border: none; cursor: pointer; padding: 0; font-size: 0.9rem; color: var(--text-light);">▶</button>
+            Planted bugs
+          </h3>
+          <div class="sp-bugs-list hidden">
+            <p style="font-size: 0.82rem; color: var(--text-light); margin: 0 0 0.8rem;">Teachers can reveal these after each bug is found.</p>` +
+          data.bugs.map((b, i) => `<div class="sp-bug-item"><span class="sp-ln">Line ${b.line}:</span> ${escapeHtml(b.description)}</div>`).join('') +
+          `</div>`
+        : '<p style="font-size: 0.82rem; color: var(--text-light);">No bugs planted yet.</p>';
+
+    const panel = `
+    <div id="snippetPreviewModal" class="sp-scrim">
+        <aside class="sp-panel" role="dialog" aria-modal="true" aria-label="Snippet preview">
+            <div class="sp-head">
+                <div>
+                    <h2>${escapeHtml(data.title)}</h2>
+                    <div class="sp-meta">
+                        ${escapeHtml(data.language)} • ${escapeHtml(data.difficulty)} •
+                        ${data.bugCount} bug${data.bugCount !== 1 ? 's' : ''} • ${data.lineCount} lines
+                    </div>
+                </div>
+                <button type="button" class="sp-close" onclick="closeSnippetPreview()" aria-label="Close preview">×</button>
+            </div>
+            <div class="sp-body">
+                <pre class="sp-code">${lines}</pre>
+                <div class="sp-bugs">${bugsHtml}</div>
+            </div>
+        </aside>
+    </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', panel);
+
+    const scrim = document.getElementById('snippetPreviewModal');
+    scrim.addEventListener('click', e => {
+        if (e.target === scrim) closeSnippetPreview();
+    });
+    document.addEventListener('keydown', handleEscapeKey);
+
+    // Let the element land in the DOM at translateX(100%) before flipping the class,
+    // otherwise the browser collapses both states into one frame and nothing slides.
+    requestAnimationFrame(() => scrim.classList.add('open'));
+}
+
+function closeSnippetPreview() {
+    const modal = document.getElementById('snippetPreviewModal');
+    if (modal) modal.remove();
+    document.removeEventListener('keydown', handleEscapeKey);
+}
+
+function handleEscapeKey(e) {
+    if (e.key === 'Escape') closeSnippetPreview();
+}
+
+function escapeHtml(text) {
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+</script>
+{% endblock %}

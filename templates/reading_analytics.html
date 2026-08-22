@@ -1,0 +1,440 @@
+{% extends "student_base.html" %}
+{% block title %}Reading Analytics — The Oracle{% endblock %}
+
+{% block content %}
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .stat-label {
+        font-size: 0.85rem;
+        color: var(--text-light);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.75rem;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #c77dff 0%, #a84fd4 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .chart-container {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-bottom: 2rem;
+    }
+
+    .chart-title {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        color: var(--text-dark);
+    }
+
+    .bar-chart {
+        display: flex;
+        gap: 0.5rem;
+        height: 220px;
+        margin-bottom: 2rem;
+    }
+
+    .bar-col { flex: 1; position: relative; height: 100%; }
+
+    .bar {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(180deg, #c77dff 0%, #a84fd4 100%);
+        border-radius: 6px 6px 0 0;
+        transition: height 0.5s ease;
+    }
+
+    .bar.empty { background: var(--bg-light); }
+
+    .bar-value {
+        position: absolute;
+        bottom: calc(100% + 4px);
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--primary);
+        white-space: nowrap;
+    }
+
+    .bar-label {
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.75rem;
+        color: var(--text-dark);
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .book-list {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-bottom: 2rem;
+    }
+
+    .book-item {
+        padding: 1.25rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .book-item:last-child {
+        border-bottom: none;
+    }
+
+    .book-name {
+        font-weight: 600;
+        color: var(--text-dark);
+        margin-bottom: 0.25rem;
+    }
+
+    .book-stats {
+        font-size: 0.85rem;
+        color: var(--text-light);
+    }
+
+    .book-progress {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .progress-bar {
+        height: 8px;
+        background: var(--bg-light);
+        border-radius: 4px;
+        overflow: hidden;
+        width: 150px;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #c77dff, #a84fd4);
+    }
+
+    .progress-percent {
+        font-weight: 600;
+        color: var(--text-dark);
+        min-width: 40px;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text-light);
+    }
+
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    /* Flashcard section */
+    .fc-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .fc-stat {
+        background: var(--bg-light);
+        border-radius: var(--radius);
+        padding: 1rem 1.25rem;
+        text-align: center;
+    }
+
+    .fc-stat .n { font-size: 1.5rem; font-weight: 800; color: var(--primary); }
+    .fc-stat .l { font-size: 0.78rem; color: var(--text-light); margin-top: 0.2rem; }
+
+    .fc-set-item {
+        padding: 1.25rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .fc-set-item:last-child { border-bottom: none; }
+
+    .fc-set-name { font-weight: 600; color: var(--text-dark); margin-bottom: 0.25rem; }
+    .fc-set-stats { font-size: 0.85rem; color: var(--text-light); }
+
+    .fc-badge {
+        display: inline-block;
+        padding: 0.25rem 0.6rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+    .fc-badge.good { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    .fc-badge.mid { background: rgba(217, 119, 6, 0.15); color: #d97706; }
+    .fc-badge.low { background: rgba(217, 41, 22, 0.15); color: #d92916; }
+    .fc-badge.neutral { background: rgba(157, 132, 255, 0.15); color: var(--primary); }
+</style>
+
+<div class="student-card" style="text-align: center; margin-bottom: 2rem;">
+    <h1>📊 Reading Analytics</h1>
+    <p>Track your reading progress and insights</p>
+    <a href="{{ url_for('quiz.student_quiz_analytics') }}" class="btn btn-primary" style="margin-top: 0.75rem;">📝 Quiz Analytics</a>
+</div>
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">Total Reading Time</div>
+        <div class="stat-value" id="totalTime">0h</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Pages Completed</div>
+        <div class="stat-value" id="pagesCompleted">0</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Avg Time Per Page</div>
+        <div class="stat-value" id="avgTime">0m</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Reading Streak</div>
+        <div class="stat-value" id="streak">0</div>
+    </div>
+</div>
+
+<!-- Daily Reading Chart -->
+<div class="chart-container">
+    <h3 class="chart-title">📈 Reading Activity (Last 7 Days)</h3>
+    <div class="bar-chart" id="barChart">
+        <!-- Populated by JavaScript -->
+    </div>
+</div>
+
+<!-- Books Progress -->
+<div class="chart-container">
+    <h3 class="chart-title">📚 Progress by Book</h3>
+    <div class="book-list" id="bookList">
+        <div class="empty-state">
+            <div class="empty-state-icon">📖</div>
+            <p>No reading activity yet</p>
+        </div>
+    </div>
+</div>
+
+<!-- Flashcard Analytics -->
+<div class="chart-container">
+    <h3 class="chart-title">🃏 Flashcards</h3>
+    <div class="fc-stats-grid">
+        <div class="fc-stat"><div class="n" id="fcRounds">0</div><div class="l">Rounds completed</div></div>
+        <div class="fc-stat"><div class="n" id="fcTime">0m</div><div class="l">Time practising</div></div>
+        <div class="fc-stat"><div class="n" id="fcKnown">0</div><div class="l">Cards you know</div></div>
+        <div class="fc-stat"><div class="n" id="fcAccuracy">—</div><div class="l">Accuracy</div></div>
+    </div>
+    <div class="book-list" id="fcSetList">
+        <div class="empty-state">
+            <div class="empty-state-icon">🃏</div>
+            <p>No flashcard practice yet — try a matching game!</p>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function loadAnalytics() {
+        try {
+            const response = await fetch('/api/reading-stats');
+            const stats = await response.json();
+
+            // Update stat cards
+            const totalSeconds = stats.total_seconds || 0;
+            const totalHours = Math.floor(totalSeconds / 3600);
+            const totalMinutes = Math.floor((totalSeconds % 3600) / 60);
+
+            document.getElementById('totalTime').textContent = totalHours > 0
+                ? `${totalHours}h ${totalMinutes}m`
+                : `${totalMinutes}m`;
+
+            document.getElementById('pagesCompleted').textContent = stats.completed_pages || 0;
+
+            const avgMinutes = stats.total_pages > 0
+                ? Math.round((totalSeconds / 60) / stats.total_pages)
+                : 0;
+            document.getElementById('avgTime').textContent = `${avgMinutes}m`;
+
+            // Calculate streak
+            const activities = stats.activities || [];
+            const activityDates = activities
+                .map(a => new Date(a.last_opened_at).toISOString().split('T')[0])
+                .filter(Boolean);
+
+            let streak = 0;
+            if (activityDates.length > 0) {
+                const today = new Date().toISOString().split('T')[0];
+                const uniqueDates = [...new Set(activityDates)].sort().reverse();
+
+                let currentDate = today;
+                for (const date of uniqueDates) {
+                    if (date === currentDate) {
+                        streak++;
+                        currentDate = new Date(new Date(currentDate) - 86400000).toISOString().split('T')[0];
+                    } else {
+                        break;
+                    }
+                }
+            }
+            document.getElementById('streak').textContent = streak;
+
+            // Activity chart (last 7 days) — the server provides accurate
+            // per-day seconds from the daily reading log
+            const dailyActivity = stats.daily || {};
+            const last7Days = Object.keys(dailyActivity).sort();
+
+            const maxSeconds = Math.max(...Object.values(dailyActivity), 1);
+            const barChart = document.getElementById('barChart');
+
+            barChart.innerHTML = last7Days.map(date => {
+                const seconds = dailyActivity[date];
+                const minutes = Math.round(seconds / 60);
+                const heightPct = seconds > 0 ? Math.max(seconds / maxSeconds * 85, 4) : 2;
+                const dayName = new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' });
+
+                return `
+                    <div class="bar-col">
+                        <div class="bar ${seconds > 0 ? '' : 'empty'}" style="height: ${heightPct}%;" title="${minutes} min">
+                            ${seconds > 0 ? `<div class="bar-value">${minutes}m</div>` : ''}
+                        </div>
+                        <div class="bar-label">${dayName}</div>
+                    </div>
+                `;
+            }).join('');
+
+            // Build books list
+            if (stats.books && stats.books.length > 0) {
+                const bookList = document.getElementById('bookList');
+                bookList.innerHTML = stats.books.map(book => {
+                    const progress = book.total_pages > 0
+                        ? Math.round((book.completed_pages / book.total_pages) * 100)
+                        : 0;
+
+                    return `
+                        <div class="book-item">
+                            <div>
+                                <div class="book-name">📖 ${book.title}</div>
+                                <div class="book-stats">${book.completed_pages}/${book.total_pages} pages • ${Math.round((book.total_seconds || 0) / 60)} min read</div>
+                            </div>
+                            <div class="book-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${progress}%"></div>
+                                </div>
+                                <div class="progress-percent">${progress}%</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        } catch (error) {
+            console.error('Failed to load analytics:', error);
+        }
+    }
+
+    function formatMinutes(seconds) {
+        const mins = Math.round((seconds || 0) / 60);
+        if (mins >= 60) return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+        return `${mins}m`;
+    }
+
+    async function loadFlashcardStats() {
+        try {
+            const response = await fetch('/api/flashcards/my-stats');
+            const data = await response.json();
+            const totals = data.totals || {};
+
+            document.getElementById('fcRounds').textContent = totals.rounds_completed || 0;
+            document.getElementById('fcTime').textContent = formatMinutes(totals.total_seconds);
+            document.getElementById('fcKnown').textContent = totals.cards_seen
+                ? `${totals.cards_known} / ${totals.cards_seen}`
+                : '0';
+            document.getElementById('fcAccuracy').textContent =
+                totals.accuracy !== null && totals.accuracy !== undefined ? `${totals.accuracy}%` : '—';
+
+            const sets = data.sets || [];
+            if (!sets.length) return; // keep the friendly empty state
+
+            document.getElementById('fcSetList').innerHTML = sets.map(set => {
+                const known = set.mastered !== null && set.card_count
+                    ? Math.round((set.mastered / set.card_count) * 100)
+                    : null;
+                const accBadge = set.last_accuracy === null || set.last_accuracy === undefined ? ''
+                    : `<span class="fc-badge ${set.last_accuracy >= 80 ? 'good' : set.last_accuracy >= 50 ? 'mid' : 'low'}">${set.last_accuracy}% last round</span>`;
+                const improving = set.accuracy_improvement > 0
+                    ? `<span class="fc-badge good">▲ improving</span>` : '';
+                const best = set.best_match_seconds
+                    ? `<span class="fc-badge neutral">⏱ best match ${set.best_match_seconds}s</span>` : '';
+
+                const details = [
+                    set.mastered !== null ? `${set.mastered}/${set.card_count} cards known` : `${set.card_count} cards`,
+                    `${set.rounds} round${set.rounds === 1 ? '' : 's'}`,
+                    formatMinutes(set.total_seconds) + ' practised',
+                ].join(' • ');
+
+                return `
+                    <div class="fc-set-item">
+                        <div>
+                            <div class="fc-set-name">🃏 ${set.title}</div>
+                            <div class="fc-set-stats">${details}</div>
+                            <div style="margin-top: 0.5rem; display: flex; gap: 0.4rem; flex-wrap: wrap;">${accBadge}${improving}${best}</div>
+                        </div>
+                        <div class="book-progress">
+                            ${known !== null ? `
+                                <div class="progress-bar"><div class="progress-fill" style="width: ${known}%"></div></div>
+                                <div class="progress-percent">${known}%</div>` : ''}
+                            <a href="${set.link}" class="btn btn-primary btn-sm">Practise</a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } catch (error) {
+            console.error('Failed to load flashcard stats:', error);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadAnalytics();
+        loadFlashcardStats();
+    });
+</script>
+{% endblock %}

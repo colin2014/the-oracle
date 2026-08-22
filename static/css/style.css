@@ -1,0 +1,1643 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Toddle-inspired palette */
+    --primary: #8366e8;
+    --primary-light: #9d84ff;
+    --primary-dark: #6b52cc;
+
+    /* Semantic status colors — the only colors besides --primary and neutrals.
+       Values match what was already the de-facto standard across pill/badge
+       usage sitewide; formalized here so nothing invents a new hue for the
+       same meaning. */
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --info: #3b82f6;
+
+    /* The accent at low opacity — the standard fill for a hovered or selected
+       control that should read as "touched by the accent" without becoming a
+       filled primary button. It was already being used as var(--tint) in
+       book_page.html, learn.html and book_learn.html (11 places) but had never
+       been defined anywhere, so every one of those resolved to nothing and the
+       states they styled silently had no fill at all. Derived from --primary so
+       it follows the accent into dark theme without a second declaration. */
+    --tint: color-mix(in srgb, var(--primary) 12%, transparent);
+
+    /* Neutral hover fill for rows and icon buttons that should lift off the
+       surface without taking the accent. book_page.html had this as a literal
+       #F0F4F8 in light and #1d1f28 in dark, repeated across the nav rows and
+       both sidebar toggles, with a dark override per site to undo the light
+       value. One token, and those overrides stop being needed. */
+    --surface-hover: #f0f4f8;
+
+    --bg-light: #f8f9fa;
+    --bg-white: #ffffff;
+    --text-dark: #1a1a1a;
+    --text-light: #6b7280;
+    --border: #e5e7eb;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --radius: 12px;
+    --radius-sm: 8px;
+    /* Control tier. 6px was already the de-facto radius on every button and
+       input in the app but was hardcoded at each site, so the "controls are
+       6px, containers are 8-12px" split had no token backing it. */
+    --radius-control: 6px;
+
+    /* Shared page header (reading page + editor) */
+    --header-bg: var(--primary);
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+    color-scheme: light;
+}
+
+[data-theme="dark"] {
+    /* 2026 dark: deep violet-tinted layered surfaces, brightened accent */
+    --primary: #9d84ff;
+    --primary-light: #b5a3ff;
+    --primary-dark: #8366e8;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --info: #60a5fa;
+    --surface-hover: #1d1f28;
+    --bg-light: #0f1014;
+    --bg-white: #17181f;
+    --text-dark: #ececf1;
+    --text-light: #9a9aa8;
+    --border: #262833;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 16px 40px -8px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(157, 132, 255, 0.06);
+    --header-bg: #17181f;
+    color-scheme: dark;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--bg-light);
+    color: var(--text-dark);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+button, input, select, textarea {
+    font-family: inherit;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ============================================ */
+/* TODDLE-INSPIRED NAVIGATION BAR             */
+/* ============================================ */
+
+.app-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-white);
+    padding: 0.875rem 2rem;
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    gap: 1.5rem;
+}
+
+.nav-brand {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-shrink: 0;
+    letter-spacing: -0.5px;
+}
+
+.nav-brand-icon {
+    width: 28px;
+    height: 28px;
+    stroke: var(--primary);
+    stroke-width: 2;
+    fill: none;
+}
+
+.nav-links {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex: 0 1 auto;
+}
+
+.nav-link {
+    color: var(--text-light);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    transition: color 0.2s ease, background 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    white-space: nowrap;
+    position: relative;
+}
+
+.nav-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    stroke-width: 2;
+    fill: none;
+}
+
+.nav-link:hover {
+    color: var(--primary);
+    background: rgba(131, 102, 232, 0.08);
+}
+
+.nav-link.active {
+    color: var(--primary);
+    background: rgba(131, 102, 232, 0.12);
+    font-weight: 600;
+}
+
+.global-search-wrapper {
+    position: relative;
+    flex: 0 1 340px;
+    margin: 0 0.5rem;
+}
+
+.global-search-input {
+    width: 100%;
+    padding: 0.5rem 1rem 0.5rem 2.4rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-light);
+    color: var(--text-dark);
+    font-size: 0.9rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.global-search-input::placeholder {
+    color: var(--text-light);
+    font-size: 0.85rem;
+}
+
+.global-search-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(131, 102, 232, 0.1);
+    background: var(--bg-white);
+}
+
+.search-icon {
+    position: absolute;
+    left: 0.65rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-light);
+    pointer-events: none;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.search-results-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-top: 0.5rem;
+    max-height: 400px;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+    display: none;
+    z-index: 1000;
+}
+
+.search-results-dropdown.active {
+    display: block;
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.4rem 0.8rem;
+    background: rgba(131, 102, 232, 0.08);
+    border-radius: 6px;
+    border: 1px solid rgba(131, 102, 232, 0.15);
+}
+
+.user-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #8366e8 0%, #6b52cc 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.user-name {
+    font-size: 0.9rem;
+    color: var(--text-dark);
+    font-weight: 500;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.theme-toggle-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    padding: 0.5rem 0.65rem;
+    border-radius: 6px;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dark);
+    position: relative;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+}
+
+.theme-icon-light,
+.theme-icon-dark {
+    width: 18px;
+    height: 18px;
+    position: absolute;
+    transition: opacity 0.3s ease;
+    fill: currentColor;
+}
+
+.theme-icon-light {
+    opacity: 1;
+}
+
+.theme-icon-dark {
+    opacity: 0;
+}
+
+[data-theme="dark"] .theme-icon-light {
+    opacity: 0;
+}
+
+[data-theme="dark"] .theme-icon-dark {
+    opacity: 1;
+}
+
+.theme-toggle-btn:hover {
+    background: rgba(131, 102, 232, 0.12);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.logout-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    padding: 0.5rem 0.8rem;
+    border-radius: 6px;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    text-decoration: none;
+    color: var(--text-dark);
+    font-size: 0.9rem;
+    font-weight: 500;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.logout-btn .nav-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.logout-btn:hover {
+    background: rgba(131, 102, 232, 0.12);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* Header */
+header {
+    background: var(--bg-white);
+    color: var(--text-dark);
+    padding: 1.25rem 2rem;
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+
+header h1 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.25rem;
+    color: var(--primary);
+}
+
+header p {
+    font-size: 0.9rem;
+    color: var(--text-light);
+}
+
+/* Main Grid */
+.main-grid {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 1rem;
+    padding: 1rem;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Sidebar */
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: var(--bg-light);
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+
+/* Panels */
+.panel {
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    box-shadow: var(--shadow);
+}
+
+.panel h2 {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 1rem;
+    color: var(--text-light);
+}
+
+/* Forms */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+input[type="url"],
+input[type="text"],
+input[type="search"] {
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
+    background: var(--bg-light);
+    color: var(--text-dark);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+input[type="url"]:focus,
+input[type="text"]:focus,
+input[type="search"]:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(131, 102, 232, 0.1);
+    background: var(--bg-white);
+}
+
+/* Buttons */
+.btn {
+    padding: 0.65rem 1rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 2px 8px rgba(131, 102, 232, 0.2);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #8366e8 0%, #6b52cc 100%);
+    color: white;
+    width: 100%;
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #9d84ff 0%, #7b66ff 100%);
+    box-shadow: 0 4px 12px rgba(131, 102, 232, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(131, 102, 232, 0.3);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #82d782 0%, #5ba35a 100%);
+    color: white;
+    width: 100%;
+    border: none;
+}
+
+.btn-secondary:hover {
+    background: linear-gradient(135deg, #a0e8a0 0%, #6bb36b 100%);
+    box-shadow: 0 4px 12px rgba(130, 215, 130, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-small {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    width: auto;
+}
+
+/* Admin Base Styles */
+.admin-shell { display: flex; min-height: 100vh; }
+
+.admin-sidebar {
+    width: 240px;
+    background: var(--bg-white);
+    border-right: 1px solid var(--border);
+    padding: 1rem 0.5rem;
+    flex-shrink: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s ease;
+    position: relative;
+}
+
+.admin-sidebar.collapsed {
+    width: 80px;
+}
+
+
+/* Navigation Sections */
+.nav-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 1.5rem;
+}
+
+.nav-section h2 {
+    font-size: 0.75rem;
+    margin: 0 0 0.75rem 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-light);
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.admin-sidebar.collapsed .nav-section h2 {
+    display: none;
+}
+
+/* Navigation Items */
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0.8rem;
+    border-radius: 6px;
+    color: var(--text-dark);
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: background 0.2s ease, color 0.2s ease;
+    white-space: nowrap;
+    position: relative;
+}
+
+.nav-item:hover {
+    background: rgba(131, 102, 232, 0.12);
+    color: var(--primary);
+}
+
+.nav-item:active {
+    background: rgba(131, 102, 232, 0.2);
+    color: var(--primary);
+}
+
+.nav-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    stroke-width: 2;
+}
+
+.nav-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: opacity 0.3s ease;
+}
+
+/* Collapsed State */
+.admin-sidebar.collapsed .nav-label {
+    display: none;
+}
+
+.admin-sidebar.collapsed .nav-item {
+    justify-content: center;
+    padding: 0.75rem;
+    overflow: visible;
+}
+
+/* Tooltip on hover when collapsed */
+.admin-sidebar.collapsed .nav-item::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(100% + 0.75rem);
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--primary);
+    color: white;
+    border-radius: 6px;
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    white-space: nowrap;
+    z-index: 1000;
+    box-shadow: 0 8px 24px rgba(131, 102, 232, 0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    transform: translateY(-50%) scale(0.95);
+}
+
+.admin-sidebar.collapsed .nav-item:hover::after {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+}
+
+/* Bottom Section */
+.nav-section-bottom {
+    margin-top: auto;
+    margin-bottom: 1rem;
+}
+
+/* User Section */
+.user-section {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 0.8rem;
+    margin-top: auto;
+    border-top: 1px solid var(--border);
+    transition: all 0.3s ease;
+}
+
+.user-avatar-large {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #8366e8 0%, #6b52cc 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.user-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+    transition: opacity 0.3s ease;
+}
+
+.user-name-full {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-email {
+    font-size: 0.75rem;
+    color: var(--text-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Collapsed state - hide user details, center avatar */
+.admin-sidebar.collapsed .user-section {
+    justify-content: center;
+    padding: 0.75rem 0.8rem;
+}
+
+.admin-sidebar.collapsed .user-details {
+    display: none;
+}
+
+.admin-sidebar.collapsed .user-avatar-large {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    font-size: 1rem;
+}
+/* No overflow here on purpose: the sidebar is position:fixed and independent
+   (see _sidebar.html), so this doesn't need its own scroll container — and
+   overflow:auto/hidden/scroll on an ancestor silently breaks position:sticky
+   for anything inside it (it becomes the sticky containing block instead of
+   the viewport). Previously worked around for a fixed-position modal by
+   re-parenting it to <body> — see admin_view_as_student.html. */
+.admin-main { flex: 1; padding: 2rem; max-width: 1300px; }
+.admin-flash-success {
+    background: rgba(130, 215, 130, 0.1);
+    color: #5dd19e;
+    padding: 0.8rem 1rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid #82d782;
+}
+.admin-flash-error {
+    background: rgba(253, 114, 125, 0.1);
+    color: #ff6b6b;
+    padding: 0.8rem 1rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid #fd727d;
+}
+table.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+table.admin-table th, table.admin-table td {
+    text-align: left;
+    padding: 0.75rem 0.9rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+}
+table.admin-table th {
+    background: var(--bg-light);
+    font-weight: 600;
+    color: var(--text-dark);
+}
+table.admin-table tr:hover {
+    background: rgba(131, 102, 232, 0.05);
+}
+.admin-card {
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+/* Sub-nav tabs: for pages that share one sidebar entry (e.g. Flashcards / Vocabulary) */
+.subnav-tabs {
+    display: flex;
+    gap: 0.4rem;
+    margin: -0.5rem 0 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+.subnav-tab {
+    padding: 0.6rem 0.9rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-light);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+.subnav-tab:hover { color: var(--text-dark); }
+.subnav-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+/* Button hierarchy: primary (solid) > ghost (outline, navigational) > text (reversible/low-stakes).
+   Only one tier per row should be "loud" — see .admin-btn-ghost / .admin-btn-text below. */
+.admin-btn {
+    display: inline-block;
+    padding: 0.55rem 1.1rem;
+    border: none;
+    border-radius: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.85rem;
+    text-decoration: none;
+    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+.admin-btn:hover {
+    background: var(--primary-dark);
+    box-shadow: 0 4px 12px rgba(131, 102, 232, 0.3);
+    transform: translateY(-2px);
+}
+.admin-btn-danger {
+    background: var(--danger);
+}
+.admin-btn-danger:hover {
+    background: #dc2626;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Secondary tier: navigational actions (Manage, View, tab-like switches) — not committal,
+   shouldn't compete with the row's one primary action. */
+.admin-btn-ghost {
+    display: inline-block;
+    padding: 0.54rem 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-dark);
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.85rem;
+    text-decoration: none;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.admin-btn-ghost:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(131, 102, 232, 0.06);
+}
+.admin-btn-ghost.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+.admin-btn-ghost.active:hover {
+    background: var(--primary-dark);
+    color: #fff;
+}
+
+/* Tertiary tier: reversible / low-stakes actions (Archive) — a plain link, not a button
+   pretending to be as significant as Delete. */
+.admin-btn-text {
+    display: inline-block;
+    padding: 0.4rem 0.7rem;
+    /* Muted grey text on a bare background read as disabled sitting next to the
+       filled and bordered tiers — the exact failure DESIGN.md's third Don't
+       names. Full-strength ink keeps it legible as a control; the tier reads as
+       quiet because it has no fill and no border at rest, not because it is faint. */
+    border: none;
+    background: none;
+    color: var(--text-dark);
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.85rem;
+    border-radius: var(--radius-control);
+    text-decoration: none;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+.admin-btn-text:hover {
+    color: var(--primary);
+    background: var(--tint);
+}
+.admin-inline-form { display: flex; gap: 0.5rem; }
+.admin-inline-form input {
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-light);
+    color: var(--text-dark);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.admin-inline-form input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(131, 102, 232, 0.1);
+}
+
+/* Status Messages */
+.status-message {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 8px;
+    display: none;
+    font-size: 0.9rem;
+    border-left: 4px solid var(--primary);
+    background: rgba(131, 102, 232, 0.1);
+    color: var(--text-light);
+}
+
+.status-message.show {
+    display: block;
+}
+
+.status-message.success {
+    background: rgba(130, 215, 130, 0.1);
+    color: #5dd19e;
+    border-left-color: #82d782;
+}
+
+.status-message.error {
+    background: rgba(253, 114, 125, 0.1);
+    color: #ff6b6b;
+    border-left-color: #fd727d;
+}
+
+.status-message.loading {
+    background: rgba(131, 102, 232, 0.1);
+    color: #9d84ff;
+    border-left-color: #8366e8;
+}
+
+/* Content List */
+.content-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.content-item {
+    padding: 0.85rem 1rem;
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.content-item:hover {
+    background-color: rgba(131, 102, 232, 0.1);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.content-item.active {
+    background-color: rgba(131, 102, 232, 0.15);
+    border-color: var(--primary);
+    box-shadow: inset 0 0 0 1px var(--primary);
+    color: var(--primary);
+}
+
+.content-item h4 {
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+    color: var(--text-dark);
+}
+
+.content-item p {
+    font-size: 0.8rem;
+    color: var(--text-light);
+}
+
+/* Content Area */
+.content-area {
+    background: var(--bg-white);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+}
+
+.content-panel {
+    overflow-y: auto;
+    padding: 2rem;
+    flex: 1;
+}
+
+.placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-light);
+}
+
+.placeholder h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+/* Content Display */
+.content-display {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.content-header {
+    border-bottom: 2px solid var(--primary);
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.content-header h2 {
+    font-size: 1.8rem;
+    color: var(--text-dark);
+    margin-bottom: 0.5rem;
+}
+
+.content-meta {
+    font-size: 0.9rem;
+    color: var(--text-light);
+}
+
+.content-meta span {
+    display: inline-block;
+    margin-right: 1.5rem;
+}
+
+/* Sections */
+.section {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: var(--bg-white);
+    border-radius: 8px;
+    border-left: 4px solid var(--primary);
+    box-shadow: 0 2px 8px rgba(131, 102, 232, 0.08);
+}
+
+.section h3 {
+    color: var(--primary);
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+}
+
+.section h4 {
+    color: var(--text-dark);
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    font-size: 1.05rem;
+}
+
+.section p {
+    color: var(--text-dark);
+    line-height: 1.8;
+    margin-bottom: 0.75rem;
+}
+
+.section ul, .section ol {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.section li {
+    margin-bottom: 0.5rem;
+    color: var(--text-dark);
+}
+
+/* Dashboard specific styles */
+.dashboard-body {
+    background: var(--bg-light);
+    color: var(--text-dark);
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+
+.dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.dashboard-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding: 2rem;
+    background: var(--bg-white);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+}
+
+.dashboard-header h1 {
+    font-size: 2rem;
+    margin: 0 0 0.5rem 0;
+    color: var(--primary);
+}
+
+.dashboard-header p {
+    font-size: 1.1rem;
+    color: var(--text-light);
+    margin: 0;
+}
+
+/* Toast Notifications */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+.toast {
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-width: 320px;
+    max-width: 500px;
+    pointer-events: auto;
+    animation: slideIn 250ms var(--ease-out);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(120%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.toast.removing {
+    animation: slideOut 200ms var(--ease-out) forwards;
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(120%);
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .toast { animation: toast-fade-in 200ms ease; }
+    .toast.removing { animation: toast-fade-out 200ms ease forwards; }
+    @keyframes toast-fade-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes toast-fade-out { from { opacity: 1; } to { opacity: 0; } }
+}
+
+.toast-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.toast-content {
+    flex: 1;
+}
+
+.toast-title {
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 0.25rem;
+}
+
+.toast-message {
+    font-size: 0.9rem;
+    color: var(--text-light);
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: var(--text-light);
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 0;
+    flex-shrink: 0;
+    transition: color 0.2s ease, transform 0.12s ease-out;
+}
+
+.toast-close:hover {
+    color: var(--text-dark);
+}
+
+.toast-close:active {
+    transform: scale(0.9);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .toast-close { transition: color 0.2s ease; }
+    .toast-close:active { transform: none; }
+}
+
+.toast.success {
+    border-left: 4px solid #82d782;
+}
+
+.toast.error {
+    border-left: 4px solid #fd727d;
+}
+
+.toast.warning {
+    border-left: 4px solid #ffd666;
+}
+
+.toast.info {
+    border-left: 4px solid var(--primary);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .main-grid {
+        grid-template-columns: 280px 1fr;
+    }
+
+    .app-nav {
+        gap: 1rem;
+        padding: 0.75rem 1.5rem;
+    }
+
+    .nav-links {
+        gap: 0.25rem;
+    }
+
+    .nav-link {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.85rem;
+    }
+
+    .global-search-wrapper {
+        max-width: 280px;
+    }
+
+    .user-name {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .main-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        display: none;
+    }
+
+    header h1 {
+        font-size: 1.5rem;
+    }
+
+    .app-nav {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        justify-content: flex-start;
+    }
+
+    .nav-brand {
+        flex: 0 0 100%;
+        margin-bottom: 0.25rem;
+    }
+
+    .nav-links {
+        order: 2;
+        width: 100%;
+        gap: 0.35rem;
+        flex-wrap: wrap;
+    }
+
+    .nav-link {
+        flex: 1 1 auto;
+        min-width: 90px;
+        padding: 0.45rem 0.6rem;
+        font-size: 0.8rem;
+    }
+
+    .global-search-wrapper {
+        order: 1;
+        flex: 0 1 100%;
+        max-width: 100%;
+        margin: 0 0 0.5rem 0;
+    }
+
+    .nav-right {
+        flex: 0 0 100%;
+        gap: 0.5rem;
+        justify-content: flex-end;
+    }
+
+    .user-info {
+        display: none;
+    }
+
+    .logout-btn {
+        padding: 0.45rem 0.6rem;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .content-panel {
+        padding: 0.75rem;
+    }
+
+    .section {
+        padding: 1rem;
+    }
+}
+
+/* Scrollbar Styling */
+.content-panel::-webkit-scrollbar,
+.component-sidebar::-webkit-scrollbar,
+.component-sidebar *::-webkit-scrollbar {
+    width: 8px;
+}
+
+.content-panel::-webkit-scrollbar-track,
+.component-sidebar::-webkit-scrollbar-track {
+    background: var(--bg-light);
+}
+
+.content-panel::-webkit-scrollbar-thumb,
+.component-sidebar::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+.content-panel::-webkit-scrollbar-thumb:hover,
+.component-sidebar::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+
+.content-list::-webkit-scrollbar,
+.search-results::-webkit-scrollbar {
+    width: 6px;
+}
+
+.content-list::-webkit-scrollbar-thumb,
+.search-results::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+/* ============================================
+   Admin page headers + stat strip
+   ============================================ */
+.admin-page-header {
+    margin-bottom: 1.5rem;
+}
+
+.admin-page-header h1 {
+    margin: 0 0 0.25rem;
+    font-size: 1.6rem;
+}
+
+.admin-page-header .page-description {
+    margin: 0;
+    color: var(--text-light);
+    font-size: 0.95rem;
+}
+
+.stat-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin: 1.25rem 0 1.75rem;
+}
+
+.stat-tile {
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1rem 1.25rem;
+}
+
+.stat-tile .stat-tile-value {
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: var(--text-dark);
+    line-height: 1.2;
+}
+
+.stat-tile .stat-tile-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-light);
+    margin-top: 0.25rem;
+}
+
+/* ============================================
+   Analytics data cards (tables)
+   ============================================ */
+.analytics-table-wrap {
+    overflow: auto;
+    max-height: 75vh;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    background: var(--bg-white);
+}
+
+table.analytics-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.9rem;
+}
+
+.analytics-table th,
+.analytics-table td {
+    text-align: left;
+    padding: 0.75rem 0.9rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-white);
+}
+
+.analytics-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--bg-light);
+    font-weight: 600;
+    color: var(--text-dark);
+    white-space: nowrap;
+}
+
+.analytics-table th:first-child,
+.analytics-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    border-right: 1px solid var(--border);
+}
+
+.analytics-table thead th:first-child {
+    z-index: 3;
+}
+
+.analytics-table tbody tr:nth-child(even) td {
+    background: var(--bg-light);
+}
+
+.analytics-table tbody tr:hover td {
+    background: rgba(131, 102, 232, 0.08);
+}
+
+.analytics-table td.col-hover,
+.analytics-table th.col-hover {
+    background: rgba(131, 102, 232, 0.08);
+}
+
+/* Pill badges: value is always printed inside, so state
+   is never conveyed by color alone */
+.pill-badge {
+    display: inline-block;
+    padding: 0.2rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.pill-good { background: #d1fae5; color: #065f46; }
+.pill-warn { background: #fef3c7; color: #92400e; }
+.pill-bad  { background: #fee2e2; color: #7f1d1d; }
+.pill-muted { background: var(--bg-light); color: var(--text-light); border: 1px solid var(--border); }
+
+[data-theme="dark"] .pill-good { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+[data-theme="dark"] .pill-warn { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+[data-theme="dark"] .pill-bad  { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+
+/* ============================================
+   Micro-interactions (additive only)
+   ============================================ */
+/* Cards are structure, not controls. None of .admin-card / .stat-tile /
+   .chart-card / .table-card / .stat-card is ever an anchor anywhere in
+   templates/, so the hover lift these used to carry (translateY(-2px) +
+   --shadow-lg) advertised a click target that does not exist. Depth states
+   structure; interactivity is stated by the button tiers and by links.
+   See DESIGN.md → "The Structure-Not-Signal Rule". */
+
+a,
+button,
+.admin-btn,
+.nav-link,
+.nav-item {
+    transition: background-color 150ms ease, color 150ms ease,
+        box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+
+:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+@keyframes admin-fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.admin-main,
+.analytics-container {
+    animation: admin-fade-in 150ms var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    a,
+    button,
+    .admin-btn,
+    .nav-link,
+    .nav-item {
+        transition: none;
+    }
+
+    .admin-main,
+    .analytics-container {
+        animation: none;
+    }
+}
+
+/* ============================================
+   Mobile Responsiveness (under 768px)
+   ============================================ */
+@media (max-width: 768px) {
+    /* Admin sidebar → hamburger menu */
+    .admin-shell {
+        flex-direction: column;
+    }
+
+    .admin-nav {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        padding: 0.75rem 1rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        overflow-x: auto;
+    }
+
+    .admin-nav h2 {
+        display: none;
+    }
+
+    .admin-nav a {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+        margin-bottom: 0;
+        flex: 0 1 auto;
+    }
+
+    .admin-main {
+        padding: 1.5rem;
+        max-width: 100%;
+    }
+
+    /* Make tables horizontally scrollable */
+    .admin-table,
+    table.admin-table,
+    .analytics-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-table thead,
+    .admin-table tbody,
+    table.admin-table thead,
+    table.admin-table tbody {
+        display: block;
+    }
+
+    .admin-table tr,
+    table.admin-table tr,
+    .analytics-table tr {
+        display: inline-block;
+        vertical-align: top;
+        min-width: 100%;
+    }
+
+    /* Book pages and content full width */
+    .content-panel {
+        padding: 1rem;
+    }
+
+    .content-display {
+        width: 100%;
+    }
+
+    .dashboard-container {
+        padding: 1rem;
+    }
+
+    /* Student dashboard stats cards stack */
+    .progress-card {
+        margin-bottom: 1rem;
+        padding: 1.25rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .admin-main {
+        padding: 1rem;
+    }
+
+    .admin-nav {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .admin-nav a {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.75rem;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    .admin-btn {
+        padding: 0.45rem 0.9rem;
+        font-size: 0.8rem;
+    }
+
+    table.admin-table th,
+    table.admin-table td {
+        padding: 0.5rem;
+        font-size: 0.8rem;
+    }
+}

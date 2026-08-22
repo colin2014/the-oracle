@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9d84ff"/>
+      <stop offset="1" stop-color="#6b52cc"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- open book -->
+  <path d="M69 241 L256 220 L256 381 L69 353 Z" fill="#fff"/>
+  <path d="M443 241 L256 220 L256 381 L443 353 Z" fill="#fff"/>
+  <path d="M256 220 L287 224 L287 379 L256 381 Z" fill="#e2dcfa"/>
+  <path d="M256 220 L225 224 L225 379 L256 381 Z" fill="#e2dcfa"/>
+  <g stroke="#c4bce8" stroke-width="5" stroke-linecap="round">
+    <line x1="97" y1="269" x2="240" y2="264"/><line x1="272" y1="264" x2="415" y2="269"/>
+    <line x1="107" y1="292" x2="240" y2="287"/><line x1="272" y1="287" x2="405" y2="292"/>
+    <line x1="117" y1="315" x2="240" y2="310"/><line x1="272" y1="310" x2="395" y2="315"/>
+    <line x1="127" y1="338" x2="240" y2="333"/><line x1="272" y1="333" x2="385" y2="338"/>
+  </g>
+  <line x1="256" y1="214" x2="256" y2="385" stroke="#6b52cc" stroke-width="6"/>
+  <!-- sprout -->
+  <rect x="245" y="125" width="22" height="116" rx="11" fill="#38b46c"/>
+  <ellipse cx="310" cy="154" rx="49" ry="29" transform="rotate(-32 310 154)" fill="#4ac97e"/>
+  <ellipse cx="202" cy="164" rx="49" ry="29" transform="rotate(32 202 164)" fill="#2eaa64"/>
+  <ellipse cx="256" cy="119" rx="26" ry="38" fill="#4ac97e"/>
+</svg>

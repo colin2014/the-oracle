@@ -1,0 +1,18 @@
+<div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; color: #1f2937;">
+    <h2 style="margin-bottom: 0.25rem;">New Reading Assigned</h2>
+    <p style="color: #6b7280; margin-top: 0;">{{ class_obj.name }}</p>
+    <table style="width: 100%; border-collapse: collapse; margin: 1rem 0;">
+        <tr>
+            <td style="padding: 0.4rem 0; color: #6b7280;">Reading</td>
+            <td style="padding: 0.4rem 0; font-weight: 600;">{{ assignment.title }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 0.4rem 0; color: #6b7280;">Due</td>
+            <td style="padding: 0.4rem 0; font-weight: 600;">{{ due }}</td>
+        </tr>
+    </table>
+    <a href="{{ link }}" style="display: inline-block; padding: 0.6rem 1.2rem; background: #2563eb; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600;">
+        Open Reading
+    </a>
+    <p style="color: #9ca3af; font-size: 0.8rem; margin-top: 2rem;">Hi {{ student.name }}, this reading was assigned to your class.</p>
+</div>

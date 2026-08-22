@@ -1,0 +1,993 @@
+{% extends "admin_base.html" %}
+{% block title %}Test Builder — Admin{% endblock %}
+
+{% block content %}
+<style>
+    .tb-container { max-width: 1100px; margin: 0 auto; }
+    .tb-header h1 { font-size: 1.5rem; margin: 0 0 0.3rem 0; }
+    .tb-header p { color: var(--text-light); margin: 0 0 1.5rem 0; font-size: 0.9rem; }
+    .tb-card {
+        background: var(--bg-white); border: 1px solid var(--border); border-radius: 8px;
+        padding: 1.25rem; margin-bottom: 1.25rem;
+    }
+    .tb-empty { text-align: center; padding: 2rem; color: var(--text-light); }
+
+    /* Paper action row: grouped by meaning rather than one undifferentiated flex row —
+       Save+Assign are the two actions that advance this paper (tight pairing); Monitor
+       stands alone as a no-risk view action; Duplicate+Delete are rare/destructive
+       utility, pushed to the far edge so a slip from one to the other is less likely. */
+    .tb-action-row { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+    .tb-action-group { display: flex; align-items: center; gap: 0.5rem; }
+    .tb-action-group-end { margin-left: auto; }
+
+    /* Paper list */
+    .tb-paper-row {
+        display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+        border: 1px solid var(--border); border-radius: 8px;
+        padding: 0.85rem 1.1rem; margin-bottom: 0.5rem;
+    }
+    .tb-paper-title { font-weight: 600; }
+    .tb-paper-meta { font-size: 0.8rem; color: var(--text-light); }
+    .tb-pill {
+        font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 999px;
+        white-space: nowrap; text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    .tb-pill.hl { background: rgba(245, 158, 11, 0.15); color: #b45309; margin-left: 0.4rem; }
+
+    /* The shared ghost/text button styles read as flat, low-contrast grey (pale border,
+       muted text) — strengthened here rather than in the site-wide style.css, so every
+       other admin page's buttons are unaffected. */
+    .tb-container .admin-btn, .tb-container .admin-btn-ghost, .tb-container .admin-btn-text {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+    }
+    .tb-container .admin-btn-ghost { border-color: rgba(131, 102, 232, 0.35); color: var(--text-dark); }
+    .tb-container .admin-btn-ghost:hover { border-color: var(--primary); }
+    .tb-container .admin-btn-text {
+        border: 1px solid var(--border); border-radius: 6px; color: var(--text-dark); padding: 0.5rem 0.8rem;
+    }
+    .tb-container .admin-btn-text:hover {
+        border-color: var(--primary); color: var(--primary); background: rgba(131, 102, 232, 0.06);
+        text-decoration: none;
+    }
+
+    /* One small icon set, one stroke weight (matches .tb-chevron) shared across every
+       button on this page instead of mixed emoji/unicode glyphs. */
+    .tb-icon { width: 15px; height: 15px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .tb-live-dot { width: 7px; height: 7px; border-radius: 50%; background: #ef4444; flex-shrink: 0; animation: tbLivePulse 1.4s ease-in-out infinite; }
+    @keyframes tbLivePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    /* Edit view: the wizard now runs full-width — "This paper" lives in a modal
+       (see .tb-modal-overlay) opened on demand instead of a permanent side column,
+       since it sits mostly empty until questions are actually added. */
+    .tb-viewpaper-flash { animation: tbFlash 0.6s ease; }
+    @keyframes tbFlash { 0% { box-shadow: 0 0 0 3px rgba(131,102,232,0.35); } 100% { box-shadow: 0 0 0 0 rgba(131,102,232,0); } }
+
+    .tb-modal-overlay {
+        position: fixed; inset: 0; background: rgba(15, 14, 20, 0.5); z-index: 1000;
+        display: none; align-items: flex-start; justify-content: center; padding: 4rem 1rem;
+    }
+    .tb-modal-overlay.open { display: flex; }
+    .tb-modal {
+        background: var(--bg-white); border-radius: 10px; max-width: 560px; width: 100%;
+        max-height: calc(100vh - 6rem); overflow-y: auto; padding: 1.5rem;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+    }
+    .tb-modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .tb-modal-header h2 { margin: 0; font-size: 1.1rem; }
+    .tb-modal-close {
+        background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-light);
+        padding: 0.2rem 0.5rem; line-height: 1;
+    }
+    .tb-modal-close:hover { color: var(--primary); }
+
+    .tb-meta-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+    .tb-meta-row label { font-size: 0.8rem; font-weight: 600; color: var(--text-light); display: block; margin-bottom: 0.25rem; }
+    .tb-meta-row input[type=text], .tb-meta-row input[type=number], .tb-meta-row textarea {
+        padding: 0.5rem 0.65rem; border: 1px solid var(--border); border-radius: 6px;
+        background: var(--bg-white); color: var(--text-dark); font-size: 0.9rem; font-family: inherit;
+    }
+
+    /* Subtopic accordion (mirrors the book-reader chapter nav pattern) */
+    .tb-tree { background: #F7F5FC; border: 1px solid var(--border); border-radius: 8px; max-height: 420px; overflow-y: auto; }
+    [data-theme="dark"] .tb-tree { background: #16151f; }
+    .tb-theme-label { padding: 12px 14px 4px; font-size: 12px; font-weight: 700; color: var(--text-dark); }
+    .tb-unit-header {
+        display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px;
+        background: transparent; border: none; border-bottom: 1px solid var(--border);
+        font-family: inherit; font-size: 0.88rem; font-weight: 600; text-align: left; cursor: pointer;
+        color: var(--text-dark); transition: background-color 0.15s ease;
+    }
+    .tb-unit-header:hover { background-color: rgba(131, 102, 232, 0.08); }
+    .tb-unit-header:not(.collapsed) { background-color: rgba(131, 102, 232, 0.16); color: var(--primary); }
+    .tb-chevron { width: 13px; height: 13px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 2;
+        transform: rotate(180deg); transition: transform 0.2s ease; margin-left: auto; }
+    .tb-unit-header.collapsed .tb-chevron { transform: rotate(0deg); }
+    .tb-unit-body { background: var(--bg-white); }
+    .tb-unit-body.collapsed { display: none; }
+    .tb-subtopic-row {
+        display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 14px 8px 30px;
+        background: transparent; border: none; border-bottom: 1px solid var(--border);
+        font-family: inherit; font-size: 0.83rem; text-align: left; cursor: pointer; color: var(--text-dark);
+    }
+    .tb-subtopic-row:last-child { border-bottom: none; }
+    .tb-subtopic-row:hover { background-color: rgba(131, 102, 232, 0.06); }
+    .tb-subtopic-row.active { background-color: rgba(131, 102, 232, 0.14); color: var(--primary); font-weight: 600; }
+    .tb-subtopic-row input[type=checkbox] { accent-color: var(--primary); flex-shrink: 0; }
+
+    /* Step wizard */
+    .tb-step-indicator { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; font-size: 0.82rem; color: var(--text-light); }
+    .tb-step-indicator .tb-step-num {
+        width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--bg-light); color: var(--text-light);
+        display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.78rem;
+    }
+    .tb-step-indicator .tb-step-num.active { background: var(--primary); color: #fff; }
+    .tb-step-indicator .tb-step-label.active { color: var(--text-dark); font-weight: 700; }
+    .tb-step-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
+    .tb-subtopic-section {
+        border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.1rem; margin-bottom: 1rem;
+    }
+    .tb-subtopic-section-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem; }
+    .tb-subtopic-section h3 { font-size: 0.92rem; margin: 0; }
+    .tb-selected-badge {
+        font-size: 0.72rem; font-weight: 700; color: var(--primary); background: rgba(131,102,232,0.1);
+        padding: 0.2rem 0.6rem; border-radius: 999px; white-space: nowrap;
+    }
+    .tb-browse-toggle {
+        display: flex; align-items: center; gap: 0.5rem; width: 100%; margin-top: 1.1rem;
+        padding: 0.55rem 0; background: none; border: none; border-top: 1px solid var(--border);
+        font-family: inherit; font-size: 0.85rem; font-weight: 600; color: var(--text-light);
+        text-align: left; cursor: pointer;
+    }
+    .tb-browse-toggle:hover { color: var(--primary); }
+    .tb-browse-toggle .tb-chevron {
+        width: 12px; height: 12px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 2;
+        transition: transform 0.2s ease;
+    }
+    .tb-browse-toggle.collapsed .tb-chevron { transform: rotate(-90deg); }
+    .tb-browse-body.collapsed { display: none; }
+    .tb-question-filter {
+        width: 100%; padding: 0.5rem 0.7rem; border: 1px solid var(--border); border-radius: 6px;
+        background: var(--bg-white); color: var(--text-dark); font-size: 0.85rem; font-family: inherit;
+        margin: 0.6rem 0 0.5rem;
+    }
+    .tb-question-filter:focus { outline: none; border-color: var(--primary); }
+
+    /* Step 2 subtopic paging: one subtopic's picker on screen at a time instead of
+       stacking every selected subtopic into one long scrolling page. */
+    .tb-subtopic-nav { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1rem; }
+    .tb-subtopic-pill {
+        display: inline-flex; align-items: center; gap: 0.35rem; border: 1px solid var(--border);
+        background: var(--bg-white); color: var(--text-dark); border-radius: 999px;
+        padding: 0.35rem 0.8rem; font-size: 0.8rem; font-family: inherit; font-weight: 600;
+        cursor: pointer; transition: all 0.15s ease;
+    }
+    .tb-subtopic-pill:hover { border-color: var(--primary); color: var(--primary); }
+    .tb-subtopic-pill.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .tb-subtopic-pill-count {
+        font-size: 0.68rem; font-weight: 700; background: rgba(0,0,0,0.12); border-radius: 999px;
+        padding: 0.05rem 0.4rem;
+    }
+    .tb-subtopic-pill.active .tb-subtopic-pill-count { background: rgba(255,255,255,0.25); }
+    .tb-step2-pager { display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; font-size: 0.85rem; color: var(--text-light); }
+
+    /* Browse-individually list grouped into per-mark-value accordions, so opening one
+       bucket doesn't dump every question in the subtopic onto the screen at once. */
+    .tb-mark-groups { display: flex; flex-direction: column; gap: 0.5rem; }
+    .tb-mark-group { border: 1px solid var(--border); border-radius: 6px; }
+    .tb-mark-group-toggle {
+        display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.5rem 0.7rem;
+        background: var(--bg-light); border: none; border-radius: 6px;
+        font-family: inherit; font-size: 0.83rem; font-weight: 600; color: var(--text-dark);
+        text-align: left; cursor: pointer;
+    }
+    .tb-mark-group-toggle .tb-chevron {
+        width: 11px; height: 11px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 2;
+        transition: transform 0.2s ease;
+    }
+    .tb-mark-group-toggle.collapsed .tb-chevron { transform: rotate(-90deg); }
+    .tb-mark-group-count { margin-left: auto; font-size: 0.72rem; font-weight: 600; color: var(--text-light); white-space: nowrap; }
+    .tb-mark-group-body { padding: 0.6rem 0.7rem; }
+    .tb-mark-group-body.collapsed { display: none; }
+
+    /* Subtopic detail (bucket auto-generate + browse) */
+    .tb-bucket-grid { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0.75rem 0; }
+    .tb-bucket-input {
+        display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
+        border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem 0.6rem; min-width: 84px;
+    }
+    .tb-bucket-input label { font-size: 0.72rem; color: var(--text-light); font-weight: 600; }
+    .tb-bucket-input .avail { font-size: 0.68rem; color: var(--text-light); }
+    .tb-bucket-input input {
+        width: 48px; text-align: center; padding: 0.25rem; border: 1px solid var(--border);
+        border-radius: 4px; font-size: 0.85rem;
+    }
+    .tb-question-list { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.75rem; }
+    .tb-question-item {
+        display: flex; align-items: flex-start; gap: 0.6rem; border: 1px solid var(--border);
+        border-radius: 6px; padding: 0.5rem 0.7rem; font-size: 0.85rem;
+    }
+    .tb-question-item.in-paper { border-color: var(--primary); background: rgba(131,102,232,0.06); }
+    .tb-question-item .q-text { flex: 1; }
+    .tb-question-item .q-meta { font-size: 0.72rem; color: var(--text-light); white-space: nowrap; }
+
+    /* Current paper column */
+    .tb-current-list { display: flex; flex-direction: column; gap: 0.4rem; }
+    .tb-current-item {
+        display: flex; align-items: center; gap: 0.5rem; border: 1px solid var(--border);
+        border-radius: 6px; padding: 0.5rem 0.6rem; font-size: 0.83rem;
+    }
+    .tb-current-item .q-num { color: var(--text-light); font-size: 0.75rem; flex-shrink: 0; width: 1.4rem; }
+    .tb-current-item .q-text { flex: 1; }
+    .tb-current-item .q-marks { font-size: 0.72rem; color: var(--text-light); white-space: nowrap; }
+    .tb-current-item .q-actions { display: flex; gap: 0.25rem; flex-shrink: 0; }
+    .tb-current-item button { display: inline-flex; align-items: center; justify-content: center; background: none; border: none; cursor: pointer; color: var(--text-light); padding: 0.2rem; }
+    .tb-current-item button:hover { color: var(--primary); }
+    .tb-summary-bar { display: flex; gap: 1.5rem; font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.75rem; }
+    .tb-summary-bar b { color: var(--text-dark); }
+    .tb-hl-warning {
+        background: rgba(245, 158, 11, 0.12); color: #b45309; border-left: 3px solid #b45309;
+        padding: 0.5rem 0.7rem; border-radius: 0 6px 6px 0; font-size: 0.8rem; margin-bottom: 0.75rem;
+    }
+</style>
+
+<div class="tb-container" id="tbListView">
+    <div class="tb-header" style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap;">
+        <div>
+            <h1>🧪 Test Builder</h1>
+            <p>Assemble timed, single-attempt exams from the imported question bank.</p>
+        </div>
+        <a href="{{ url_for('test_builder.test_review_page') }}" class="admin-btn-ghost" style="white-space:nowrap; text-decoration:none;">📝 Review written answers</a>
+    </div>
+
+    <div class="tb-card">
+        <h2 style="font-size:1.1rem; margin-top:0;">Create a new test</h2>
+        <div class="tb-meta-row">
+            <div style="flex:2; min-width:220px;">
+                <label for="newTitle">Title</label>
+                <input type="text" id="newTitle" placeholder="e.g. Theme A Mock Exam" style="width:100%;">
+            </div>
+            <div>
+                <label for="newTimeLimit">Time limit (minutes)</label>
+                <input type="number" id="newTimeLimit" value="60" min="5" style="width:100px;">
+            </div>
+        </div>
+        <button class="admin-btn" id="createPaperBtn">Create draft</button>
+        <span class="fc-status" id="createStatus" style="margin-left:0.75rem; font-size:0.85rem; color:var(--text-light);"></span>
+    </div>
+
+    <div class="tb-card">
+        <h2 style="font-size:1.1rem; margin-top:0;">Your tests</h2>
+        <div id="papersList"><div class="tb-empty">Loading…</div></div>
+    </div>
+
+    {% if debug %}
+    <div class="tb-card" id="devToolsCard">
+        <h2 style="font-size:1.1rem; margin-top:0;">Dev tools</h2>
+        <p style="font-size:0.85rem; color:var(--text-light); margin-top:-0.5rem;">
+            Testing utilities only — auto-picks whichever test currently has a live join code.
+            Simulated rows are flagged internally and never touch a student's real attempt.
+        </p>
+        <div style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
+            <button class="admin-btn-ghost" id="simulateStartsBtn">Simulate 3 students starting</button>
+            <button class="admin-btn-text" id="clearSimulatedBtn">Clear simulated data</button>
+            <span id="devToolsStatus" style="font-size:0.85rem; color:var(--text-light);"></span>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="tb-container" id="tbEditView" style="display:none;">
+    <p><a href="{{ url_for('test_builder.test_builder_home') }}" class="admin-btn-text" style="text-decoration:none;">
+        <svg class="tb-icon" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        All tests
+    </a></p>
+    <div class="tb-card">
+        <div class="tb-meta-row">
+            <div style="flex:2; min-width:220px;">
+                <label for="editTitle">Title</label>
+                <input type="text" id="editTitle" style="width:100%;">
+            </div>
+            <div>
+                <label for="editTimeLimit">Time limit (minutes)</label>
+                <input type="number" id="editTimeLimit" min="5" style="width:100px;">
+            </div>
+        </div>
+        <div class="tb-summary-bar">
+            <span><b id="summaryCount">0</b> questions</span>
+            <span><b id="summaryMarks">0</b> marks</span>
+            <button type="button" class="admin-btn-ghost" id="viewPaperBtn" style="margin-left:auto;">
+                <svg class="tb-icon" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                View this paper
+            </button>
+        </div>
+        <div id="hlWarning" class="tb-hl-warning" style="display:none;">
+            ⚠ This paper includes HL-only questions — check the target class doesn't include SL students before assigning.
+        </div>
+        <div class="tb-action-row">
+            <div class="tb-action-group">
+                <button class="admin-btn" id="saveMetaBtn">Save changes</button>
+                <a class="admin-btn-ghost" id="assignLink" href="#" style="text-decoration:none;">
+                    <svg class="tb-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1"></circle></svg>
+                    Assign…
+                </a>
+            </div>
+            <a class="admin-btn-ghost" id="monitorLink" href="#" style="text-decoration:none;">
+                <span class="tb-live-dot"></span>
+                Monitor live
+            </a>
+            <div class="tb-action-group tb-action-group-end">
+                <button class="admin-btn-text" id="duplicateBtn">
+                    <svg class="tb-icon" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    Duplicate
+                </button>
+                <button class="admin-btn admin-btn-danger" id="deletePaperBtn">
+                    <svg class="tb-icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="tb-card">
+        <div class="tb-step-indicator">
+            <span class="tb-step-num" id="stepNum1">1</span>
+            <span class="tb-step-label" id="stepLabel1">Choose subtopics</span>
+            <span>→</span>
+            <span class="tb-step-num" id="stepNum2">2</span>
+            <span class="tb-step-label" id="stepLabel2">Pick questions</span>
+        </div>
+
+        <div id="wizardStep1">
+            <h2 style="font-size:1rem; margin-top:0;">Which subtopics?</h2>
+            <div class="tb-tree" id="subtopicTree"><div class="tb-empty">Loading…</div></div>
+            <div class="tb-step-footer">
+                <span style="font-size:0.85rem; color:var(--text-light);" id="selectedCount">0 subtopics selected</span>
+                <button class="admin-btn" id="continueToStep2Btn" disabled>Continue →</button>
+            </div>
+        </div>
+
+        <div id="wizardStep2" style="display:none;">
+            <div class="tb-step-footer" style="margin-top:0; margin-bottom:1rem;">
+                <button class="admin-btn-text" id="backToStep1Btn">
+                    <svg class="tb-icon" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    Back to subtopic selection
+                </button>
+            </div>
+            <div class="tb-subtopic-nav" id="step2SubtopicNav"></div>
+            <div id="step2Sections"><div class="tb-empty">Loading…</div></div>
+            <div class="tb-step2-pager" id="step2Pager"></div>
+        </div>
+    </div>
+</div>
+
+<div class="tb-modal-overlay" id="paperModalOverlay">
+    <div class="tb-modal">
+        <div class="tb-modal-header">
+            <h2>This paper</h2>
+            <button type="button" class="tb-modal-close" id="paperModalClose" aria-label="Close">
+                <svg class="tb-icon" viewBox="0 0 24 24" style="width:16px; height:16px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+        </div>
+        <div class="tb-current-list" id="currentQuestionsList">
+            <div class="tb-empty">No questions yet — pick a subtopic to get started.</div>
+        </div>
+    </div>
+</div>
+
+<script>
+const PAPER_ID = {{ paper_id | tojson }};
+let currentPaper = null;
+let currentQuestions = [];
+let bankSummary = null;
+let selectedSubtopics = [];
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+}
+
+async function fetchJson(url, opts) {
+    const res = await fetch(url, opts);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+    return data;
+}
+
+// ---------------- List view ----------------
+
+async function loadPapersList() {
+    const el = document.getElementById('papersList');
+    if (!el) return;
+    try {
+        const data = await fetchJson('/admin/api/test-papers');
+        if (!data.papers.length) {
+            el.innerHTML = '<div class="tb-empty">No tests yet — create your first one above.</div>';
+            return;
+        }
+        el.innerHTML = data.papers.map(p => `
+            <div class="tb-paper-row">
+                <div>
+                    <div class="tb-paper-title">
+                        ${escapeHtml(p.title)}
+                        ${p.has_hl_only_questions ? '<span class="tb-pill hl">HL only</span>' : ''}
+                    </div>
+                    <div class="tb-paper-meta">${p.question_count} question${p.question_count === 1 ? '' : 's'} · ${p.total_marks} marks · ${p.time_limit_minutes} min · created ${p.created_at}
+                        ${p.assigned_count ? ` · ${p.submitted_count}/${p.assigned_count} completed` : ''}</div>
+                </div>
+                <a class="admin-btn-ghost" href="/assessment/test-builder/${p.id}">Edit</a>
+            </div>
+        `).join('');
+    } catch (e) {
+        el.innerHTML = `<div class="tb-empty">Failed to load: ${escapeHtml(e.message)}</div>`;
+    }
+}
+
+document.getElementById('createPaperBtn')?.addEventListener('click', async () => {
+    const title = document.getElementById('newTitle').value.trim();
+    const timeLimit = parseInt(document.getElementById('newTimeLimit').value, 10) || 60;
+    const status = document.getElementById('createStatus');
+    if (!title) { status.textContent = 'Please enter a title.'; return; }
+    status.textContent = 'Creating…';
+    try {
+        const data = await fetchJson('/admin/api/test-papers', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({title, time_limit_minutes: timeLimit}),
+        });
+        window.location.href = `/assessment/test-builder/${data.paper.id}`;
+    } catch (e) {
+        status.textContent = e.message;
+    }
+});
+
+document.getElementById('simulateStartsBtn')?.addEventListener('click', async () => {
+    const status = document.getElementById('devToolsStatus');
+    status.textContent = 'Simulating…';
+    try {
+        const data = await fetchJson('/admin/api/dev/simulate-test-starts', { method: 'POST' });
+        const names = data.students.map(s => `${s.student_name} (${s.started_seconds_ago}s ago)`).join(', ');
+        status.innerHTML = `Started ${data.students.length} on "${escapeHtml(data.paper_title)}": ${escapeHtml(names)} — <a href="${data.present_url}" target="_blank" style="color:var(--primary);">open board →</a>`;
+    } catch (e) {
+        status.textContent = e.message;
+    }
+});
+
+document.getElementById('clearSimulatedBtn')?.addEventListener('click', async () => {
+    const status = document.getElementById('devToolsStatus');
+    status.textContent = 'Clearing…';
+    try {
+        const data = await fetchJson('/admin/api/dev/clear-simulated-test-starts', { method: 'POST' });
+        status.textContent = `Cleared ${data.deleted} simulated submission${data.deleted === 1 ? '' : 's'}.`;
+    } catch (e) {
+        status.textContent = e.message;
+    }
+});
+
+// ---------------- Edit view ----------------
+
+async function loadPaper() {
+    const data = await fetchJson(`/admin/api/test-papers/${PAPER_ID}`);
+    currentPaper = data.paper;
+    currentQuestions = data.questions;
+    renderPaperMeta();
+    renderCurrentQuestions();
+}
+
+function renderPaperMeta() {
+    document.getElementById('editTitle').value = currentPaper.title;
+    document.getElementById('editTimeLimit').value = currentPaper.time_limit_minutes;
+    document.getElementById('summaryCount').textContent = currentPaper.question_count;
+    document.getElementById('summaryMarks').textContent = currentPaper.total_marks;
+    document.getElementById('hlWarning').style.display = currentPaper.has_hl_only_questions ? 'block' : 'none';
+    document.getElementById('assignLink').href = `/assessment/test-builder/${currentPaper.id}/assign`;
+    document.getElementById('monitorLink').href = `/assessment/test-builder/${currentPaper.id}/monitor`;
+}
+
+// "This paper" lives in a modal opened on demand (see #paperModalOverlay) rather than
+// a permanent side column — it's mostly empty until questions are added, so the button
+// that opens it pulses briefly on every add instead of the page popping the modal open.
+function flashPaperButton() {
+    const btn = document.getElementById('viewPaperBtn');
+    if (!btn) return;
+    btn.classList.remove('tb-viewpaper-flash');
+    btn.offsetHeight; // restart the animation if it's already mid-flash
+    btn.classList.add('tb-viewpaper-flash');
+}
+
+function openPaperModal() {
+    document.getElementById('paperModalOverlay').classList.add('open');
+}
+function closePaperModal() {
+    document.getElementById('paperModalOverlay').classList.remove('open');
+}
+document.getElementById('viewPaperBtn')?.addEventListener('click', openPaperModal);
+document.getElementById('paperModalClose')?.addEventListener('click', closePaperModal);
+document.getElementById('paperModalOverlay')?.addEventListener('click', (e) => {
+    if (e.target.id === 'paperModalOverlay') closePaperModal();
+});
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closePaperModal();
+});
+
+function renderCurrentQuestions() {
+    const el = document.getElementById('currentQuestionsList');
+    if (!currentQuestions.length) {
+        el.innerHTML = '<div class="tb-empty">No questions yet — pick a subtopic to get started.</div>';
+        return;
+    }
+    el.innerHTML = currentQuestions.map((q, i) => `
+        <div class="tb-current-item">
+            <span class="q-num">${i + 1}.</span>
+            <span class="q-text">${escapeHtml(q.text)}${q.is_hl_only ? ' <span class="tb-pill hl">HL</span>' : ''}</span>
+            <span class="q-marks">${q.marks} mk</span>
+            <span class="q-actions">
+                <button title="Move up" onclick="moveQuestion(${q.id}, -1)"><svg class="tb-icon" viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg></button>
+                <button title="Move down" onclick="moveQuestion(${q.id}, 1)"><svg class="tb-icon" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg></button>
+                <button title="Remove" onclick="removeQuestion(${q.id})"><svg class="tb-icon" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+            </span>
+        </div>
+    `).join('');
+}
+
+async function saveMeta() {
+    const title = document.getElementById('editTitle').value.trim();
+    const timeLimit = parseInt(document.getElementById('editTimeLimit').value, 10) || 60;
+    const data = await fetchJson(`/admin/api/test-papers/${PAPER_ID}`, {
+        method: 'PUT', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({title, time_limit_minutes: timeLimit}),
+    });
+    currentPaper = data.paper;
+    renderPaperMeta();
+}
+document.getElementById('saveMetaBtn')?.addEventListener('click', () => saveMeta().catch(e => alert(e.message)));
+
+document.getElementById('duplicateBtn')?.addEventListener('click', async () => {
+    const data = await fetchJson(`/admin/api/test-papers/${PAPER_ID}/duplicate`, {method: 'POST'});
+    window.location.href = `/assessment/test-builder/${data.paper.id}`;
+});
+document.getElementById('deletePaperBtn')?.addEventListener('click', async () => {
+    const title = currentPaper ? currentPaper.title : 'this paper';
+    if (!confirm(`Delete "${title}"?\n\nOnly this paper is deleted — your other tests are not affected. This cannot be undone.`)) return;
+
+    // The server refuses with 409 when the paper carries student work, so the
+    // second prompt can name exactly whose answers are about to go.
+    const res = await fetch(`/admin/api/test-papers/${PAPER_ID}`, {method: 'DELETE'});
+    if (res.status === 409) {
+        const d = await res.json();
+        const who = d.student_names && d.student_names.length ? `\n\n${d.student_names.join(', ')}` : '';
+        const ok = confirm(
+            `"${d.paper_title}" has ${d.submission_count} student submission(s) and ${d.answer_count} answer(s).`
+            + `\n\nDeleting the paper deletes that work permanently.${who}\n\nDelete anyway?`
+        );
+        if (!ok) return;
+        await fetchJson(`/admin/api/test-papers/${PAPER_ID}?confirm_submissions=1`, {method: 'DELETE'});
+    } else if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        alert(d.error || `Delete failed (${res.status})`);
+        return;
+    }
+    window.location.href = '/assessment/test-builder';
+});
+
+async function moveQuestion(questionId, dir) {
+    const idx = currentQuestions.findIndex(q => q.id === questionId);
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= currentQuestions.length) return;
+    [currentQuestions[idx], currentQuestions[newIdx]] = [currentQuestions[newIdx], currentQuestions[idx]];
+    renderCurrentQuestions();
+    await fetchJson(`/admin/api/test-papers/${PAPER_ID}/questions/reorder`, {
+        method: 'PUT', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({question_ids: currentQuestions.map(q => q.id)}),
+    });
+}
+
+async function removeQuestion(questionId) {
+    await fetchJson(`/admin/api/test-papers/${PAPER_ID}/questions/${questionId}`, {method: 'DELETE'});
+    await loadPaper();
+}
+
+// ---------------- Subtopic tree ----------------
+
+async function loadBankSummary() {
+    bankSummary = await fetchJson('/admin/api/test-bank/summary');
+    renderTree();
+}
+
+const BUCKET_LABELS = {mcq: 'MCQ (0.5mk)'};
+function bucketLabel(key) {
+    if (BUCKET_LABELS[key]) return BUCKET_LABELS[key];
+    const m = key.match(/^written_(\d+)$/);
+    return m ? `${m[1]}-mark` : key;
+}
+
+function renderTree() {
+    const el = document.getElementById('subtopicTree');
+    if (!bankSummary || !bankSummary.total_questions) {
+        el.innerHTML = '<div class="tb-empty">No questions imported yet.</div>';
+        return;
+    }
+    let html = '';
+    ['A', 'B'].forEach(theme => {
+        const themeData = bankSummary.themes[theme];
+        if (!themeData) return;
+        html += `<div class="tb-theme-label">Theme ${theme}</div>`;
+        Object.keys(themeData.units).sort().forEach(unitCode => {
+            const unit = themeData.units[unitCode];
+            const unitId = `unit-${unitCode}`;
+            html += `
+                <button type="button" class="tb-unit-header collapsed" data-unit="${unitId}">
+                    <span>${unitCode}</span>
+                    <svg class="tb-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+                <div class="tb-unit-body collapsed" data-unit-body="${unitId}">
+            `;
+            Object.keys(unit.subtopics).sort().forEach(subCode => {
+                const sub = unit.subtopics[subCode];
+                html += `
+                    <label class="tb-subtopic-row">
+                        <input type="checkbox" data-subtopic="${subCode}" ${selectedSubtopics.includes(subCode) ? 'checked' : ''}>
+                        <span>${escapeHtml(subCode)}: ${escapeHtml(sub.title)}${sub.is_hl_only ? ' <span class="tb-pill hl">HL</span>' : ''}</span>
+                    </label>
+                `;
+            });
+            html += `</div>`;
+        });
+    });
+    el.innerHTML = html;
+
+    el.querySelectorAll('.tb-unit-header').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const body = el.querySelector(`[data-unit-body="${btn.dataset.unit}"]`);
+            const collapsed = body.classList.toggle('collapsed');
+            btn.classList.toggle('collapsed', collapsed);
+        });
+    });
+    el.querySelectorAll('.tb-subtopic-row input[type=checkbox]').forEach(cb => {
+        cb.addEventListener('change', () => {
+            const code = cb.dataset.subtopic;
+            if (cb.checked) {
+                if (!selectedSubtopics.includes(code)) selectedSubtopics.push(code);
+            } else {
+                selectedSubtopics = selectedSubtopics.filter(c => c !== code);
+            }
+            updateSelectedCount();
+        });
+    });
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const n = selectedSubtopics.length;
+    document.getElementById('selectedCount').textContent = `${n} subtopic${n === 1 ? '' : 's'} selected`;
+    document.getElementById('continueToStep2Btn').disabled = n === 0;
+}
+
+function setWizardStep(step) {
+    document.getElementById('wizardStep1').style.display = step === 1 ? 'block' : 'none';
+    document.getElementById('wizardStep2').style.display = step === 2 ? 'block' : 'none';
+    document.getElementById('stepNum1').classList.toggle('active', step === 1);
+    document.getElementById('stepLabel1').classList.toggle('active', step === 1);
+    document.getElementById('stepNum2').classList.toggle('active', step === 2);
+    document.getElementById('stepLabel2').classList.toggle('active', step === 2);
+}
+
+document.getElementById('continueToStep2Btn')?.addEventListener('click', () => {
+    setWizardStep(2);
+    renderStep2();
+});
+document.getElementById('backToStep1Btn')?.addEventListener('click', () => setWizardStep(1));
+
+let step2Data = []; // [{code, questions}] — one entry per selected subtopic
+let step2ActiveIndex = 0;
+
+async function renderStep2() {
+    const container = document.getElementById('step2Sections');
+    container.innerHTML = '<div class="tb-empty">Loading…</div>';
+
+    step2Data = await Promise.all(selectedSubtopics.map(code =>
+        fetchJson(`/admin/api/test-bank/subtopic/${encodeURIComponent(code)}/questions?paper_id=${PAPER_ID}`)
+            .then(data => ({ code, questions: data.questions }))
+    ));
+    step2ActiveIndex = 0;
+    renderStep2Nav();
+    renderStep2ActiveSection();
+}
+
+// Selected subtopics get their own page rather than being stacked into one long
+// scroll — a pill strip (jump anywhere) plus Prev/Next (sequential flow) switch
+// between them without re-fetching, since step2Data already holds every subtopic.
+function renderStep2Nav() {
+    const nav = document.getElementById('step2SubtopicNav');
+    if (!nav) return;
+    if (step2Data.length <= 1) { nav.style.display = 'none'; nav.innerHTML = ''; return; }
+    nav.style.display = 'flex';
+    nav.innerHTML = step2Data.map(({ code, questions }, i) => {
+        const inPaper = questions.filter(q => q.in_paper).length;
+        return `
+            <button type="button" class="tb-subtopic-pill ${i === step2ActiveIndex ? 'active' : ''}" data-index="${i}">
+                ${escapeHtml(code)}${inPaper ? ` <span class="tb-subtopic-pill-count">${inPaper}</span>` : ''}
+            </button>
+        `;
+    }).join('');
+}
+
+function renderStep2Pager() {
+    const pager = document.getElementById('step2Pager');
+    if (!pager) return;
+    if (step2Data.length <= 1) { pager.style.display = 'none'; pager.innerHTML = ''; return; }
+    pager.style.display = 'flex';
+    pager.innerHTML = `
+        <button type="button" class="admin-btn-ghost" id="step2PrevBtn" ${step2ActiveIndex === 0 ? 'disabled' : ''}>
+            <svg class="tb-icon" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            Previous subtopic
+        </button>
+        <span>Subtopic ${step2ActiveIndex + 1} of ${step2Data.length}</span>
+        <button type="button" class="admin-btn-ghost" id="step2NextBtn" ${step2ActiveIndex === step2Data.length - 1 ? 'disabled' : ''}>
+            Next subtopic
+            <svg class="tb-icon" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </button>
+    `;
+    document.getElementById('step2PrevBtn')?.addEventListener('click', () => goToSubtopicPage(step2ActiveIndex - 1));
+    document.getElementById('step2NextBtn')?.addEventListener('click', () => goToSubtopicPage(step2ActiveIndex + 1));
+}
+
+function goToSubtopicPage(i) {
+    if (i < 0 || i >= step2Data.length) return;
+    step2ActiveIndex = i;
+    renderStep2Nav();
+    renderStep2ActiveSection();
+}
+
+document.getElementById('step2SubtopicNav')?.addEventListener('click', (e) => {
+    const pill = e.target.closest('.tb-subtopic-pill');
+    if (!pill) return;
+    goToSubtopicPage(parseInt(pill.dataset.index, 10));
+});
+
+function questionItemHtml(q) {
+    return `
+        <label class="tb-question-item ${q.in_paper ? 'in-paper' : ''}">
+            <input type="checkbox" value="${q.id}" ${q.in_paper ? 'checked disabled' : ''} class="tb-manual-pick">
+            <span class="q-text">${escapeHtml(q.text)}${q.is_hl_only ? ' <span class="tb-pill hl">HL</span>' : ''}</span>
+            <span class="q-meta">${q.command_term ? escapeHtml(q.command_term) + ' · ' : ''}${q.difficulty}</span>
+        </label>
+    `;
+}
+
+function renderStep2ActiveSection() {
+    const container = document.getElementById('step2Sections');
+    const { code, questions } = step2Data[step2ActiveIndex];
+    // Questions already arrive sorted by marks ascending (MCQ = 0.5 marks, always first).
+    const buckets = {};
+    questions.forEach(q => { (buckets[q.bucket] = buckets[q.bucket] || []).push(q); });
+    const bucketKeys = Object.keys(buckets).sort((a, b) => bucketSortKey(a) - bucketSortKey(b));
+    const title = bankSummary ? findSubtopicTitle(code) : code;
+    const inPaperCount = questions.filter(q => q.in_paper).length;
+
+    container.innerHTML = `
+        <div class="tb-subtopic-section" data-subtopic="${code}">
+            <div class="tb-subtopic-section-head">
+                <h3>${escapeHtml(code)}: ${escapeHtml(title)}</h3>
+                <span class="tb-selected-badge">${inPaperCount} in this paper</span>
+            </div>
+            <div class="tb-bucket-grid">
+                ${bucketKeys.map(key => `
+                    <div class="tb-bucket-input">
+                        <label>${bucketLabel(key)}</label>
+                        <input type="number" min="0" max="${buckets[key].length}" value="0" data-bucket="${key}">
+                        <span class="avail">of ${buckets[key].length}</span>
+                    </div>
+                `).join('')}
+            </div>
+            <button class="admin-btn tb-autogen-btn">Add selected counts</button>
+            <span class="tb-autogen-status" style="margin-left:0.6rem; font-size:0.82rem; color:var(--text-light);"></span>
+
+            <button type="button" class="tb-browse-toggle collapsed">
+                <svg class="tb-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                <span>Browse individually — ${questions.length} questions in ${bucketKeys.length} mark group${bucketKeys.length === 1 ? '' : 's'}</span>
+            </button>
+            <div class="tb-browse-body collapsed">
+                <input type="text" class="tb-question-filter" placeholder="Filter by keyword…">
+                <div class="tb-mark-groups">
+                    ${bucketKeys.map(key => {
+                        const groupQuestions = buckets[key];
+                        const inPaper = groupQuestions.filter(q => q.in_paper).length;
+                        return `
+                            <div class="tb-mark-group" data-bucket-group="${key}">
+                                <button type="button" class="tb-mark-group-toggle collapsed">
+                                    <svg class="tb-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    <span>${bucketLabel(key)}</span>
+                                    <span class="tb-mark-group-count">${inPaper}/${groupQuestions.length} in paper</span>
+                                </button>
+                                <div class="tb-mark-group-body collapsed">
+                                    <div class="tb-question-list">
+                                        ${groupQuestions.map(questionItemHtml).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                <div class="tb-empty tb-filter-empty" style="display:none; padding:1rem;">No questions match that filter.</div>
+                <button class="admin-btn-ghost tb-addmanual-btn" style="margin-top:0.6rem;">Add checked questions</button>
+            </div>
+        </div>
+    `;
+    renderStep2Pager();
+}
+
+function bucketSortKey(key) {
+    if (key === 'mcq') return 0;
+    const m = key.match(/^written_(\d+)$/);
+    return m ? parseInt(m[1], 10) : 999;
+}
+
+function findSubtopicTitle(code) {
+    for (const theme of Object.values(bankSummary.themes || {})) {
+        for (const unit of Object.values(theme.units || {})) {
+            if (unit.subtopics[code]) return unit.subtopics[code].title;
+        }
+    }
+    return code;
+}
+
+// Event delegation: each subtopic section in Step 2 gets its own auto-generate
+// and add-checked buttons, but they're created dynamically so we bind once here.
+document.getElementById('step2Sections')?.addEventListener('click', async (e) => {
+    const section = e.target.closest('.tb-subtopic-section');
+    if (!section) return;
+    const subtopicCode = section.dataset.subtopic;
+
+    if (e.target.classList.contains('tb-autogen-btn')) {
+        const status = section.querySelector('.tb-autogen-status');
+        const bucketCounts = {};
+        section.querySelectorAll('[data-bucket]').forEach(inp => {
+            const n = parseInt(inp.value, 10) || 0;
+            if (n > 0) bucketCounts[inp.dataset.bucket] = n;
+        });
+        if (!Object.keys(bucketCounts).length) { status.textContent = 'Enter at least one count.'; return; }
+        status.textContent = 'Adding…';
+        try {
+            const result = await fetchJson(`/admin/api/test-papers/${PAPER_ID}/questions/auto-generate`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({subtopic_code: subtopicCode, buckets: bucketCounts}),
+            });
+            status.textContent = `Added ${result.added}.` + (result.shortfalls.length ? ' ' + result.shortfalls.join('; ') : '');
+            currentQuestions = result.questions;
+            currentPaper = result.paper;
+            renderPaperMeta();
+            renderCurrentQuestions();
+            flashPaperButton();
+            await refreshSection(subtopicCode);
+        } catch (err) {
+            status.textContent = err.message;
+        }
+    }
+
+    if (e.target.classList.contains('tb-addmanual-btn')) {
+        const ids = Array.from(section.querySelectorAll('.tb-manual-pick:checked:not(:disabled)')).map(cb => cb.value);
+        if (!ids.length) return;
+        const result = await fetchJson(`/admin/api/test-papers/${PAPER_ID}/questions/add`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({question_ids: ids}),
+        });
+        currentQuestions = result.questions;
+        currentPaper = result.paper;
+        renderPaperMeta();
+        renderCurrentQuestions();
+        flashPaperButton();
+        await refreshSection(subtopicCode);
+    }
+});
+
+async function refreshSection(subtopicCode) {
+    // Re-fetch just this one subtopic's data (to update in-paper checkmarks/availability)
+    // without losing scroll position or collapse/filter state by re-rendering the page.
+    const data = await fetchJson(`/admin/api/test-bank/subtopic/${encodeURIComponent(subtopicCode)}/questions?paper_id=${PAPER_ID}`);
+
+    const idx = step2Data.findIndex(s => s.code === subtopicCode);
+    if (idx !== -1) step2Data[idx] = { code: subtopicCode, questions: data.questions };
+    renderStep2Nav();
+
+    const section = document.querySelector(`.tb-subtopic-section[data-subtopic="${subtopicCode}"]`);
+    if (!section) return; // this subtopic isn't the active page right now
+
+    const buckets = {};
+    data.questions.forEach(q => { (buckets[q.bucket] = buckets[q.bucket] || []).push(q); });
+
+    section.querySelectorAll('[data-bucket]').forEach(inp => {
+        const key = inp.dataset.bucket;
+        inp.max = (buckets[key] || []).length;
+        inp.value = 0;
+    });
+
+    const filterValue = section.querySelector('.tb-question-filter')?.value || '';
+
+    section.querySelectorAll('.tb-mark-group').forEach(group => {
+        const key = group.dataset.bucketGroup;
+        const groupQuestions = buckets[key] || [];
+        group.querySelector('.tb-question-list').innerHTML = groupQuestions.map(questionItemHtml).join('');
+        const inPaper = groupQuestions.filter(q => q.in_paper).length;
+        const countEl = group.querySelector('.tb-mark-group-count');
+        if (countEl) countEl.textContent = `${inPaper}/${groupQuestions.length} in paper`;
+    });
+
+    updateSelectedBadge(section);
+    if (filterValue) applyQuestionFilter(section, filterValue);
+}
+
+function updateSelectedBadge(section) {
+    const badge = section.querySelector('.tb-selected-badge');
+    if (!badge) return;
+    const inPaper = section.querySelectorAll('.tb-manual-pick:checked:disabled').length;
+    const pending = section.querySelectorAll('.tb-manual-pick:checked:not(:disabled)').length;
+    badge.textContent = pending > 0 ? `${inPaper} in this paper · ${pending} checked` : `${inPaper} in this paper`;
+}
+
+function applyQuestionFilter(section, value) {
+    const needle = value.trim().toLowerCase();
+    let anyVisible = false;
+    section.querySelectorAll('.tb-mark-group').forEach(group => {
+        const items = group.querySelectorAll('.tb-question-item');
+        let groupMatches = 0;
+        items.forEach(item => {
+            const matches = !needle || item.querySelector('.q-text').textContent.toLowerCase().includes(needle);
+            item.style.display = matches ? '' : 'none';
+            if (matches) groupMatches++;
+        });
+        // While filtering, hide mark-groups with zero matches entirely and force-open
+        // any group that does match — no extra clicks to find the result. Clearing the
+        // filter just un-hides groups again, leaving each one's manual collapse state alone.
+        group.style.display = (needle && groupMatches === 0) ? 'none' : '';
+        if (groupMatches > 0) anyVisible = true;
+        if (needle && groupMatches > 0) {
+            group.querySelector('.tb-mark-group-body').classList.remove('collapsed');
+            group.querySelector('.tb-mark-group-toggle').classList.remove('collapsed');
+        }
+    });
+    const emptyState = section.querySelector('.tb-filter-empty');
+    if (emptyState) emptyState.style.display = (needle && !anyVisible) ? 'block' : 'none';
+}
+
+// Toggle browse-list / mark-group collapse, live-update the selected badge, and
+// filter-as-you-type — all delegated since sections are created dynamically.
+document.getElementById('step2Sections')?.addEventListener('click', (e) => {
+    const groupToggle = e.target.closest('.tb-mark-group-toggle');
+    if (groupToggle) {
+        const body = groupToggle.nextElementSibling;
+        const collapsed = body.classList.toggle('collapsed');
+        groupToggle.classList.toggle('collapsed', collapsed);
+        return;
+    }
+    const toggle = e.target.closest('.tb-browse-toggle');
+    if (!toggle) return;
+    const body = toggle.nextElementSibling;
+    const collapsed = body.classList.toggle('collapsed');
+    toggle.classList.toggle('collapsed', collapsed);
+});
+
+document.getElementById('step2Sections')?.addEventListener('change', (e) => {
+    if (!e.target.classList.contains('tb-manual-pick')) return;
+    const section = e.target.closest('.tb-subtopic-section');
+    if (section) updateSelectedBadge(section);
+});
+
+document.getElementById('step2Sections')?.addEventListener('input', (e) => {
+    if (!e.target.classList.contains('tb-question-filter')) return;
+    const section = e.target.closest('.tb-subtopic-section');
+    if (section) applyQuestionFilter(section, e.target.value);
+});
+
+// ---------------- init ----------------
+
+if (PAPER_ID) {
+    document.getElementById('tbListView').style.display = 'none';
+    document.getElementById('tbEditView').style.display = 'block';
+    setWizardStep(1);
+    loadPaper().catch(e => alert(e.message));
+    loadBankSummary().catch(e => console.error(e));
+} else {
+    loadPapersList();
+}
+</script>
+{% endblock %}

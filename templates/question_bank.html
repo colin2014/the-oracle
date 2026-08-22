@@ -1,0 +1,319 @@
+{% extends "admin_base.html" %}
+{% block title %}Question bank audit{% endblock %}
+
+{% block content %}
+<style>
+    /* Two columns: the syllabus on the left as a permanent index, one subtopic's
+       questions on the right. Auditing is a sweep through the tree, so the tree
+       never goes away. */
+    .admin-main { max-width: none; }
+    .qb-layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 1.1rem; align-items: start; }
+    .qb-panel { background: var(--bg-white); border: 1px solid var(--border); border-radius: 12px; }
+    .qb-tree { position: sticky; top: 1rem; max-height: calc(100vh - 2rem); overflow: auto; padding: 0.6rem; }
+    .qb-search { width: 100%; padding: 0.5rem 0.65rem; border: 1px solid var(--border); border-radius: 8px; font: inherit; margin-bottom: 0.5rem; background: var(--bg-white); color: var(--text-dark); }
+    .qb-theme { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-light); padding: 0.7rem 0.5rem 0.3rem; }
+    .qb-unit { font-size: 0.78rem; font-weight: 700; color: var(--text-light); padding: 0.35rem 0.5rem 0.15rem; }
+    .qb-sub {
+        display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem;
+        padding: 0.4rem 0.55rem; border-radius: 7px; cursor: pointer; font-size: 0.83rem;
+    }
+    .qb-sub:hover { background: var(--bg-light); }
+    .qb-sub.active { background: rgba(157,132,255,0.16); color: var(--primary); font-weight: 700; }
+    .qb-sub-code { font-family: ui-monospace, Consolas, monospace; font-size: 0.78rem; }
+    .qb-sub-n { font-size: 0.72rem; color: var(--text-light); white-space: nowrap; }
+
+    .qb-head { padding: 1rem 1.15rem; border-bottom: 1px solid var(--border); }
+    .qb-head h2 { margin: 0 0 0.2rem; font-size: 1.05rem; }
+    .qb-head .qb-desc { font-size: 0.83rem; color: var(--text-light); }
+
+    .qb-q { border-bottom: 1px solid var(--border); }
+    .qb-q:last-child { border-bottom: none; }
+    .qb-q-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.7rem 1.15rem; cursor: pointer; }
+    .qb-q-row:hover { background: var(--bg-light); }
+    .qb-qid { font-family: ui-monospace, Consolas, monospace; font-size: 0.74rem; color: var(--text-light); white-space: nowrap; }
+    .qb-q-text { flex: 1; font-size: 0.87rem; min-width: 0; }
+    .qb-tag { font-size: 0.66rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; padding: 0.14rem 0.45rem; border-radius: 999px; white-space: nowrap; }
+    .qb-tag.mcq { background: rgba(157,132,255,0.16); color: var(--primary); }
+    .qb-tag.written { background: rgba(16,185,129,0.14); color: #047857; }
+    .qb-tag.used { background: rgba(245,158,11,0.16); color: #b45309; }
+
+    .qb-editor { padding: 0.2rem 1.15rem 1.2rem; background: color-mix(in srgb, var(--bg-light) 45%, transparent); }
+    .qb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.7rem; margin-bottom: 0.7rem; }
+    .qb-field { display: block; }
+    .qb-field > span { display: block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-light); margin-bottom: 0.25rem; }
+    .qb-field input, .qb-field select, .qb-field textarea {
+        width: 100%; padding: 0.45rem 0.6rem; border: 1px solid var(--border); border-radius: 7px;
+        font: inherit; font-size: 0.86rem; background: var(--bg-white); color: var(--text-dark); box-sizing: border-box;
+    }
+    .qb-field textarea { min-height: 62px; resize: vertical; }
+    .qb-hint { font-size: 0.72rem; color: var(--text-light); margin: -0.35rem 0 0.6rem; }
+    .qb-opt { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; }
+    .qb-opt input[type="text"] { flex: 1; }
+    .qb-opt-letter { font-family: ui-monospace, Consolas, monospace; font-size: 0.78rem; color: var(--text-light); width: 1rem; }
+    .qb-actions { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.8rem; flex-wrap: wrap; }
+    .qb-status { font-size: 0.78rem; color: var(--text-light); }
+    .qb-status.ok { color: #047857; font-weight: 600; }
+    .qb-status.err { color: #b91c1c; font-weight: 600; }
+    .qb-danger { margin-left: auto; }
+    .qb-empty { padding: 2.5rem 1rem; text-align: center; color: var(--text-light); }
+</style>
+
+<h1 style="font-size:1.35rem; margin:0 0 0.2rem;">Question bank audit</h1>
+<p style="color:var(--text-light); font-size:0.86rem; margin:0 0 1rem;">
+    Pick a subtopic, then open any question to edit its wording, options, correct answer, mark scheme,
+    misconceptions and AI marking guidance — or delete it outright.
+</p>
+
+<div class="qb-layout">
+    <div class="qb-panel qb-tree">
+        <input class="qb-search" id="qbSearch" type="search" placeholder="Filter subtopics…" autocomplete="off">
+        <div id="qbTree"></div>
+    </div>
+    <div class="qb-panel">
+        <div class="qb-head">
+            <h2 id="qbTitle">Select a subtopic</h2>
+            <div class="qb-desc" id="qbDesc"></div>
+        </div>
+        <div id="qbList"><div class="qb-empty">Choose a subtopic on the left to start auditing.</div></div>
+    </div>
+</div>
+
+<script>
+let TREE = null;
+let currentCode = null;
+let questions = [];
+const openIds = new Set();   // questions whose editor is open, kept across reloads
+const drafts = {};           // unsaved edits, so a background reload can't wipe typing
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s == null ? '' : s;
+    return d.innerHTML;
+}
+
+async function fetchJson(url, opts) {
+    const res = await fetch(url, opts);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(data.error || `Request failed (${res.status})`), { data, status: res.status });
+    return data;
+}
+
+/* ------------------------------------------------------------------- tree */
+
+async function loadTree() {
+    TREE = await fetchJson('/admin/api/test-bank/summary');
+    renderTree();
+}
+
+function renderTree() {
+    const filter = document.getElementById('qbSearch').value.trim().toLowerCase();
+    const out = [];
+    Object.keys(TREE.themes).sort().forEach(theme => {
+        const units = TREE.themes[theme].units;
+        const unitHtml = [];
+        Object.keys(units).sort().forEach(unit => {
+            const subs = units[unit].subtopics;
+            const rows = Object.keys(subs).sort().filter(code => {
+                if (!filter) return true;
+                return code.toLowerCase().includes(filter) || (subs[code].title || '').toLowerCase().includes(filter);
+            }).map(code => {
+                const s = subs[code];
+                const n = Object.values(s.buckets).reduce((a, b) => a + b, 0);
+                return `
+                    <div class="qb-sub ${code === currentCode ? 'active' : ''}" onclick="openSubtopic('${code}')">
+                        <span><span class="qb-sub-code">${code}</span> ${escapeHtml((s.title || '').slice(0, 46))}</span>
+                        <span class="qb-sub-n">${n}</span>
+                    </div>`;
+            });
+            if (rows.length) unitHtml.push(`<div class="qb-unit">${unit}</div>${rows.join('')}`);
+        });
+        if (unitHtml.length) out.push(`<div class="qb-theme">Theme ${theme}</div>${unitHtml.join('')}`);
+    });
+    document.getElementById('qbTree').innerHTML = out.join('') || '<div class="qb-empty">No matches.</div>';
+}
+
+document.getElementById('qbSearch').addEventListener('input', renderTree);
+
+/* -------------------------------------------------------------- questions */
+
+async function openSubtopic(code) {
+    currentCode = code;
+    openIds.clear();
+    renderTree();
+    const d = await fetchJson(`/admin/api/test-bank/subtopic/${encodeURIComponent(code)}/audit`);
+    questions = d.questions;
+    document.getElementById('qbTitle').textContent = `${code} — ${d.subtopic_title || ''}`;
+    document.getElementById('qbDesc').textContent = d.descriptor || '';
+    renderQuestions();
+}
+
+function renderQuestions() {
+    const list = document.getElementById('qbList');
+    if (!questions.length) {
+        list.innerHTML = '<div class="qb-empty">No questions left in this subtopic.</div>';
+        return;
+    }
+    list.innerHTML = questions.map(q => `
+        <div class="qb-q" data-q="${q.id}">
+            <div class="qb-q-row" onclick="toggleQuestion(${q.id})">
+                <span class="qb-qid">${escapeHtml(q.qid)}</span>
+                <span class="qb-tag ${q.question_type}">${q.question_type}</span>
+                <span class="qb-q-text">${escapeHtml(q.text)}</span>
+                ${q.in_paper_count ? `<span class="qb-tag used">in ${q.in_paper_count} paper${q.in_paper_count === 1 ? '' : 's'}</span>` : ''}
+                <span class="qb-qid">${q.marks_label} mark${q.marks === 1 ? '' : 's'}</span>
+            </div>
+            ${openIds.has(q.id) ? editorHtml(q) : ''}
+        </div>
+    `).join('');
+}
+
+function toggleQuestion(id) {
+    if (openIds.has(id)) { openIds.delete(id); delete drafts[id]; } else { openIds.add(id); }
+    renderQuestions();
+}
+
+function editorHtml(q) {
+    const optionRows = [0, 1, 2, 3].map(i => {
+        const value = q.options[i] != null ? q.options[i] : '';
+        return `
+            <div class="qb-opt">
+                <span class="qb-opt-letter">${String.fromCharCode(65 + i)}</span>
+                <input type="checkbox" data-f="correct" data-i="${i}" ${q.correct_options.includes(i) ? 'checked' : ''}
+                       title="Mark as the correct answer">
+                <input type="text" data-f="option" data-i="${i}" value="${escapeHtml(value)}" placeholder="(unused)">
+            </div>`;
+    }).join('');
+
+    return `
+        <div class="qb-editor" data-editor="${q.id}">
+            <div class="qb-grid">
+                <label class="qb-field"><span>Type</span>
+                    <select data-f="question_type">
+                        <option value="mcq" ${q.question_type === 'mcq' ? 'selected' : ''}>MCQ</option>
+                        <option value="written" ${q.question_type === 'written' ? 'selected' : ''}>Written</option>
+                    </select></label>
+                <label class="qb-field"><span>Difficulty</span>
+                    <select data-f="difficulty">
+                        ${['easy', 'medium', 'hard'].map(d => `<option value="${d}" ${q.difficulty === d ? 'selected' : ''}>${d}</option>`).join('')}
+                    </select></label>
+                <label class="qb-field"><span>Command term</span>
+                    <input type="text" data-f="command_term" value="${escapeHtml(q.command_term || '')}"></label>
+                <label class="qb-field"><span>Marks</span>
+                    <input type="number" min="0.5" step="0.5" data-f="marks" value="${q.marks}"></label>
+                <label class="qb-field"><span>Icon (Bootstrap Icons name)</span>
+                    <input type="text" data-f="icon_name" value="${escapeHtml(q.icon_name || '')}"></label>
+            </div>
+
+            <label class="qb-field" style="margin-bottom:0.7rem;"><span>Question</span>
+                <textarea data-f="text">${escapeHtml(q.text)}</textarea></label>
+
+            ${q.question_type === 'mcq' ? `
+                <div class="qb-field" style="margin-bottom:0.2rem;"><span>Options — tick the correct one</span></div>
+                ${optionRows}
+                <div class="qb-hint">Leave an option blank to drop it. At least two are needed, and one must be ticked.</div>
+            ` : ''}
+
+            <label class="qb-field" style="margin-bottom:0.7rem;"><span>${q.question_type === 'mcq' ? 'Marking guidance' : 'Model answer / marking guidance'}</span>
+                <textarea data-f="marking_guidance">${escapeHtml(q.marking_guidance || '')}</textarea></label>
+
+            <label class="qb-field" style="margin-bottom:0.7rem;"><span>Common mistakes / misconceptions</span>
+                <textarea data-f="common_mistakes">${escapeHtml(q.common_mistakes || '')}</textarea></label>
+
+            <label class="qb-field" style="margin-bottom:0.2rem;"><span>AI marking checklist</span>
+                <textarea data-f="ai_checklist">${escapeHtml(q.ai_checklist || '')}</textarea></label>
+            <div class="qb-hint">What the AI marker looks for to award the mark.</div>
+
+            <label class="qb-field" style="margin-bottom:0.2rem;"><span>If wrong — explainer</span>
+                <textarea data-f="if_wrong_explainer">${escapeHtml(q.if_wrong_explainer || '')}</textarea></label>
+            <div class="qb-hint">Shown to the student under a wrong answer, and given to the AI marker as what they should have said.</div>
+
+            <div class="qb-actions">
+                <button class="admin-btn" onclick="saveQuestion(${q.id})">Save changes</button>
+                <span class="qb-status" data-role="status">${q.updated_at ? 'Last edited ' + q.updated_at : ''}</span>
+                <button class="admin-btn-text qb-danger" style="color:#ef4444;" onclick="deleteQuestion(${q.id})">Delete question</button>
+            </div>
+        </div>`;
+}
+
+function readEditor(id) {
+    const root = document.querySelector(`[data-editor="${id}"]`);
+    const val = f => {
+        const el = root.querySelector(`[data-f="${f}"]`);
+        return el ? el.value : null;
+    };
+    const payload = {
+        question_type: val('question_type'),
+        difficulty: val('difficulty'),
+        command_term: val('command_term'),
+        marks: val('marks'),
+        icon_name: val('icon_name'),
+        text: val('text'),
+        marking_guidance: val('marking_guidance'),
+        common_mistakes: val('common_mistakes'),
+        ai_checklist: val('ai_checklist'),
+        if_wrong_explainer: val('if_wrong_explainer'),
+    };
+    if (root.querySelector('[data-f="option"]')) {
+        // Indexes are re-based on the surviving options, so ticking D and blanking
+        // B can't leave the correct answer pointing at the wrong text.
+        const kept = [];
+        root.querySelectorAll('[data-f="option"]').forEach((el, i) => {
+            const text = el.value.trim();
+            if (!text) return;
+            const box = root.querySelector(`[data-f="correct"][data-i="${i}"]`);
+            kept.push({ text, correct: box && box.checked });
+        });
+        payload.options = kept.map(o => o.text);
+        payload.correct_options = kept.map((o, i) => (o.correct ? i : -1)).filter(i => i >= 0);
+    }
+    return payload;
+}
+
+function setStatus(id, message, kind) {
+    const el = document.querySelector(`[data-editor="${id}"] [data-role="status"]`);
+    if (el) { el.textContent = message; el.className = `qb-status ${kind || ''}`; }
+}
+
+async function saveQuestion(id) {
+    setStatus(id, 'Saving…');
+    try {
+        const d = await fetchJson(`/admin/api/test-bank/questions/${id}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(readEditor(id)),
+        });
+        const i = questions.findIndex(q => q.id === id);
+        if (i >= 0) questions[i] = d.question;
+        renderQuestions();
+        setStatus(id, 'Saved', 'ok');
+    } catch (e) {
+        setStatus(id, e.message, 'err');
+    }
+}
+
+async function deleteQuestion(id) {
+    const q = questions.find(x => x.id === id);
+    if (!confirm(`Delete ${q.qid}?\n\nThis removes it from the bank permanently.`)) return;
+    try {
+        await fetchJson(`/admin/api/test-bank/questions/${id}`, { method: 'DELETE' });
+    } catch (e) {
+        // 409 means it is in a paper (confirmable) or has student answers (refused).
+        if (e.status === 409 && e.data && e.data.needs_confirmation) {
+            const papers = (e.data.papers || []).map(p => p.title).join(', ');
+            if (!confirm(`${q.qid} is used in: ${papers}.\n\nDeleting it removes it from those papers too. Continue?`)) return;
+            try {
+                await fetchJson(`/admin/api/test-bank/questions/${id}?confirm_in_use=1`, { method: 'DELETE' });
+            } catch (e2) { alert(e2.message); return; }
+        } else {
+            alert(e.message);
+            return;
+        }
+    }
+    questions = questions.filter(x => x.id !== id);
+    openIds.delete(id);
+    renderQuestions();
+    loadTree();  // counts in the left-hand tree move with it
+}
+
+loadTree();
+</script>
+{% endblock %}

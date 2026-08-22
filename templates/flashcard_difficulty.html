@@ -1,0 +1,103 @@
+{% extends "admin_base.html" if current_user.is_authenticated and current_user.is_admin() else "student_base.html" %}
+{% block title %}{{ fset.title }} - Difficulty{% endblock %}
+
+{% block content %}
+<style>
+    .diff-container { max-width: 1000px; margin: 0 auto; }
+    .diff-header { margin-bottom: 2rem; }
+    .diff-header h1 { font-size: 1.4rem; margin: 0 0 0.5rem 0; }
+    .diff-header p { color: var(--text-light); font-size: 0.9rem; margin: 0 0 1rem 0; }
+    .diff-back-link { display: inline-block; margin-bottom: 1rem; color: var(--primary); text-decoration: none; font-size: 0.9rem; }
+    .diff-back-link:hover { text-decoration: underline; }
+
+    .diff-card { background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
+
+    .diff-legend {
+        display: flex;
+        gap: 2rem;
+        justify-content: center;
+        padding: 1rem 0;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        font-size: 0.9rem;
+    }
+    .diff-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .diff-legend-word { font-weight: 800; }
+    .diff-legend-word.easy { color: #10b981; font-size: 0.85rem; }
+    .diff-legend-word.medium { color: #f59e0b; font-size: 1rem; }
+    .diff-legend-word.hard { color: #ef4444; font-size: 1.15rem; }
+
+    .diff-empty { text-align: center; padding: 2rem; color: var(--text-light); }
+    .diff-loading { text-align: center; padding: 2rem; color: var(--text-light); }
+</style>
+
+{% include "_word_cloud.html" %}
+
+<div class="diff-container">
+    <a class="diff-back-link" href="{{ url_for('flashcards.study_page', set_id=fset.id) }}">← Back to study</a>
+
+    <div class="diff-header">
+        <h1>🔥 {{ fset.title }} - Your Difficulty</h1>
+        <p>{{ book_title }} · Words colored by how much you're struggling. Red = hard for you; Green = easy for you.</p>
+    </div>
+
+    <div class="diff-card">
+        <div class="diff-legend">
+            <div class="diff-legend-item">
+                <span class="diff-legend-word easy">easy</span>
+                <span>(0–33%)</span>
+            </div>
+            <div class="diff-legend-item">
+                <span class="diff-legend-word medium">medium</span>
+                <span>(33–66%)</span>
+            </div>
+            <div class="diff-legend-item">
+                <span class="diff-legend-word hard">hard</span>
+                <span>(66–100%)</span>
+            </div>
+            <div class="diff-legend-item" style="color: var(--text-light);">⭐&nbsp;=&nbsp;mastered · bigger&nbsp;=&nbsp;harder · hover for stats</div>
+        </div>
+        <div class="diff-cloud" id="diffCloud"></div>
+        <div class="diff-empty" id="diffEmpty" style="display:none;">No difficulty data yet. Study some cards to see your progress!</div>
+        <div class="diff-loading" id="diffLoading">Loading your difficulty data…</div>
+    </div>
+</div>
+
+<script>
+const SET_ID = {{ fset.id }};
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+}
+
+async function loadDifficulty() {
+    const res = await fetch('/api/flashcards/my-difficulty');
+    const d = await res.json();
+    const cloud = document.getElementById('diffCloud');
+    const empty = document.getElementById('diffEmpty');
+    const loading = document.getElementById('diffLoading');
+
+    const setData = (d.sets || []).find(s => s.set_id === SET_ID);
+    if (!setData || !setData.cards || !setData.cards.length) {
+        cloud.innerHTML = '';
+        loading.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+    }
+
+    loading.style.display = 'none';
+    empty.style.display = 'none';
+
+    renderWordCloud(cloud, setData.cards, { limit: 80, controls: true });
+}
+
+loadDifficulty();
+</script>
+{% endblock %}

@@ -1,0 +1,458 @@
+{% extends "student_base.html" %}
+{% block title %}Think of a Word — Play{% endblock %}
+
+{% block content %}
+<style>
+    .word-play-container {
+        max-width: 700px;
+        margin: 0 auto;
+        padding: 1.5rem;
+    }
+
+    .game-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .game-title {
+        font-size: 1.45rem;
+        font-weight: 700;
+        margin: 0 0 0.25rem 0;
+        color: var(--text-dark);
+    }
+
+    .game-subtitle {
+        font-size: 0.9rem;
+        color: var(--text-light);
+        margin: 0;
+    }
+
+    .info-card {
+        background: var(--bg-white);
+        border: 1px solid var(--hairline);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .card-title {
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 0 0 1rem 0;
+        color: var(--text-dark);
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+    }
+
+    .card-title-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        background: rgba(131, 102, 232, 0.15);
+        border-radius: 6px;
+        color: var(--study-violet);
+        font-size: 0.9rem;
+    }
+
+    .rules-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .rule-item {
+        display: flex;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background: var(--paper-grey);
+        border-radius: 6px;
+        font-size: 0.9rem;
+        color: var(--text-dark);
+    }
+
+    .rule-number {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        background: var(--study-violet);
+        color: white;
+        border-radius: 50%;
+        flex-shrink: 0;
+        font-weight: 700;
+        font-size: 0.8rem;
+    }
+
+    .role-section {
+        background: linear-gradient(135deg, rgba(131, 102, 232, 0.05), rgba(168, 79, 212, 0.05));
+        border: 2px solid rgba(131, 102, 232, 0.2);
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .role-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--study-violet);
+        margin-bottom: 0.5rem;
+    }
+
+    .role-description {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-dark);
+        margin: 0;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .stat-card {
+        background: var(--paper-grey);
+        border-radius: 8px;
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--text-light);
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--study-violet);
+    }
+
+    .waiting-status {
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        border-radius: 8px;
+        padding: 1rem;
+        text-align: center;
+        margin-top: 1.5rem;
+    }
+
+    .waiting-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: #10b981;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+        margin-right: 0.5rem;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .status-text {
+        font-size: 0.9rem;
+        color: #047857;
+        margin: 0;
+    }
+
+    .game-active {
+        background: linear-gradient(135deg, rgba(131, 102, 232, 0.08), rgba(168, 79, 212, 0.08));
+        border: 2px solid var(--study-violet);
+        border-radius: 12px;
+        padding: 2rem 1.5rem;
+        text-align: center;
+    }
+
+    .game-active-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin: 0 0 1rem 0;
+        color: var(--text-dark);
+    }
+
+    .game-active-status {
+        font-size: 1rem;
+        color: var(--text-light);
+        margin: 0;
+    }
+
+    .thinking-timer {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1));
+        border: 3px solid #ef4444;
+        border-radius: 12px;
+        padding: 2rem 1.5rem;
+        text-align: center;
+        margin: 1.5rem 0;
+    }
+
+    .thinking-timer-label {
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #b91c1c;
+        margin-bottom: 0.75rem;
+    }
+
+    .thinking-timer-value {
+        font-size: 4rem;
+        font-weight: 800;
+        color: #ef4444;
+        font-family: ui-monospace, monospace;
+        line-height: 1;
+        margin: 0;
+    }
+
+    .thinking-timer-instruction {
+        font-size: 0.95rem;
+        color: var(--text-light);
+        margin-top: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .word-play-container {
+            padding: 1rem;
+        }
+
+        .game-title {
+            font-size: 1.2rem;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .rule-item {
+            padding: 0.6rem;
+            font-size: 0.85rem;
+        }
+
+        .thinking-timer-value {
+            font-size: 3rem;
+        }
+    }
+</style>
+
+<div class="word-play-container">
+    <!-- Header -->
+    <div class="game-header">
+        <h1 class="game-title">Think of a Word</h1>
+        <p class="game-subtitle">{{ session_obj.class_.name if session_obj.class_ else 'Class Game' }}</p>
+    </div>
+
+    <!-- Role Assignment Info -->
+    <div class="role-section" id="role-info">
+        <div class="role-label">How It Works</div>
+        <p class="role-description">
+            The teacher will pick one student to think of a word silently. Everyone else asks yes/no questions to figure it out.
+        </p>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Players</div>
+            <div class="stat-value" id="player-count">1</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Status</div>
+            <div class="stat-value" id="game-status" style="font-size: 1.2rem; text-transform: uppercase; letter-spacing: 0.05em;">Lobby</div>
+        </div>
+    </div>
+
+    <!-- Rules -->
+    <div class="info-card">
+        <h2 class="card-title">
+            <span class="card-title-icon">📋</span>
+            How to Play
+        </h2>
+        <ul class="rules-list">
+            <li class="rule-item">
+                <span class="rule-number">1</span>
+                <span><strong>One student thinks:</strong> The teacher picks one student who thinks of a word and keeps it secret.</span>
+            </li>
+            <li class="rule-item">
+                <span class="rule-number">2</span>
+                <span><strong>Everyone else asks:</strong> The rest of the class asks yes/no questions to narrow it down.</span>
+            </li>
+            <li class="rule-item">
+                <span class="rule-number">3</span>
+                <span><strong>Answer honestly:</strong> The person thinking must answer every question truthfully.</span>
+            </li>
+            <li class="rule-item">
+                <span class="rule-number">4</span>
+                <span><strong>Make a guess:</strong> When you think you know the word, the teacher confirms if you're right.</span>
+            </li>
+            <li class="rule-item">
+                <span class="rule-number">5</span>
+                <span><strong>Keep score:</strong> Count how many questions it took to guess—fewer is better.</span>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Your Role (Updated Based on Phase) -->
+    <div id="role-status-container"></div>
+
+    <!-- Waiting Indicator -->
+    <div class="waiting-status" id="waiting-status" style="display: none;">
+        <span class="waiting-dot"></span>
+        <p class="status-text">Waiting for the teacher to start...</p>
+    </div>
+</div>
+
+<script>
+let sessionId = {{ session_obj.id }};
+let currentUserId = {{ current_user.id if current_user.is_authenticated else 'null' }};
+
+async function getState() {
+    const res = await fetch(`/class-games/play/${sessionId}/state`);
+    return res.json();
+}
+
+async function getParticipants() {
+    const res = await fetch(`/class-games/session/${sessionId}/participants`);
+    if (res.ok) return res.json();
+    return [];
+}
+
+async function updateDisplay() {
+    const state = await getState();
+    const participants = await getParticipants();
+
+    // Update player count
+    document.getElementById("player-count").textContent = participants.length;
+
+    // Update game status
+    const statusMap = {
+        "waiting_for_players": "Lobby",
+        "questioning": "Playing",
+        "guessing": "Guessing",
+        "round_over": "Round Over",
+        "finished": "Finished"
+    };
+    document.getElementById("game-status").textContent = statusMap[state.phase] || state.phase;
+
+    // Update role/status
+    const roleContainer = document.getElementById("role-status-container");
+    const waitingStatus = document.getElementById("waiting-status");
+
+    if (state.phase === "waiting_for_players") {
+        roleContainer.innerHTML = `
+            <div class="info-card">
+                <h2 class="card-title">
+                    <span class="card-title-icon">⏳</span>
+                    Waiting to Start
+                </h2>
+                <p style="margin: 0; color: var(--text-light); font-size: 0.95rem;">
+                    ${participants.length} player${participants.length !== 1 ? 's' : ''}
+                    ${participants.length === 1 ? 'has' : 'have'} joined.
+                    The teacher will assign roles when everyone is ready.
+                </p>
+            </div>
+        `;
+        waitingStatus.style.display = "block";
+    } else if (state.phase === "thinking_time") {
+        // Show timer for thinking time
+        const startTime = new Date(state.thinking_started_at);
+        const serverNow = new Date(state.server_now);
+        const elapsed = Math.floor((serverNow - startTime) / 1000);
+        const remaining = Math.max(0, (state.thinking_time_seconds || 10) - elapsed);
+
+        const isThinker = state.is_thinker;
+        if (isThinker) {
+            roleContainer.innerHTML = `
+                <div class="thinking-timer">
+                    <div class="thinking-timer-label">Time to Think of a Word</div>
+                    <p class="thinking-timer-value">${remaining}</p>
+                    <p class="thinking-timer-instruction">Come up with the word you want everyone to guess.</p>
+                </div>
+            `;
+        } else {
+            roleContainer.innerHTML = `
+                <div class="thinking-timer">
+                    <div class="thinking-timer-label">Preparing Your Question</div>
+                    <p class="thinking-timer-value">${remaining}</p>
+                    <p class="thinking-timer-instruction">Get ready to ask your first yes/no question!</p>
+                </div>
+            `;
+        }
+        waitingStatus.style.display = "none";
+    } else if (state.phase === "questioning" || state.phase === "guessing") {
+        const isThinker = state.is_thinker;
+        if (isThinker) {
+            roleContainer.innerHTML = `
+                <div class="game-active">
+                    <h2 class="game-active-title">You're the Thinker!</h2>
+                    <p class="game-active-status">
+                        You have the word. Listen to your classmates' questions and answer them honestly with "yes" or "no".
+                    </p>
+                    <div class="stats-grid" style="margin-top: 1.5rem;">
+                        <div class="stat-card">
+                            <div class="stat-label">Questions So Far</div>
+                            <div class="stat-value">${state.question_count || 0}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            roleContainer.innerHTML = `
+                <div class="game-active">
+                    <h2 class="game-active-title">You're a Guesser</h2>
+                    <p class="game-active-status">
+                        Work with your ${participants.length - 1} classmates to ask smart yes/no questions and figure out the word!
+                    </p>
+                    <div class="stats-grid" style="margin-top: 1.5rem;">
+                        <div class="stat-card">
+                            <div class="stat-label">Questions Asked</div>
+                            <div class="stat-value">${state.question_count || 0}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Round</div>
+                            <div class="stat-value">${state.round_number || 1}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        waitingStatus.style.display = "none";
+    } else if (state.phase === "round_over") {
+        const word = state.current_word || "???";
+        roleContainer.innerHTML = `
+            <div class="game-active">
+                <h2 class="game-active-title">Round Complete!</h2>
+                <p style="font-size: 1.4rem; font-weight: 700; color: var(--study-violet); font-family: ui-monospace, monospace; margin: 1.5rem 0 0 0;">
+                    ${word.toUpperCase()}
+                </p>
+                <p class="game-active-status" style="margin-top: 1rem;">
+                    Guessed in ${state.question_count || 0} questions!
+                </p>
+            </div>
+        `;
+        waitingStatus.style.display = "none";
+    }
+}
+
+setInterval(updateDisplay, 1000);
+updateDisplay();
+</script>
+{% endblock %}

@@ -1,0 +1,624 @@
+{% extends "student_base.html" %}
+
+{% block title %}{{ chain.title }} - Concept Chains{% endblock %}
+
+{% block content %}
+<div class="concept-chain-game">
+    <div class="game-header">
+        <h1>{{ chain.title }}</h1>
+        <p class="description">{{ chain.description }}</p>
+    </div>
+
+    <div class="game-layout">
+        <!-- Canvas area for drawing connections -->
+        <div class="canvas-area">
+            <canvas id="conceptCanvas"></canvas>
+            <div class="concepts-container">
+                {% for concept in concepts %}
+                <div class="concept-node" data-node-id="{{ concept.id }}">
+                    {{ concept.label }}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Control panel -->
+        <div class="control-panel">
+            <div class="relationship-selector">
+                <h3>Relationships</h3>
+                <div class="relationship-buttons">
+                    {% for rel_type in relationship_types %}
+                    <button class="rel-button" data-rel-type="{{ rel_type }}">{{ rel_type }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="connections-list">
+                <h3>Your Connections</h3>
+                <div id="connectionsList" class="connections-display">
+                    <p class="empty-state">No connections yet. Click concepts and select a relationship type.</p>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button id="submitBtn" class="btn-primary">Submit</button>
+                <button id="clearBtn" class="btn-secondary">Clear All</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results modal -->
+    <div id="resultsModal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Results</h2>
+            <div class="score-display">
+                <div class="score-number" id="scorePercent">0</div>
+                <div class="score-label">%</div>
+            </div>
+            <p id="scoreText">You got 0 out of 0 connections correct</p>
+
+            <div id="feedbackArea" class="feedback-area">
+                <h3>Correct Connections</h3>
+                <ul id="correctList"></ul>
+                <h3>Your Connections</h3>
+                <ul id="yourList"></ul>
+            </div>
+
+            <button id="closeModalBtn" class="btn-primary">Close</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.concept-chain-game {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--bg-light);
+}
+
+.game-header {
+    padding: 2rem;
+    background: var(--bg-white);
+    border-bottom: 1px solid var(--border);
+}
+
+.game-header h1 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.8rem;
+}
+
+.description {
+    margin: 0;
+    color: var(--text-light);
+}
+
+.game-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 1rem;
+    flex: 1;
+    padding: 1rem;
+    overflow: hidden;
+}
+
+@media (max-width: 1000px) {
+    .game-layout {
+        grid-template-columns: 1fr;
+    }
+    .control-panel {
+        max-height: 400px !important;
+        overflow-y: auto;
+    }
+}
+
+.canvas-area {
+    position: relative;
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+#conceptCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.concepts-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+    padding: 2rem;
+    align-content: start;
+}
+
+.concept-node {
+    padding: 1rem;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    border-radius: 8px;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(199, 125, 255, 0.2);
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+}
+
+.concept-node:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(199, 125, 255, 0.4);
+}
+
+.concept-node.selected {
+    box-shadow: 0 0 0 3px rgba(199, 125, 255, 0.5);
+}
+
+.control-panel {
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+}
+
+.relationship-selector h3,
+.connections-list h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+}
+
+.relationship-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.rel-button {
+    padding: 0.75rem;
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    text-transform: capitalize;
+}
+
+.rel-button:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.rel-button.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.connections-display {
+    min-height: 100px;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    background: var(--bg-light);
+}
+
+.connection-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.connection-item button {
+    margin-left: auto;
+    background: #f3444d;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    padding: 2px 6px;
+    cursor: pointer;
+    font-size: 0.75rem;
+}
+
+.empty-state {
+    color: var(--text-light);
+    font-style: italic;
+    margin: 0;
+    text-align: center;
+    padding: 1rem 0;
+}
+
+.actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn-primary, .btn-secondary {
+    flex: 1;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+}
+
+.btn-secondary {
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    color: var(--text-dark);
+}
+
+.btn-secondary:hover {
+    background: var(--border);
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.modal.hidden {
+    display: none;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.modal-content {
+    background: var(--bg-white);
+    border-radius: var(--radius);
+    padding: 2rem;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.modal-content h2 {
+    margin-top: 0;
+}
+
+.score-display {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin: 2rem 0;
+}
+
+.score-number {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.score-label {
+    font-size: 1.5rem;
+}
+
+.feedback-area {
+    margin: 2rem 0;
+}
+
+.feedback-area h3 {
+    font-size: 0.95rem;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.feedback-area ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.feedback-area li {
+    padding: 0.5rem;
+    background: var(--bg-light);
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.feedback-area li.correct {
+    border-left: 3px solid #10b981;
+}
+
+.feedback-area li.incorrect {
+    border-left: 3px solid #ef4444;
+}
+</style>
+
+<script>
+class ConceptChainGame {
+    constructor() {
+        this.chainId = {{ chain.id }};
+        this.selectedConcepts = [];
+        this.connections = [];
+        this.selectedRelationType = null;
+        this.nodePositions = {};
+        this.correctLinks = [];
+
+        this.init();
+    }
+
+    init() {
+        this.setupElements();
+        this.setupEventListeners();
+        this.positionConcepts();
+        this.draw();
+    }
+
+    setupElements() {
+        this.canvas = document.getElementById('conceptCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.conceptsContainer = document.querySelector('.concepts-container');
+        this.conceptNodes = document.querySelectorAll('.concept-node');
+        this.relButtons = document.querySelectorAll('.rel-button');
+        this.connectionsDisplay = document.getElementById('connectionsList');
+        this.submitBtn = document.getElementById('submitBtn');
+        this.clearBtn = document.getElementById('clearBtn');
+        this.resultsModal = document.getElementById('resultsModal');
+        this.closeModalBtn = document.getElementById('closeModalBtn');
+    }
+
+    setupEventListeners() {
+        this.conceptNodes.forEach(node => {
+            node.addEventListener('click', () => this.selectConcept(node));
+        });
+
+        this.relButtons.forEach(btn => {
+            btn.addEventListener('click', () => this.selectRelationType(btn));
+        });
+
+        this.submitBtn.addEventListener('click', () => this.submit());
+        this.clearBtn.addEventListener('click', () => this.clearAll());
+        this.closeModalBtn.addEventListener('click', () => this.closeModal());
+
+        window.addEventListener('resize', () => this.redraw());
+    }
+
+    positionConcepts() {
+        this.conceptNodes.forEach(node => {
+            const rect = node.getBoundingClientRect();
+            const containerRect = this.conceptsContainer.getBoundingClientRect();
+            this.nodePositions[node.dataset.nodeId] = {
+                x: rect.left - containerRect.left + rect.width / 2,
+                y: rect.top - containerRect.top + rect.height / 2,
+                width: rect.width,
+                height: rect.height
+            };
+        });
+    }
+
+    selectConcept(node) {
+        const nodeId = node.dataset.nodeId;
+
+        if (this.selectedConcepts.includes(nodeId)) {
+            this.selectedConcepts = this.selectedConcepts.filter(id => id !== nodeId);
+            node.classList.remove('selected');
+        } else {
+            if (this.selectedConcepts.length >= 2) {
+                const first = this.selectedConcepts.shift();
+                document.querySelector(`[data-node-id="${first}"]`).classList.remove('selected');
+            }
+            this.selectedConcepts.push(nodeId);
+            node.classList.add('selected');
+        }
+
+        if (this.selectedConcepts.length === 2) {
+            this.relButtons.forEach(btn => btn.disabled = false);
+        } else {
+            this.relButtons.forEach(btn => btn.disabled = true);
+        }
+
+        this.redraw();
+    }
+
+    selectRelationType(btn) {
+        if (this.selectedConcepts.length !== 2) return;
+
+        this.selectedRelationType = btn.dataset.relType;
+
+        this.relButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        this.addConnection();
+    }
+
+    addConnection() {
+        if (this.selectedConcepts.length !== 2 || !this.selectedRelationType) return;
+
+        const [fromId, toId] = this.selectedConcepts;
+        const connection = { from: fromId, to: toId, type: this.selectedRelationType };
+
+        this.connections.push(connection);
+        this.updateConnectionsList();
+
+        this.selectedConcepts = [];
+        this.selectedRelationType = null;
+        this.conceptNodes.forEach(n => n.classList.remove('selected'));
+        this.relButtons.forEach(btn => {
+            btn.classList.remove('active');
+            btn.disabled = true;
+        });
+
+        this.redraw();
+    }
+
+    updateConnectionsList() {
+        if (this.connections.length === 0) {
+            this.connectionsDisplay.innerHTML = '<p class="empty-state">No connections yet.</p>';
+            return;
+        }
+
+        const conceptLabels = {};
+        this.conceptNodes.forEach(node => {
+            conceptLabels[node.dataset.nodeId] = node.textContent;
+        });
+
+        const html = this.connections.map((conn, idx) => `
+            <div class="connection-item">
+                <span>${conceptLabels[conn.from]} → <strong>${conn.type}</strong> → ${conceptLabels[conn.to]}</span>
+                <button onclick="game.removeConnection(${idx})">Remove</button>
+            </div>
+        `).join('');
+
+        this.connectionsDisplay.innerHTML = html;
+    }
+
+    removeConnection(idx) {
+        this.connections.splice(idx, 1);
+        this.updateConnectionsList();
+        this.redraw();
+    }
+
+    draw() {
+        this.resizeCanvas();
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        this.connections.forEach(conn => {
+            const from = this.nodePositions[conn.from];
+            const to = this.nodePositions[conn.to];
+            if (from && to) {
+                this.drawConnection(from, to, conn.type);
+            }
+        });
+    }
+
+    drawConnection(from, to, type) {
+        const ctx = this.ctx;
+        const midX = (from.x + to.x) / 2;
+        const midY = (from.y + to.y) / 2;
+
+        ctx.strokeStyle = 'rgba(199, 125, 255, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(from.x, from.y);
+        ctx.quadraticCurveTo(midX, midY - 30, to.x, to.y);
+        ctx.stroke();
+
+        ctx.fillStyle = '#c77dff';
+        ctx.font = '11px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(type, midX, midY - 15);
+    }
+
+    resizeCanvas() {
+        this.canvas.width = this.conceptsContainer.offsetWidth;
+        this.canvas.height = this.conceptsContainer.offsetHeight;
+    }
+
+    redraw() {
+        this.positionConcepts();
+        this.draw();
+    }
+
+    clearAll() {
+        if (confirm('Clear all connections?')) {
+            this.connections = [];
+            this.updateConnectionsList();
+            this.redraw();
+        }
+    }
+
+    async submit() {
+        try {
+            const response = await fetch(`/concept-chains/${this.chainId}/submit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ links: this.connections })
+            });
+
+            const data = await response.json();
+            this.showResults(data);
+        } catch (error) {
+            alert('Error submitting: ' + error);
+        }
+    }
+
+    showResults(data) {
+        document.getElementById('scorePercent').textContent = Math.round(data.score_percent);
+        document.getElementById('scoreText').textContent =
+            `You got ${data.correct_count} out of ${data.total_possible} connections correct`;
+
+        const correctList = document.getElementById('correctList');
+        const yourList = document.getElementById('yourList');
+
+        correctList.innerHTML = data.correct_links.map(link => `
+            <li class="correct">
+                ${link.from_label} → <strong>${link.type}</strong> → ${link.to_label}
+            </li>
+        `).join('');
+
+        yourList.innerHTML = data.submitted_links.map(link => {
+            const isCorrect = data.correct_links.some(cl =>
+                cl.from === link.from && cl.to === link.to && cl.type === link.type
+            );
+            const conceptLabels = {};
+            this.conceptNodes.forEach(node => {
+                conceptLabels[node.dataset.nodeId] = node.textContent;
+            });
+            return `
+                <li class="${isCorrect ? 'correct' : 'incorrect'}">
+                    ${conceptLabels[link.from]} → <strong>${link.type}</strong> → ${conceptLabels[link.to]}
+                </li>
+            `;
+        }).join('');
+
+        this.resultsModal.classList.remove('hidden');
+    }
+
+    closeModal() {
+        this.resultsModal.classList.add('hidden');
+    }
+}
+
+const game = new ConceptChainGame();
+</script>
+{% endblock %}

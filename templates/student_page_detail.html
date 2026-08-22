@@ -1,0 +1,365 @@
+{% extends base_template|default("student_base.html") %}
+{% block title %}{{ page_title }} — The Oracle{% endblock %}
+
+{% block content %}
+<style>
+    .pd-wrap { max-width: 760px; margin: 0 auto; }
+    .pd-back { font-size: 0.85rem; color: var(--primary); text-decoration: none; font-weight: 600; }
+    .pd-crumb { font-size: 0.78rem; color: var(--text-light); margin: 0.6rem 0 0.25rem; }
+    .pd-header h1 { font-size: 1.35rem; margin: 0 0 0.75rem; color: var(--text-dark); line-height: 1.35; }
+
+    .pd-overview {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--primary);
+        border-radius: 12px;
+        padding: 0.9rem 1.1rem;
+        margin-bottom: 1rem;
+        color: var(--text-dark);
+        line-height: 1.5;
+        font-size: 0.92rem;
+    }
+    .pd-overview .pd-overview-label {
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-light);
+        margin-bottom: 0.3rem;
+    }
+
+    .pd-stats { display: flex; gap: 0.6rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .pd-stat {
+        flex: 1;
+        min-width: 90px;
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 0.7rem;
+        text-align: center;
+    }
+    .pd-stat-value { font-size: 1.3rem; font-weight: 700; color: var(--primary); }
+    .pd-stat-label { font-size: 0.7rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.4px; }
+
+    .pd-cta {
+        display: block;
+        text-align: center;
+        background: var(--primary);
+        color: #fff;
+        border-radius: 12px;
+        padding: 0.8rem 1rem;
+        font-weight: 700;
+        font-size: 0.95rem;
+        text-decoration: none;
+        margin-bottom: 1.5rem;
+    }
+
+    .pd-section-title { font-size: 1rem; margin: 1.25rem 0 0.6rem; }
+    .pd-section-title.grasped { color: #10b981; }
+    .pd-section-title.improve { color: #d97706; }
+    .pd-section-title.unanswered { color: var(--text-light); }
+
+    .pd-q {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1rem 1.1rem;
+        margin-bottom: 0.7rem;
+    }
+    .pd-q.grasped { border-left: 4px solid #10b981; }
+    .pd-q.improve { border-left: 4px solid #d97706; }
+    .pd-q.pending { border-left: 4px solid #94a3b8; }
+    .pd-q-text { font-weight: 600; line-height: 1.45; margin-bottom: 0.5rem; }
+    .pd-q-badge {
+        display: inline-block;
+        font-size: 0.7rem;
+        font-weight: 700;
+        border-radius: 999px;
+        padding: 0.15rem 0.6rem;
+        margin-bottom: 0.4rem;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+    .pd-q-badge.grasped { background: rgba(16, 185, 129, 0.14); color: #10b981; }
+    .pd-q-badge.improve { background: rgba(217, 119, 6, 0.14); color: #d97706; }
+    .pd-q-badge.pending { background: rgba(148, 163, 184, 0.2); color: #64748b; }
+    .pd-q-badge.attempts { background: var(--bg-light); color: var(--text-light); text-transform: none; letter-spacing: 0; }
+
+    .pd-block { margin-top: 0.55rem; font-size: 0.88rem; line-height: 1.5; }
+    .pd-block-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: var(--text-light);
+        margin-bottom: 0.15rem;
+    }
+    .pd-answer {
+        background: var(--bg-light);
+        border-radius: 8px;
+        padding: 0.55rem 0.75rem;
+        white-space: pre-wrap;
+    }
+    .pd-feedback b { color: #d97706; }
+
+    .pd-keywords { margin-top: 0.55rem; font-size: 0.78rem; color: var(--text-light); }
+    .pd-keyword {
+        display: inline-block;
+        background: rgba(217, 119, 6, 0.12);
+        color: #d97706;
+        border-radius: 999px;
+        padding: 0.2rem 0.6rem;
+        margin: 0.2rem 0.2rem 0 0;
+        font-weight: 600;
+    }
+
+    .pd-empty { color: var(--text-light); font-size: 0.88rem; margin: 0.3rem 0 0.8rem; }
+
+    /* Prev / next subtopic navigation */
+    .pd-nav {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin: 1.5rem 0 0.4rem;
+    }
+    .pd-nav-link {
+        flex: 1;
+        min-width: 0;
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 0.7rem 0.9rem;
+        text-decoration: none;
+        color: var(--text-dark);
+        font-size: 0.82rem;
+        overflow: hidden;
+    }
+    .pd-nav-link .dir {
+        display: block;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: var(--primary);
+        margin-bottom: 0.15rem;
+    }
+    .pd-nav-link .name {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .pd-nav-link.next { text-align: right; }
+    .pd-nav-spacer { flex: 1; }
+    .pd-swipe-hint {
+        display: none;
+        text-align: center;
+        color: var(--text-light);
+        font-size: 0.75rem;
+        margin: 0 0 0.8rem;
+    }
+    @media (max-width: 768px) {
+        .pd-swipe-hint { display: block; }
+    }
+
+    body.pd-leaving { transition: opacity 0.15s ease, transform 0.15s ease; }
+    body.pd-leaving.left { opacity: 0; transform: translateX(-24px); }
+    body.pd-leaving.right { opacity: 0; transform: translateX(24px); }
+
+    @media (max-width: 768px) {
+        .pd-header h1 { font-size: 1.15rem; }
+        .pd-q { padding: 0.85rem 0.9rem; }
+    }
+</style>
+
+<div class="pd-wrap">
+    <a class="pd-back" href="{{ back_url|default(url_for('quiz.student_quiz_analytics')) }}">← Back to {% if teacher_view %}{{ student.name }}'s {% endif %}quiz analytics</a>
+    <div class="pd-crumb">
+        {{ book_title }}{% if section_code %} · {{ section_code }}{% if section_title %} {{ section_title }}{% endif %}{% endif %}
+    </div>
+    <div class="pd-header"><h1>{{ page_title }}</h1></div>
+
+    {% if summary %}
+    <div class="pd-overview">
+        <span class="pd-overview-label">What this page covers</span>
+        {{ summary }}
+    </div>
+    {% endif %}
+
+    <div class="pd-stats">
+        <div class="pd-stat">
+            <div class="pd-stat-value">{{ marks_earned }}/{{ total_marks }}</div>
+            <div class="pd-stat-label">Marks</div>
+        </div>
+        <div class="pd-stat">
+            <div class="pd-stat-value">{{ accuracy ~ '%' if accuracy is not none else '—' }}</div>
+            <div class="pd-stat-label">Accuracy</div>
+        </div>
+        <div class="pd-stat">
+            <div class="pd-stat-value">{{ partial | length }}</div>
+            <div class="pd-stat-label">To improve</div>
+        </div>
+    </div>
+
+    {% if not teacher_view %}
+    <a class="pd-cta" href="{{ quiz_url }}">
+        {{ ('Improve your answers →' if accuracy < 100 else 'Review the quiz →') if answered else 'Start the quiz →' }}
+    </a>
+    {% endif %}
+
+    {% macro question_card(item, kind) %}
+    <div class="pd-q {{ 'pending' if item.pending else kind }}">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem;">
+            <div>
+                {% if item.pending %}
+                <span class="pd-q-badge pending">Awaiting review</span>
+                {% elif kind == 'mastered' %}
+                <span class="pd-q-badge grasped">⭐ Mastered</span>
+                {% else %}
+                <span class="pd-q-badge improve">Partial</span>
+                {% endif %}
+                {% if item.attempts > 1 %}<span class="pd-q-badge attempts">↻ {{ item.attempts }}</span>{% endif %}
+            </div>
+            <span style="font-weight: 700; font-size: 0.9rem;">{{ item.marks_awarded | default('?') }}/{{ item.marks }}</span>
+        </div>
+        <div class="pd-q-text" style="margin: 0.5rem 0;">{{ item.summary }}</div>
+        <span style="font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.4px;">{{ item.command }}</span>
+
+        {% if kind == 'mastered' %}
+        <details style="margin-top: 0.5rem;">
+            <summary style="cursor: pointer; font-size: 0.85rem; color: var(--primary); font-weight: 600;">What you got right</summary>
+            <div style="padding-top: 0.6rem;">
+                {% if item.answer_text %}
+                <div class="pd-block">
+                    <div class="pd-block-label">Your answer</div>
+                    <div class="pd-answer">{{ item.answer_text }}</div>
+                </div>
+                {% endif %}
+                {% if item.feedback %}
+                <div class="pd-block pd-feedback">
+                    <div class="pd-block-label">Feedback</div>
+                    {{ item.feedback }}
+                </div>
+                {% endif %}
+            </div>
+        </details>
+        {% else %}
+        {% if item.what_you_know %}
+        <div class="pd-block" style="margin-top: 0.5rem; background: rgba(16, 185, 129, 0.08); border-left: 3px solid #10b981; padding-left: 0.7rem;">
+            <div class="pd-block-label" style="color: #10b981;">What you know</div>
+            {{ item.what_you_know }}
+        </div>
+        {% endif %}
+        {% if item.improving_understanding %}
+        <div class="pd-block" style="margin-top: 0.4rem; background: rgba(217, 119, 6, 0.08); border-left: 3px solid #d97706; padding-left: 0.7rem;">
+            <div class="pd-block-label" style="color: #d97706;">Improving understanding</div>
+            {{ item.improving_understanding }}
+        </div>
+        {% endif %}
+        <details style="margin-top: 0.5rem;">
+            <summary style="cursor: pointer; font-size: 0.85rem; color: var(--primary); font-weight: 600;">Your answer</summary>
+            <div style="padding-top: 0.6rem;">
+                {% if item.answer_text %}
+                <div class="pd-answer">{{ item.answer_text }}</div>
+                {% endif %}
+                {% if item.feedback %}
+                <div class="pd-block pd-feedback" style="margin-top: 0.4rem;">
+                    <div class="pd-block-label">Feedback</div>
+                    {{ item.feedback }}
+                </div>
+                {% endif %}
+            </div>
+        </details>
+        {% endif %}
+
+        {% if item.keywords %}
+        <div class="pd-keywords">
+            Focus on:
+            {% for kw in item.keywords %}<span class="pd-keyword">{{ kw }}</span>{% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% endmacro %}
+
+    {% if mastered %}
+    <h2 class="pd-section-title grasped">⭐ Mastered</h2>
+    {% for item in mastered %}{{ question_card(item, 'mastered') }}{% endfor %}
+    {% endif %}
+
+    {% if partial %}
+    <h2 class="pd-section-title improve">🎯 Needs work</h2>
+    {% for item in partial %}{{ question_card(item, 'partial') }}{% endfor %}
+    {% endif %}
+
+    {% if unanswered %}
+    <h2 class="pd-section-title unanswered">Not attempted yet</h2>
+    {% for item in unanswered %}
+    <div class="pd-q">
+        <div class="pd-q-text">{{ item.summary }}</div>
+        <span style="font-size: 0.75rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.4px;">{{ item.command }}</span>
+        <div style="font-size: 0.9rem; font-weight: 700; margin-top: 0.3rem;">{{ item.marks }} marks</div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if not total %}
+    <p class="pd-empty">This page has no quiz questions yet.</p>
+    {% endif %}
+
+    {% if prev_page or next_page %}
+    <div class="pd-nav">
+        {% if prev_page %}
+        <a class="pd-nav-link prev" href="{{ prev_page.url }}">
+            <span class="dir">← Previous</span>
+            <span class="name">{{ prev_page.title }}</span>
+        </a>
+        {% else %}<span class="pd-nav-spacer"></span>{% endif %}
+        {% if next_page %}
+        <a class="pd-nav-link next" href="{{ next_page.url }}">
+            <span class="dir">Next →</span>
+            <span class="name">{{ next_page.title }}</span>
+        </a>
+        {% else %}<span class="pd-nav-spacer"></span>{% endif %}
+    </div>
+    <p class="pd-swipe-hint">Swipe left or right to move between pages</p>
+    {% endif %}
+</div>
+
+<script>
+(function () {
+    const prevUrl = {{ prev_page.url | tojson if prev_page else 'null' }};
+    const nextUrl = {{ next_page.url | tojson if next_page else 'null' }};
+    if (!prevUrl && !nextUrl) return;
+
+    function go(url, dirClass) {
+        document.body.classList.add('pd-leaving', dirClass);
+        setTimeout(() => { window.location.href = url; }, 140);
+    }
+
+    let x0 = null, y0 = null;
+    document.addEventListener('touchstart', (e) => {
+        x0 = e.touches[0].clientX;
+        y0 = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        if (x0 === null) return;
+        const dx = e.changedTouches[0].clientX - x0;
+        const dy = e.changedTouches[0].clientY - y0;
+        x0 = y0 = null;
+        // A deliberate horizontal swipe: long enough, and clearly not a scroll
+        if (Math.abs(dx) < 60 || Math.abs(dx) < 2 * Math.abs(dy)) return;
+        if (dx < 0 && nextUrl) go(nextUrl, 'left');       // swipe left → next page
+        else if (dx > 0 && prevUrl) go(prevUrl, 'right'); // swipe right → previous page
+    }, { passive: true });
+
+    // Bonus: arrow keys on desktop
+    document.addEventListener('keydown', (e) => {
+        if (e.target.matches('input, textarea, select')) return;
+        if (e.key === 'ArrowRight' && nextUrl) go(nextUrl, 'left');
+        else if (e.key === 'ArrowLeft' && prevUrl) go(prevUrl, 'right');
+    });
+})();
+</script>
+{% endblock %}

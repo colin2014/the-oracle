@@ -1,0 +1,637 @@
+{% extends "admin_base.html" %}
+{% from '_avatar_macro.html' import avatar_svg with context %}
+{% block title %}Students{% endblock %}
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+    <h1>Students</h1>
+    <a href="{{ url_for('admin.admin_home') }}" class="admin-btn" style="margin-left: auto; margin-right: 0.75rem; text-decoration: none;">Manage Classes</a>
+    <div id="bulk-actions" style="display: none; gap: 0.5rem;">
+        <select id="bulk-class-select" style="padding: 0.5rem 0.8rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-white); color: var(--text-dark);">
+            <option value="">Select class…</option>
+            {% for c in classes %}
+            <option value="{{ c.id }}">{{ c.name }}</option>
+            {% endfor %}
+        </select>
+        <button id="bulk-assign-btn" class="admin-btn" style="display: none;">Assign Selected</button>
+    </div>
+</div>
+
+<style>
+    /* This page is a wide data table — let it use the full window width
+       instead of the 1300px cap style.css puts on .admin-main. */
+    .admin-main { max-width: none; min-width: 0; }
+
+    .students-table { table-layout: fixed; width: 100%; }
+    .students-table th, .students-table td { vertical-align: middle; }
+    .col-check   { width: 4%; text-align: center; }
+    .col-name    { width: 15%; }
+    .col-email   { width: 15%; }
+    .col-classes { width: 15%; }
+    .col-num     { width: 7%; text-align: center; }
+    .col-active  { width: 10%; }
+    .col-assign  { width: 15%; }
+    .col-actions { width: 6%; text-align: center; }
+
+    .student-name-cell { display: flex; align-items: center; gap: 0.5rem; }
+    .student-name-cell a { flex: 1; display: flex; align-items: center; gap: 0.5rem; }
+    .name-wrapper { display: flex; flex-direction: column; gap: 0.2rem; }
+    .real-name { font-weight: 600; }
+    .alias-name { font-size: 0.8rem; color: var(--text-light); }
+    .edit-name-btn {
+        padding: 0.3rem 0.5rem;
+        background: var(--bg-light);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.75rem;
+        color: var(--text-dark);
+    }
+    .edit-name-btn:hover {
+        background: var(--border);
+    }
+
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1001;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-overlay.active {
+        display: flex;
+    }
+    .modal-content {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.5rem;
+        max-width: 400px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    .modal-header {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: var(--text-dark);
+    }
+    .modal-body {
+        margin-bottom: 1rem;
+    }
+    .modal-body label {
+        display: block;
+        font-size: 0.9rem;
+        margin-bottom: 0.4rem;
+        color: var(--text-dark);
+        font-weight: 500;
+    }
+    .modal-body input {
+        width: 100%;
+        padding: 0.6rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 0.9rem;
+        box-sizing: border-box;
+    }
+    .modal-footer {
+        display: flex; gap: 0.5rem; justify-content: flex-end;
+    }
+    .modal-footer button {
+        padding: 0.5rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+    .modal-footer .btn-primary {
+        background: #7d56e8;
+        color: white;
+        border-color: #7d56e8;
+    }
+    .modal-footer .btn-primary:hover {
+        background: #6d46d6;
+    }
+    .modal-footer .btn-secondary {
+        background: var(--bg-white);
+        color: var(--text-dark);
+    }
+    .modal-footer .btn-secondary:hover {
+        background: var(--bg-light);
+    }
+
+    .students-table td.col-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .class-pills { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .class-pill {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        background: var(--bg-light); border: 1px solid var(--border);
+        border-radius: 999px; padding: 0.2rem 0.4rem 0.2rem 0.7rem;
+        font-size: 0.78rem; white-space: nowrap; line-height: 1.4;
+    }
+    .class-pill button {
+        border: none; background: rgba(220, 38, 38, 0.1); color: #dc2626;
+        cursor: pointer; font-weight: 700; line-height: 1;
+        width: 1.1rem; height: 1.1rem; border-radius: 50%;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 0.75rem; padding: 0;
+    }
+    .class-pill button:hover { background: rgba(220, 38, 38, 0.2); }
+    .no-class { color: var(--text-light); font-size: 0.85rem; white-space: nowrap; }
+
+    .assign-form { display: flex; gap: 0.4rem; align-items: center; flex-wrap: nowrap; }
+    .assign-form select { flex: 1; min-width: 0; padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; }
+    .assign-form .admin-btn { flex-shrink: 0; padding: 0.35rem 0.8rem; }
+
+    .class-group {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        background: var(--bg-white);
+        overflow: hidden;
+    }
+    .class-group > summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 0.9rem 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-weight: 600;
+        color: var(--text-dark);
+        background: var(--bg-light);
+        user-select: none;
+    }
+    .class-group > summary::-webkit-details-marker { display: none; }
+    .class-group > summary::before {
+        content: '▸';
+        font-size: 0.9rem;
+        color: var(--text-light);
+        transition: transform 120ms ease-out;
+    }
+    .class-group[open] > summary::before { transform: rotate(90deg); }
+    .class-group > summary:hover { background: var(--border); }
+    .group-count {
+        font-weight: 500;
+        font-size: 0.82rem;
+        color: var(--text-light);
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 0.1rem 0.6rem;
+    }
+    .class-group .students-table { margin: 0; }
+
+    .group-actions {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-weight: 500;
+        font-size: 0.82rem;
+    }
+    .group-actions form { display: inline; margin: 0; }
+    .delete-class-btn {
+        border: 1px solid rgba(220, 38, 38, 0.3);
+        background: rgba(220, 38, 38, 0.08);
+        color: #dc2626;
+        border-radius: 6px;
+        padding: 0.25rem 0.6rem;
+        font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+    }
+    .delete-class-btn:hover { background: rgba(220, 38, 38, 0.18); }
+</style>
+
+{% macro student_row(s, group_id) %}
+        {% set usage = usage_by_student.get(s.id, {}) %}
+        <tr>
+            <td class="col-check"><input type="checkbox" class="student-checkbox" value="{{ s.id }}" data-group="{{ group_id }}" style="cursor: pointer;"></td>
+            <td class="col-name">
+                <div class="student-name-cell">
+                    <a href="{{ url_for('admin.analytics_student', student_id=s.id) }}" style="flex: 1; display:flex; align-items:center; gap:0.5rem;">
+                        {{ avatar_svg(s.avatar, 24) }}
+                        <div class="name-wrapper" style="flex: 1;">
+                            <span class="real-name" data-real-name="{{ s.id }}">{{ s.name }}</span>
+                            <span class="alias-name">({{ s.name }})</span>
+                        </div>
+                    </a>
+                    <button class="edit-name-btn" data-student-id="{{ s.id }}" data-student-alias="{{ s.name }}">✎ Edit</button>
+                </div>
+            </td>
+            <td class="col-email" title="{{ s.email }}">{{ s.email }}</td>
+            <td class="col-classes">
+                <div class="class-pills">
+                    {% for enrollment in classes_by_student.get(s.id, []) %}
+                        <span class="class-pill" style="position: relative; display: inline-flex; align-items: center; gap: 0.3rem;">
+                            <span>{{ enrollment.class_.name }}</span>
+                            <select onchange="setStudentLevel({{ s.id }}, {{ enrollment.class_.id }}, this.value)" style="padding: 0.1rem 0.3rem; border: 1px solid rgba(157, 132, 255, 0.3); border-radius: 3px; background: rgba(157, 132, 255, 0.05); color: var(--text-dark); font-size: 0.75rem; cursor: pointer; height: 1.4rem; flex-shrink: 0;">
+                                <option value="">—</option>
+                                <option value="HL" {% if enrollment.level == 'HL' %}selected{% endif %}>HL</option>
+                                <option value="SL" {% if enrollment.level == 'SL' %}selected{% endif %}>SL</option>
+                            </select>
+                            <form method="POST" action="{{ url_for('admin.remove_student_from_class', student_id=s.id, class_id=enrollment.class_.id) }}" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" title="Remove from class" style="border: none; background: rgba(220, 38, 38, 0.1); color: #dc2626; cursor: pointer; font-weight: 700; line-height: 1; width: 1.1rem; height: 1.1rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; padding: 0; flex-shrink: 0;">×</button>
+                            </form>
+                        </span>
+                    {% else %}
+                        <span class="no-class">Not in a class</span>
+                    {% endfor %}
+                </div>
+            </td>
+            <td class="col-num">{{ usage.get('pages_opened', 0) }}</td>
+            <td class="col-num">{{ usage.get('pages_completed', 0) }}</td>
+            <td class="col-num">{{ ((usage.get('total_seconds', 0)) / 60) | round(1) }} min</td>
+            <td class="col-active">{{ usage.get('last_active').strftime('%b %d, %Y %I:%M %p') if usage.get('last_active') else '—' }}</td>
+            <td class="col-assign">
+                <form method="POST" action="{{ url_for('admin.assign_student_to_class', student_id=s.id) }}" class="assign-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <select name="class_id" required>
+                        <option value="">Select class…</option>
+                        {% for c in classes %}
+                        <option value="{{ c.id }}">{{ c.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="admin-btn">Add</button>
+                </form>
+            </td>
+            <td class="col-actions">
+                <div class="action-dropdown" style="position: relative; display: inline-block;">
+                    <button class="action-menu-btn" style="background: var(--bg-light); border: 1px solid var(--border); border-radius: 4px; padding: 0.4rem 0.6rem; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--text-dark);">⋮</button>
+                    <div class="action-menu-content" style="display: none; position: absolute; right: 0; background: var(--bg-white); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 1000; min-width: 150px;">
+                        <a href="{{ url_for('admin.reset_student_data', student_id=s.id) }}" style="display: block; padding: 0.6rem 1rem; color: var(--link-color); text-decoration: none; border-bottom: 1px solid var(--border); font-size: 0.9rem;">Reset Data</a>
+                        <form method="POST" action="{{ url_for('admin.delete_student', student_id=s.id) }}" style="display: block; margin: 0;" onsubmit="return confirm('Delete this student? All their data and enrollments will be permanently deleted. This cannot be undone.');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" style="width: 100%; text-align: left; padding: 0.6rem 1rem; border: none; background: none; color: #dc2626; cursor: pointer; font-size: 0.9rem; font-weight: 500;">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            </td>
+        </tr>
+{% endmacro %}
+
+{% macro group_table(group_id, members) %}
+<table class="admin-table students-table">
+    <thead>
+        <tr>
+            <th class="col-check"><input type="checkbox" class="group-select-all" data-group="{{ group_id }}" style="cursor: pointer;"></th>
+            <th class="col-name">Name</th>
+            <th class="col-email">Email</th>
+            <th class="col-classes">Classes</th>
+            <th class="col-num">Pages Opened</th>
+            <th class="col-num">Completed</th>
+            <th class="col-num">Time Spent</th>
+            <th class="col-active">Last Active</th>
+            <th class="col-assign">Assign to Class</th>
+            <th class="col-actions">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for s in members %}{{ student_row(s, group_id) }}{% endfor %}
+    </tbody>
+</table>
+{% endmacro %}
+
+{% if not students %}
+<table class="admin-table students-table">
+    <tbody><tr><td>No students have signed up yet.</td></tr></tbody>
+</table>
+{% endif %}
+
+{# One accordion per class, plus a trailing group for unenrolled students.
+   A student enrolled in several classes appears under each of them; the JS
+   below keeps their duplicated checkboxes in sync. #}
+{% for c in classes | sort(attribute='name') %}
+    {% set members = [] %}
+    {% for s in students | sort(attribute='name') %}
+        {% if c.id in classes_by_student.get(s.id, []) | map(attribute='class_.id') | list %}
+            {% set _ = members.append(s) %}
+        {% endif %}
+    {% endfor %}
+    <details class="class-group" {% if members %}open{% endif %}>
+        <summary>
+            {{ c.name }}
+            <span class="group-count">{{ members | length }} student{{ '' if members | length == 1 else 's' }}</span>
+            <span class="group-actions">
+                <a href="{{ url_for('admin.class_detail', class_id=c.id) }}" onclick="event.stopPropagation();">Manage</a>
+                <form method="POST" action="{{ url_for('admin.archive_class', class_id=c.id) }}"
+                      onclick="event.stopPropagation();"
+                      onsubmit="return confirm('Archive the class &quot;{{ c.name }}&quot;? It is hidden from this page but nothing is deleted — you can restore it from Archived classes below.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="delete-class-btn">Archive class</button>
+                </form>
+            </span>
+        </summary>
+        {% if members %}
+            {{ group_table('class-' ~ c.id, members) }}
+        {% else %}
+            <div style="padding: 1rem 1.1rem; color: var(--text-light); font-size: 0.9rem;">No students in this class yet.</div>
+        {% endif %}
+    </details>
+{% endfor %}
+
+{# "Unassigned" means no *active* class: enrollments in archived classes don't
+   render a group, so those students must still land somewhere visible. #}
+{% set active_class_ids = classes | map(attribute='id') | list %}
+{% set unassigned = [] %}
+{% for s in students | sort(attribute='name') %}
+    {% set enrolled_active = classes_by_student.get(s.id, []) | map(attribute='class_.id') | select('in', active_class_ids) | list %}
+    {% if not enrolled_active %}{% set _ = unassigned.append(s) %}{% endif %}
+{% endfor %}
+{% if unassigned %}
+<details class="class-group" open>
+    <summary>
+        Not in a class
+        <span class="group-count">{{ unassigned | length }} student{{ '' if unassigned | length == 1 else 's' }}</span>
+    </summary>
+    {{ group_table('unassigned', unassigned) }}
+</details>
+{% endif %}
+
+{% if archived_classes %}
+<details class="class-group">
+    <summary>
+        Archived classes
+        <span class="group-count">{{ archived_classes | length }}</span>
+    </summary>
+    <div style="padding: 0.75rem 1.1rem;">
+        {% for c in archived_classes %}
+        <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.4rem 0; border-bottom: 1px solid var(--border);">
+            <span style="flex: 1;">{{ c.name }}</span>
+            <form method="POST" action="{{ url_for('admin.unarchive_class', class_id=c.id) }}" style="margin: 0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="admin-btn" style="font-size: 0.8rem; padding: 0.3rem 0.7rem;">Restore</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+</details>
+{% endif %}
+
+<!-- Name Mapping Modal -->
+<div id="nameModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">Set Real Name</div>
+        <div class="modal-body">
+            <label>Student Alias:</label>
+            <div id="modalAlias" style="padding: 0.6rem; background: var(--bg-light); border-radius: 6px; margin-bottom: 1rem; font-size: 0.9rem;"></div>
+            <label for="realNameInput">Real Name:</label>
+            <input type="text" id="realNameInput" placeholder="Enter real name (stored locally only)">
+            <div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.5rem;">
+                ℹ️ Real names are stored only on your device and never sent to the server.
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" id="modalCancel">Cancel</button>
+            <button class="btn-secondary" id="modalClear" style="color: #dc2626;">Clear</button>
+            <button class="btn-primary" id="modalSave">Save</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const studentCheckboxes = document.querySelectorAll('.student-checkbox');
+const groupSelectAlls = document.querySelectorAll('.group-select-all');
+const bulkActionsDiv = document.getElementById('bulk-actions');
+const bulkAssignBtn = document.getElementById('bulk-assign-btn');
+const bulkClassSelect = document.getElementById('bulk-class-select');
+
+// A student in two classes has a checkbox in each group's table, so selection
+// is counted over unique student ids, not over checkbox elements.
+function selectedStudentIds() {
+    return [...new Set(
+        Array.from(studentCheckboxes).filter(cb => cb.checked).map(cb => cb.value)
+    )];
+}
+
+function checkboxesForGroup(group) {
+    return Array.from(document.querySelectorAll(`.student-checkbox[data-group="${group}"]`));
+}
+
+function updateBulkActionsUI() {
+    const checkedCount = selectedStudentIds().length;
+    if (checkedCount > 0) {
+        bulkActionsDiv.style.display = 'flex';
+        bulkAssignBtn.style.display = 'inline-block';
+        bulkAssignBtn.textContent = `Assign ${checkedCount} Selected`;
+    } else {
+        bulkActionsDiv.style.display = 'none';
+    }
+}
+
+function syncGroupSelectAlls() {
+    groupSelectAlls.forEach(master => {
+        const boxes = checkboxesForGroup(master.dataset.group);
+        master.checked = boxes.length > 0 && boxes.every(b => b.checked);
+    });
+}
+
+groupSelectAlls.forEach(master => {
+    master.addEventListener('change', (e) => {
+        checkboxesForGroup(master.dataset.group).forEach(cb => {
+            cb.checked = e.target.checked;
+            mirrorStudentCheckbox(cb);
+        });
+        syncGroupSelectAlls();
+        updateBulkActionsUI();
+    });
+});
+
+// Keep every copy of the same student's checkbox in the same state.
+function mirrorStudentCheckbox(source) {
+    studentCheckboxes.forEach(cb => {
+        if (cb !== source && cb.value === source.value) cb.checked = source.checked;
+    });
+}
+
+studentCheckboxes.forEach(cb => {
+    cb.addEventListener('change', () => {
+        mirrorStudentCheckbox(cb);
+        syncGroupSelectAlls();
+        updateBulkActionsUI();
+    });
+});
+
+bulkAssignBtn.addEventListener('click', async () => {
+    const classId = bulkClassSelect.value;
+    if (!classId) {
+        alert('Please select a class');
+        return;
+    }
+    const selectedIds = selectedStudentIds();
+    if (selectedIds.length === 0) return;
+
+    try {
+        const response = await fetch('{{ url_for("admin.bulk_assign_students") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ student_ids: selectedIds, class_id: parseInt(classId) })
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert(`${data.assigned} students assigned to class`);
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+});
+
+function setStudentLevel(studentId, classId, level) {
+    fetch(`/admin/students/${studentId}/class/${classId}/set-level`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': document.querySelector('input[name="csrf_token"]')?.value || ''
+        },
+        body: `level=${encodeURIComponent(level)}`
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(err => console.error('Error:', err));
+}
+
+// Dropdown menu toggle
+document.querySelectorAll('.action-menu-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const menu = btn.nextElementSibling;
+        const isOpen = menu.style.display === 'block';
+        document.querySelectorAll('.action-menu-content').forEach(m => m.style.display = 'none');
+        if (!isOpen) {
+            menu.style.display = 'block';
+        }
+    });
+});
+
+document.addEventListener('click', () => {
+    document.querySelectorAll('.action-menu-content').forEach(m => m.style.display = 'none');
+});
+
+// Name mapping management
+let studentNameMappings = {};
+let currentEditingStudentId = null;
+
+async function loadNameMappings() {
+    try {
+        const response = await fetch('{{ url_for("admin.api_get_student_names") }}');
+        const data = await response.json();
+        studentNameMappings = data.mappings || {};
+        updateNameDisplay();
+    } catch (error) {
+        console.error('Failed to load name mappings:', error);
+    }
+}
+
+function updateNameDisplay() {
+    document.querySelectorAll('[data-real-name]').forEach(el => {
+        const studentId = el.dataset.realName;
+        const realName = studentNameMappings[studentId];
+        const alias = el.textContent;
+
+        if (realName) {
+            el.textContent = realName;
+            const aliasEl = el.closest('.name-wrapper').querySelector('.alias-name');
+            if (aliasEl) {
+                aliasEl.textContent = `(${alias})`;
+            }
+        }
+    });
+}
+
+document.querySelectorAll('.edit-name-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        currentEditingStudentId = btn.dataset.studentId;
+        const alias = btn.dataset.studentAlias;
+        const realName = studentNameMappings[currentEditingStudentId] || '';
+
+        document.getElementById('modalAlias').textContent = alias;
+        document.getElementById('realNameInput').value = realName;
+        document.getElementById('nameModal').classList.add('active');
+    });
+});
+
+document.getElementById('modalCancel').addEventListener('click', () => {
+    document.getElementById('nameModal').classList.remove('active');
+    currentEditingStudentId = null;
+});
+
+document.getElementById('modalClear').addEventListener('click', async () => {
+    if (!currentEditingStudentId) return;
+
+    try {
+        const response = await fetch(`/admin/api/student-names/${currentEditingStudentId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            }
+        });
+        const data = await response.json();
+        if (data.success) {
+            delete studentNameMappings[currentEditingStudentId];
+            updateNameDisplay();
+            document.getElementById('nameModal').classList.remove('active');
+            currentEditingStudentId = null;
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Error clearing name: ' + error.message);
+    }
+});
+
+document.getElementById('modalSave').addEventListener('click', async () => {
+    if (!currentEditingStudentId) return;
+
+    const realName = document.getElementById('realNameInput').value.trim();
+
+    try {
+        const response = await fetch(`/admin/api/student-names/${currentEditingStudentId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({ real_name: realName })
+        });
+        const data = await response.json();
+        if (data.success) {
+            if (realName) {
+                studentNameMappings[currentEditingStudentId] = realName;
+            } else {
+                delete studentNameMappings[currentEditingStudentId];
+            }
+            updateNameDisplay();
+            document.getElementById('nameModal').classList.remove('active');
+            currentEditingStudentId = null;
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('Error saving name: ' + error.message);
+    }
+});
+
+// Close modal on background click
+document.getElementById('nameModal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('nameModal')) {
+        document.getElementById('nameModal').classList.remove('active');
+        currentEditingStudentId = null;
+    }
+});
+
+// Load mappings on page load
+loadNameMappings();
+</script>
+{% endblock %}

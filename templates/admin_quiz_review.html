@@ -1,0 +1,165 @@
+{% extends "admin_base.html" %}
+{% block title %}Quiz Review{% endblock %}
+
+{% block content %}
+<style>
+    .qr-container { max-width: 1000px; margin: 0 auto; }
+    .qr-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+    .qr-header h1 { font-size: 1.5rem; margin: 0; }
+    .qr-controls { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+    .qr-controls select { padding: 0.45rem 0.7rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-white); color: var(--text-dark); }
+
+    .qr-bulk {
+        padding: 0.55rem 1.2rem;
+        background: #10b981;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    .qr-bulk:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .qr-card {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+    }
+    .qr-meta { display: flex; gap: 0.75rem; flex-wrap: wrap; font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.6rem; align-items: center; }
+    .qr-pill { padding: 0.15rem 0.6rem; border-radius: 999px; font-weight: 700; font-size: 0.75rem; }
+    .qr-pill.correct { background: rgba(16,185,129,0.15); color: #10b981; }
+    .qr-pill.incorrect { background: rgba(239,68,68,0.12); color: #ef4444; }
+    .qr-pill.unknown { background: rgba(199,125,255,0.15); color: var(--primary); }
+    .qr-question { font-weight: 600; margin-bottom: 0.5rem; }
+    .qr-answer { background: var(--bg-light); border-radius: 6px; padding: 0.7rem 0.9rem; margin-bottom: 0.5rem; }
+    .qr-ms { font-size: 0.88rem; color: #059669; margin-bottom: 0.5rem; }
+    .qr-note { font-size: 0.82rem; color: var(--text-light); font-style: italic; margin-bottom: 0.6rem; }
+    .qr-actions { display: flex; gap: 0.5rem; }
+    .qr-actions button { padding: 0.45rem 1rem; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; background: var(--bg-light); color: var(--text-dark); }
+    .qr-actions button.award { border-color: #10b981; color: #10b981; }
+    .qr-actions button.deny { border-color: #ef4444; color: #ef4444; }
+    .qr-actions button:hover { filter: brightness(0.95); }
+    .qr-empty { text-align: center; padding: 3rem; color: var(--text-light); }
+</style>
+
+<div class="qr-container">
+    <div class="qr-header">
+        <h1>📥 Quiz review queue</h1>
+        <div class="qr-controls">
+            <select id="classFilter" onchange="loadAnswers()"><option value="">All classes</option></select>
+            <select id="statusFilter" onchange="loadAnswers()">
+                <option value="pending">Pending review</option>
+                <option value="reviewed">Reviewed</option>
+                <option value="all">All</option>
+            </select>
+            <button class="qr-bulk" id="bulkBtn" onclick="bulkConfirm()">✓ Confirm all auto-marks shown</button>
+            <a href="{{ url_for('admin.analytics_hub') }}#quiz">→ Analytics</a>
+        </div>
+    </div>
+    <div id="qrList"><div class="qr-empty">Loading…</div></div>
+</div>
+
+<script>
+let currentAnswers = [];
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+}
+
+function autoPill(a) {
+    if (a.auto_correct === true) return '<span class="qr-pill correct">auto: correct</span>';
+    if (a.auto_correct === false) return '<span class="qr-pill incorrect">auto: not awarded</span>';
+    return '<span class="qr-pill unknown">auto: needs human decision</span>';
+}
+
+async function loadClassFilter() {
+    const res = await fetch('/admin/api/classes');
+    const classes = await res.json();
+    const sel = document.getElementById('classFilter');
+    classes.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name;
+        sel.appendChild(opt);
+    });
+}
+
+async function loadAnswers() {
+    const status = document.getElementById('statusFilter').value;
+    const classId = document.getElementById('classFilter').value;
+    const list = document.getElementById('qrList');
+    list.innerHTML = '<div class="qr-empty">Loading…</div>';
+    const res = await fetch(`/admin/api/quiz-review?status=${status}` + (classId ? `&class_id=${classId}` : ''));
+    const data = await res.json();
+    currentAnswers = data.answers || [];
+    document.getElementById('bulkBtn').disabled =
+        status !== 'pending' || !currentAnswers.some(a => a.auto_correct !== null);
+
+    if (!currentAnswers.length) {
+        list.innerHTML = '<div class="qr-empty">Nothing here — all caught up. 🎉</div>';
+        return;
+    }
+    list.innerHTML = '';
+    currentAnswers.forEach(a => {
+        const div = document.createElement('div');
+        div.className = 'qr-card';
+        const reviewed = a.status === 'reviewed';
+        const finalPill = reviewed
+            ? (a.final_correct
+                ? '<span class="qr-pill correct">final: correct</span>'
+                : '<span class="qr-pill incorrect">final: not awarded</span>')
+            : '';
+        div.innerHTML = `
+            <div class="qr-meta">
+                <strong>${escapeHtml(a.student)}</strong>
+                ${a.student_classes ? `<span>🏫 ${escapeHtml(a.student_classes)}</span>` : ''}
+                <span>📖 ${escapeHtml(a.book_title || a.book_folder)} — ${escapeHtml(a.page_title || a.page_id)}</span>
+                ${a.marks ? `<span style="font-weight: 700;">${a.marks} mark${a.marks !== 1 ? 's' : ''}</span>` : ''}
+                <span>${a.submitted_at}</span>
+                ${autoPill(a)}
+                ${a.auto_method === 'gemini' ? '<span class="qr-pill unknown">✨ Gemini</span>' : ''}
+                ${finalPill}
+            </div>
+            ${a.summary ? `<div style="font-size: 0.9rem; color: var(--primary); font-weight: 600; margin-bottom: 0.4rem;">📋 ${escapeHtml(a.summary)}</div>` : ''}
+            <div class="qr-question">${escapeHtml(a.question)}</div>
+            <div class="qr-answer">${escapeHtml(a.answer_text)}</div>
+            <div class="qr-ms">✓ Markscheme: ${escapeHtml(a.markscheme)}</div>
+            ${a.auto_note ? `<div class="qr-note">AI note: ${escapeHtml(a.auto_note)}</div>` : ''}
+            <div class="qr-actions">
+                <button class="award" onclick="mark(${a.answer_id}, true)">✓ Award mark</button>
+                <button class="deny" onclick="mark(${a.answer_id}, false)">✗ No mark</button>
+            </div>`;
+        list.appendChild(div);
+    });
+}
+
+async function mark(answerId, correct) {
+    await fetch(`/admin/api/quiz-review/${answerId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ correct })
+    });
+    loadAnswers();
+}
+
+async function bulkConfirm() {
+    const ids = currentAnswers.filter(a => a.status === 'pending' && a.auto_correct !== null).map(a => a.answer_id);
+    if (!ids.length) return;
+    if (!confirm(`Confirm the auto-mark for ${ids.length} answer(s)?`)) return;
+    await fetch('/admin/api/quiz-review/bulk-confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answer_ids: ids })
+    });
+    loadAnswers();
+}
+
+loadClassFilter();
+loadAnswers();
+</script>
+{% endblock %}

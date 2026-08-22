@@ -1,0 +1,892 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Reading Analytics{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+<style>
+    .admin-analytics-content {
+        padding: 2rem;
+    }
+
+        .analytics-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .page-header h1 {
+            font-size: 2rem;
+            background: linear-gradient(135deg, #8366e8 0%, #6b52cc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .filters-section {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .filter-group label {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .filter-group select {
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-white);
+            color: var(--text-dark);
+            cursor: pointer;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-white);
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid var(--primary);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
+        .chart-card {
+            background: var(--bg-white);
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            border: 1px solid var(--border);
+        }
+
+        .chart-card h3 {
+            margin-top: 0;
+            color: var(--text-dark);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 1rem;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 1rem;
+        }
+
+        .table-card {
+            background: var(--bg-white);
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            border: 1px solid var(--border);
+            overflow-x: auto;
+        }
+
+        .table-card h3 {
+            margin-top: 0;
+            color: var(--text-dark);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 1rem;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th {
+            background: rgba(157, 132, 255, 0.1);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .data-table th.sortable { cursor: pointer; user-select: none; }
+        .data-table th.sortable:hover { background: rgba(157, 132, 255, 0.2); }
+        .sort-arrow { font-size: 0.75rem; color: var(--primary); }
+
+        .data-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table tbody tr {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .data-table tbody tr:hover {
+            background: rgba(157, 132, 255, 0.1);
+        }
+
+        .data-table tbody tr.selected {
+            background: rgba(157, 132, 255, 0.2);
+            border-left: 4px solid var(--primary);
+        }
+
+        .student-detail-panel {
+            background: rgba(157, 132, 255, 0.05);
+            border: 2px solid var(--primary);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: none;
+        }
+
+        .student-detail-panel.active {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .student-detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .student-detail-header h3 {
+            margin: 0;
+            font-size: 1.3rem;
+            color: var(--primary);
+        }
+
+        .student-detail-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-light);
+            padding: 0;
+        }
+
+        .student-detail-close:hover {
+            color: var(--text-dark);
+        }
+
+        .detail-action-button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-decoration: none;
+            display: inline-block;
+            transition: opacity 0.2s;
+        }
+
+        .detail-action-button:hover {
+            opacity: 0.9;
+        }
+
+        .student-detail-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .detail-stat {
+            background: var(--bg-white);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+
+        .detail-stat-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .detail-stat-label {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-top: 0.5rem;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-inactive {
+            background: #fee2e2;
+            color: #7f1d1d;
+        }
+
+        .status-moderate {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        @media (max-width: 768px) {
+            .admin-analytics-body {
+                padding: 1rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .filters-section {
+                flex-direction: column;
+            }
+
+            .chart-container {
+                height: 200px;
+            }
+    }
+</style>
+
+<div class="analytics-container" style="max-width: 1400px; margin: 0 auto;">
+        <div class="page-header">
+            <h1>📈 Reading Analytics Dashboard</h1>
+            <p>Monitor student reading activity and engagement patterns</p>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-section">
+            <div class="filter-group">
+                <label for="classFilter">Class:</label>
+                <select id="classFilter">
+                    <option value="">All Classes</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="studentFilter">Student:</label>
+                <select id="studentFilter">
+                    <option value="">All Students</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="dateRangeFilter">Date Range:</label>
+                <select id="dateRangeFilter">
+                    <option value="7">Last 7 days</option>
+                    <option value="30">Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                    <option value="all">All time</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalStudents">0</div>
+                <div class="stat-label">Active Students</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalHours">0h</div>
+                <div class="stat-label">Total Reading Time</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="avgPerStudent">0m</div>
+                <div class="stat-label">Average per Student</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="pagesRead">0</div>
+                <div class="stat-label">Pages Read</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="avgConfidence">-</div>
+                <div class="stat-label">Avg Confidence</div>
+            </div>
+        </div>
+
+        <!-- Reading Time by Day of Week -->
+        <div class="chart-card">
+            <h3>📅 Reading Activity by Day of Week</h3>
+            <div class="chart-container">
+                <canvas id="dayOfWeekChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Reading Time Trend -->
+        <div class="chart-card">
+            <h3>📊 Reading Time Trend</h3>
+            <div class="chart-container">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Top Pages -->
+        <div class="chart-card">
+            <h3>⭐ Most Read Pages</h3>
+            <div class="chart-container">
+                <canvas id="topPagesChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Confidence Distribution -->
+        <div class="chart-card">
+            <h3>💪 Student Confidence Distribution</h3>
+            <div class="chart-container">
+                <canvas id="confidenceChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Student Detail Panel -->
+        <div class="student-detail-panel" id="studentDetailPanel">
+            <div class="student-detail-header">
+                <div>
+                    <h3 id="detailStudentName">Student Name</h3>
+                    <p style="margin: 0.5rem 0 0 0; color: var(--text-light);">Click a student row to view detailed analytics</p>
+                </div>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <a id="detailViewButton" href="#" class="detail-action-button">📈 View Full Analytics →</a>
+                    <button class="student-detail-close" onclick="closeStudentDetail()">✕</button>
+                </div>
+            </div>
+            <div class="student-detail-stats" id="detailStats">
+                <div class="detail-stat">
+                    <div class="detail-stat-value" id="detailTotalTime">0h</div>
+                    <div class="detail-stat-label">Total Reading Time</div>
+                </div>
+                <div class="detail-stat">
+                    <div class="detail-stat-value" id="detailPagesRead">0</div>
+                    <div class="detail-stat-label">Pages Read</div>
+                </div>
+                <div class="detail-stat">
+                    <div class="detail-stat-value" id="detailAvgPerPage">0m</div>
+                    <div class="detail-stat-label">Avg per Page</div>
+                </div>
+                <div class="detail-stat">
+                    <div class="detail-stat-value" id="detailAvgConfidence">-</div>
+                    <div class="detail-stat-label">Avg Confidence</div>
+                </div>
+                <div class="detail-stat">
+                    <div class="detail-stat-value" id="detailLastActive">-</div>
+                    <div class="detail-stat-label">Last Active</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Student Reading Activity Table -->
+        <div class="table-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary); margin-bottom: 1rem;">
+                <h3 style="border-bottom: none; margin-bottom: 0.5rem;">👥 Student Reading Activity</h3>
+                <button id="exportCsvBtn" class="detail-action-button" style="margin-bottom: 0.5rem;">⬇ Export CSV</button>
+            </div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-sort="name">Student Name <span class="sort-arrow"></span></th>
+                        <th class="sortable" data-sort="total_seconds">Total Time <span class="sort-arrow"></span></th>
+                        <th class="sortable" data-sort="pages_read">Pages Read <span class="sort-arrow"></span></th>
+                        <th class="sortable" data-sort="avg_confidence">Avg Confidence <span class="sort-arrow"></span></th>
+                        <th class="sortable" data-sort="last_active">Last Active <span class="sort-arrow"></span></th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="studentTableBody">
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--text-light);">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const charts = {};
+
+        // Initialize filters
+        async function initializeFilters() {
+            try {
+                const response = await fetch('/admin/api/classes');
+                const classes = await response.json();
+
+                const classFilter = document.getElementById('classFilter');
+                classes.forEach(cls => {
+                    const option = document.createElement('option');
+                    option.value = cls.id;
+                    option.textContent = cls.name;
+                    classFilter.appendChild(option);
+                });
+
+                // Load all students initially
+                await loadStudentFilter('');
+            } catch (error) {
+                console.error('Failed to load classes:', error);
+            }
+        }
+
+        // Load students for the student filter
+        async function loadStudentFilter(classId) {
+            try {
+                const url = classId ? `/admin/api/students?class_id=${classId}` : '/admin/api/students';
+                const response = await fetch(url);
+                const students = await response.json();
+
+                const studentFilter = document.getElementById('studentFilter');
+                // Keep the "All Students" option
+                studentFilter.innerHTML = '<option value="">All Students</option>';
+
+                students.forEach(student => {
+                    const option = document.createElement('option');
+                    option.value = student.id;
+                    option.textContent = student.name;
+                    studentFilter.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Failed to load students:', error);
+            }
+        }
+
+        // Load analytics data
+        async function loadAnalytics() {
+            const classId = document.getElementById('classFilter').value || '';
+            const studentId = document.getElementById('studentFilter').value || '';
+            const dateRange = document.getElementById('dateRangeFilter').value;
+
+            try {
+                let url = `/admin/api/reading-analytics?days=${dateRange}`;
+                if (classId) url += `&class_id=${classId}`;
+                if (studentId) url += `&student_id=${studentId}`;
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                // Each section renders independently so one failure (e.g. a
+                // blocked Chart.js CDN) cannot blank out the others
+                for (const update of [updateStats, updateCharts, updateStudentTable]) {
+                    try { update(data); } catch (error) { console.error(`${update.name} failed:`, error); }
+                }
+            } catch (error) {
+                console.error('Failed to load analytics:', error);
+                document.getElementById('studentTableBody').innerHTML =
+                    '<tr><td colspan="6" style="text-align: center; color: var(--text-light);">Could not load analytics</td></tr>';
+            }
+        }
+
+        function updateStats(data) {
+            document.getElementById('totalStudents').textContent = data.total_students;
+            document.getElementById('totalHours').textContent = formatTime(data.total_seconds);
+            document.getElementById('avgPerStudent').textContent = formatMinutes(data.avg_seconds_per_student);
+            document.getElementById('pagesRead').textContent = data.total_pages;
+
+            // Calculate average confidence
+            if (data.confidence_distribution && Object.keys(data.confidence_distribution).length > 0) {
+                const distribution = data.confidence_distribution;
+                let totalRating = 0;
+                let totalCount = 0;
+                for (const [level, count] of Object.entries(distribution)) {
+                    totalRating += parseInt(level) * parseInt(count);
+                    totalCount += parseInt(count);
+                }
+                const avgConfidence = totalCount > 0 ? (totalRating / totalCount).toFixed(2) : '-';
+                document.getElementById('avgConfidence').textContent = avgConfidence !== '-' ? `${avgConfidence}/5` : '-';
+            } else {
+                document.getElementById('avgConfidence').textContent = '-';
+            }
+        }
+
+        function updateCharts(data) {
+            // Day of week chart
+            updateDayOfWeekChart(data.activity_by_day);
+
+            // Trend chart
+            updateTrendChart(data.activity_by_date);
+
+            // Top pages chart
+            updateTopPagesChart(data.top_pages);
+
+            // Confidence distribution chart
+            if (data.confidence_distribution) {
+                updateConfidenceChart(data.confidence_distribution);
+            }
+        }
+
+        function updateDayOfWeekChart(activityByDay) {
+            const ctx = document.getElementById('dayOfWeekChart').getContext('2d');
+
+            if (charts.dayOfWeek) {
+                charts.dayOfWeek.destroy();
+            }
+
+            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+            const data = days.map((day, i) => (activityByDay[i] || 0) / 3600);
+
+            charts.dayOfWeek = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: days,
+                    datasets: [{
+                        label: 'Hours Read',
+                        data: data,
+                        backgroundColor: 'rgba(157, 132, 255, 0.6)',
+                        borderColor: '#c77dff',
+                        borderWidth: 2,
+                        borderRadius: 6,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function updateTrendChart(activityByDate) {
+            const ctx = document.getElementById('trendChart').getContext('2d');
+
+            if (charts.trend) {
+                charts.trend.destroy();
+            }
+
+            const dates = Object.keys(activityByDate).sort();
+            const data = dates.map(date => (activityByDate[date] || 0) / 3600);
+
+            charts.trend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates.slice(-30), // Last 30 days
+                    datasets: [{
+                        label: 'Hours Read',
+                        data: data.slice(-30),
+                        borderColor: '#c77dff',
+                        backgroundColor: 'rgba(157, 132, 255, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function updateTopPagesChart(topPages) {
+            const ctx = document.getElementById('topPagesChart').getContext('2d');
+
+            if (charts.topPages) {
+                charts.topPages.destroy();
+            }
+
+            const labels = topPages.slice(0, 10).map(p => p.title.substring(0, 40));
+            const data = topPages.slice(0, 10).map(p => p.total_minutes);
+
+            charts.topPages = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Minutes Read',
+                        data: data,
+                        backgroundColor: 'rgba(157, 132, 255, 0.6)',
+                        borderColor: '#c77dff',
+                        borderWidth: 1,
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function updateConfidenceChart(confidenceDistribution) {
+            const ctx = document.getElementById('confidenceChart').getContext('2d');
+
+            if (charts.confidence) {
+                charts.confidence.destroy();
+            }
+
+            const emojis = { 1: '😟', 2: '😕', 3: '😐', 4: '🙂', 5: '😄' };
+            const labels = ['1 - Not Confident', '2 - Somewhat Unsure', '3 - Neutral', '4 - Fairly Confident', '5 - Very Confident'];
+            const data = [
+                confidenceDistribution['1'] || 0,
+                confidenceDistribution['2'] || 0,
+                confidenceDistribution['3'] || 0,
+                confidenceDistribution['4'] || 0,
+                confidenceDistribution['5'] || 0
+            ];
+
+            const colors = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e'];
+
+            charts.confidence = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Number of Ratings',
+                        data: data,
+                        backgroundColor: colors,
+                        borderColor: colors,
+                        borderWidth: 1,
+                        borderRadius: 6,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        let lastStudents = [];
+        let sortKey = 'total_seconds';
+        let sortAsc = false;
+
+        function updateStudentTable(data) {
+            lastStudents = data.students || [];
+            renderStudentTable();
+        }
+
+        function sortedStudents() {
+            const rows = [...lastStudents];
+            rows.sort((a, b) => {
+                let va = a[sortKey], vb = b[sortKey];
+                if (sortKey === 'name') { va = (va || '').toLowerCase(); vb = (vb || '').toLowerCase(); }
+                if (va === null || va === undefined) return 1;
+                if (vb === null || vb === undefined) return -1;
+                if (va < vb) return sortAsc ? -1 : 1;
+                if (va > vb) return sortAsc ? 1 : -1;
+                return 0;
+            });
+            return rows;
+        }
+
+        function renderStudentTable() {
+            const data = { students: sortedStudents() };
+            document.querySelectorAll('.data-table th.sortable').forEach(th => {
+                const arrow = th.querySelector('.sort-arrow');
+                arrow.textContent = th.dataset.sort === sortKey ? (sortAsc ? '▲' : '▼') : '';
+            });
+            const tbody = document.getElementById('studentTableBody');
+            tbody.innerHTML = '';
+
+            if (!data.students || data.students.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-light);">No student data</td></tr>';
+                return;
+            }
+
+            data.students.forEach(student => {
+                const row = document.createElement('tr');
+                row.className = 'student-row';
+                row.style.cursor = 'pointer';
+
+                const lastActive = student.last_active ? new Date(student.last_active) : null;
+                const daysSinceActive = lastActive ? Math.floor((Date.now() - lastActive) / (1000 * 60 * 60 * 24)) : Infinity;
+
+                let statusClass = 'status-active';
+                let statusText = 'Active';
+                if (daysSinceActive > 7) {
+                    statusClass = 'status-inactive';
+                    statusText = 'Inactive';
+                } else if (daysSinceActive > 3) {
+                    statusClass = 'status-moderate';
+                    statusText = 'Moderate';
+                }
+
+                const confidenceDisplay = student.avg_confidence ? `${student.avg_confidence}/5` : '-';
+
+                row.innerHTML = `
+                    <td><strong>${student.name}</strong></td>
+                    <td>${formatTime(student.total_seconds)}</td>
+                    <td>${student.pages_read}</td>
+                    <td>${confidenceDisplay}</td>
+                    <td>${lastActive ? lastActive.toLocaleDateString() + ' ' + lastActive.toLocaleTimeString() : '—'}</td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                `;
+
+                // Add click handler to show student details
+                row.addEventListener('click', () => showStudentDetail(student));
+
+                tbody.appendChild(row);
+            });
+        }
+
+        function showStudentDetail(student) {
+            const panel = document.getElementById('studentDetailPanel');
+            const lastActive = new Date(student.last_active);
+            const daysAgo = Math.floor((Date.now() - lastActive) / (1000 * 60 * 60 * 24));
+
+            let lastActiveText = lastActive.toLocaleDateString();
+            if (daysAgo === 0) {
+                lastActiveText = 'Today';
+            } else if (daysAgo === 1) {
+                lastActiveText = 'Yesterday';
+            } else if (daysAgo < 7) {
+                lastActiveText = `${daysAgo} days ago`;
+            }
+
+            document.getElementById('detailStudentName').textContent = `📚 ${student.name}`;
+            document.getElementById('detailTotalTime').textContent = formatTime(student.total_seconds);
+            document.getElementById('detailAvgConfidence').textContent = student.avg_confidence ? `${student.avg_confidence}/5` : '-';
+            document.getElementById('detailPagesRead').textContent = student.pages_read;
+            document.getElementById('detailAvgPerPage').textContent = student.pages_read > 0
+                ? formatMinutes((student.total_seconds / student.pages_read))
+                : '0m';
+            document.getElementById('detailLastActive').textContent = lastActiveText;
+
+            // Set the view full analytics button link
+            document.getElementById('detailViewButton').href = `/admin/analytics/student/${student.id}`;
+
+            panel.classList.add('active');
+
+            // Scroll to the panel
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            // Filter charts to show only this student
+            document.getElementById('studentFilter').value = student.id;
+            loadAnalytics();
+        }
+
+        function closeStudentDetail() {
+            const panel = document.getElementById('studentDetailPanel');
+            panel.classList.remove('active');
+
+            // Reset student filter to show all
+            document.getElementById('studentFilter').value = '';
+            loadAnalytics();
+        }
+
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return `${hours}h ${minutes}m`;
+        }
+
+        function formatMinutes(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            return `${minutes}m`;
+        }
+
+        // Column sorting
+        document.querySelectorAll('.data-table th.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                const key = th.dataset.sort;
+                if (sortKey === key) {
+                    sortAsc = !sortAsc;
+                } else {
+                    sortKey = key;
+                    sortAsc = key === 'name'; // names A→Z, numbers big-first
+                }
+                renderStudentTable();
+            });
+        });
+
+        // CSV export of the (sorted) student table
+        document.getElementById('exportCsvBtn').addEventListener('click', () => {
+            const rows = sortedStudents();
+            if (!rows.length) return;
+            const esc = v => `"${String(v === null || v === undefined ? '' : v).replace(/"/g, '""')}"`;
+            const header = ['Student Name', 'Total Time (minutes)', 'Pages Read', 'Avg Confidence', 'Last Active'];
+            const lines = [header.map(esc).join(',')];
+            rows.forEach(s => {
+                lines.push([
+                    s.name,
+                    Math.round((s.total_seconds || 0) / 60),
+                    s.pages_read,
+                    s.avg_confidence !== null && s.avg_confidence !== undefined ? s.avg_confidence : '',
+                    s.last_active ? new Date(s.last_active).toLocaleString() : '',
+                ].map(esc).join(','));
+            });
+            const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `reading-activity-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        });
+
+        // Event listeners
+        document.getElementById('classFilter').addEventListener('change', async (e) => {
+            await loadStudentFilter(e.target.value);
+            document.getElementById('studentFilter').value = '';
+            loadAnalytics();
+        });
+        document.getElementById('studentFilter').addEventListener('change', loadAnalytics);
+        document.getElementById('dateRangeFilter').addEventListener('change', loadAnalytics);
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeFilters();
+            setTimeout(loadAnalytics, 500);
+        });
+    </script>
+</div>
+{% endblock %}

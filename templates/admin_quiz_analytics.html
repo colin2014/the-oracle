@@ -1,0 +1,123 @@
+{% extends "admin_base.html" %}
+{% block title %}Quiz Analytics{% endblock %}
+
+{% block content %}
+<style>
+    .qa-container { max-width: 1200px; margin: 0 auto; }
+    .qa-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
+    .qa-header h1 { font-size: 1.5rem; margin: 0; }
+    .qa-controls { display: flex; gap: 0.75rem; align-items: center; }
+    .qa-controls select { padding: 0.45rem 0.7rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-white); color: var(--text-dark); }
+    .qa-hint { font-size: 0.85rem; color: var(--text-light); margin-bottom: 1rem; }
+
+    .qa-table-wrap { overflow-x: auto; background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius); }
+    table.qa-table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+    .qa-table th, .qa-table td { padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }
+    .qa-table th { background: var(--bg-light); color: var(--text-dark); position: sticky; top: 0; }
+    .qa-table th.topic { max-width: 160px; white-space: normal; font-size: 0.75rem; vertical-align: bottom; }
+    .qa-table th.topic .book { display: block; color: var(--text-light); font-weight: 400; font-size: 0.7rem; }
+    .qa-table td.student, .qa-table th.student { text-align: left; font-weight: 600; position: sticky; left: 0; background: var(--bg-white); }
+    .qa-cell { display: inline-block; min-width: 52px; padding: 0.25rem 0.5rem; border-radius: 6px; font-weight: 700; }
+    .qa-cell.none { color: var(--text-light); font-weight: 400; }
+    .qa-pending { font-size: 0.7rem; color: var(--text-light); display: block; font-weight: 400; }
+    .qa-empty { text-align: center; padding: 3rem; color: var(--text-light); }
+    .qa-legend { display: flex; gap: 1rem; align-items: center; font-size: 0.8rem; color: var(--text-light); margin-top: 0.75rem; flex-wrap: wrap; }
+    .qa-swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+</style>
+
+<div class="qa-container">
+    <div class="qa-header">
+        <h1>📊 Quiz analytics — class ability</h1>
+        <div class="qa-controls">
+            <label for="classFilter">Class:</label>
+            <select id="classFilter" onchange="loadMatrix()"><option value="">All students</option></select>
+            <a href="{{ url_for('quiz.quiz_review') }}">→ Review queue</a>
+        </div>
+    </div>
+    <div class="qa-hint">Each cell is a student's score on that topic's quiz (correct / answered). Teacher-reviewed marks count as final; unreviewed answers use the provisional auto-mark and show as "pending".</div>
+    <div class="qa-table-wrap"><div class="qa-empty" id="qaLoading">Loading…</div><table class="qa-table" id="qaTable" style="display:none;"></table></div>
+    <div class="qa-legend">
+        <span><span class="qa-swatch" style="background: rgba(16,185,129,0.25);"></span>≥ 80%</span>
+        <span><span class="qa-swatch" style="background: rgba(245,158,11,0.25);"></span>50–79%</span>
+        <span><span class="qa-swatch" style="background: rgba(239,68,68,0.2);"></span>&lt; 50%</span>
+        <span><span class="qa-swatch" style="background: var(--bg-light); border: 1px solid var(--border);"></span>not attempted</span>
+    </div>
+</div>
+
+<script>
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+}
+
+function cellColour(pct) {
+    if (pct >= 80) return 'rgba(16,185,129,0.25)';
+    if (pct >= 50) return 'rgba(245,158,11,0.25)';
+    return 'rgba(239,68,68,0.2)';
+}
+
+async function loadClasses() {
+    const res = await fetch('/admin/api/classes');
+    const classes = await res.json();
+    const sel = document.getElementById('classFilter');
+    classes.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.name;
+        sel.appendChild(opt);
+    });
+}
+
+async function loadMatrix() {
+    const classId = document.getElementById('classFilter').value;
+    const loading = document.getElementById('qaLoading');
+    const table = document.getElementById('qaTable');
+    loading.style.display = 'block'; loading.textContent = 'Loading…';
+    table.style.display = 'none';
+
+    const res = await fetch('/admin/api/quiz-analytics' + (classId ? `?class_id=${classId}` : ''));
+    const data = await res.json();
+    const pages = data.pages || [], students = data.students || [];
+
+    if (!pages.length || !students.length) {
+        loading.textContent = 'No quiz answers yet for this selection.';
+        return;
+    }
+
+    let html = '<thead><tr><th class="student">Student</th><th class="topic">Overall</th>';
+    pages.forEach(p => {
+        html += `<th class="topic"><span class="book">${escapeHtml(p.book_title)}</span>${escapeHtml(p.page_title)}<span class="book">${p.question_count} question(s)</span></th>`;
+    });
+    html += '</tr></thead><tbody>';
+
+    students.forEach(s => {
+        html += `<tr><td class="student">${escapeHtml(s.name)}</td>`;
+        if (s.answered) {
+            const pct = Math.round(100 * s.correct / s.answered);
+            html += `<td><span class="qa-cell" style="background:${cellColour(pct)};">${pct}%</span></td>`;
+        } else {
+            html += '<td><span class="qa-cell none">—</span></td>';
+        }
+        pages.forEach(p => {
+            const c = (s.cells || {})[p.key];
+            if (!c || !c.answered) {
+                html += '<td><span class="qa-cell none">—</span></td>';
+            } else {
+                const pct = Math.round(100 * c.correct / c.answered);
+                html += `<td><span class="qa-cell" style="background:${cellColour(pct)};" title="${c.correct} correct of ${c.answered} answered">${c.correct}/${c.answered}</span>` +
+                        (c.pending ? `<span class="qa-pending">${c.pending} pending</span>` : '') + '</td>';
+            }
+        });
+        html += '</tr>';
+    });
+    html += '</tbody>';
+
+    table.innerHTML = html;
+    loading.style.display = 'none';
+    table.style.display = 'table';
+}
+
+loadClasses().then(loadMatrix);
+</script>
+{% endblock %}

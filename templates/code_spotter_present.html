@@ -1,0 +1,249 @@
+{% extends "admin_base.html" %}
+{% block title %}Code Spotter — Present{% endblock %}
+
+{% block content %}
+<style>
+    .pres-container { max-width: 1400px; margin: 0 auto; }
+    .pres-header {
+        display: flex; justify-content: space-between; align-items: center;
+        padding-bottom: 1rem; border-bottom: 2px solid var(--border); margin-bottom: 1.5rem;
+    }
+    .pres-title { font-size: 1.5rem; font-weight: 700; }
+    .pres-timer { font-size: 2.5rem; font-weight: 700; color: var(--primary); min-width: 80px; text-align: right; }
+    .pres-timer.warning { color: var(--warn); animation: pulse 0.5s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+    .pres-layout { display: grid; grid-template-columns: 1.2fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+    .pres-code-section {
+        background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius);
+        padding: 1.5rem;
+    }
+    .pres-code-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; }
+    .pres-code-display {
+        font-family: var(--mono); font-size: 0.95rem; line-height: 1.8;
+        max-height: 600px; overflow-y: auto;
+    }
+    .pres-code-line { padding: 0.4rem 0.8rem; border-radius: 4px; display: flex; gap: 1rem; }
+    .pres-code-line.student-selected { background: rgba(33, 150, 243, 0.1); border-left: 3px solid #2196f3; }
+    .pres-code-line.bug { background: rgba(76, 175, 80, 0.1); border-left: 3px solid #4caf50; }
+    .pres-line-num {
+        display: inline-block; width: 2.5rem; color: var(--text-light);
+        text-align: right; user-select: none; font-weight: 600;
+    }
+
+    .pres-sidebar {
+        display: flex; flex-direction: column; gap: 1.5rem;
+    }
+    .pres-card {
+        background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius);
+        padding: 1.25rem;
+    }
+    .pres-card-title { font-weight: 700; margin-bottom: 0.75rem; font-size: 0.95rem; }
+    .pres-score { font-size: 2rem; font-weight: 700; color: var(--primary); }
+    .pres-status { font-size: 0.9rem; color: var(--text-light); }
+
+    .pres-scoreboard {
+        max-height: 300px; overflow-y: auto;
+    }
+    .pres-score-row {
+        display: flex; justify-content: space-between; padding: 0.5rem 0;
+        font-size: 0.9rem; border-bottom: 1px solid var(--border);
+    }
+    .pres-score-row.active { background: rgba(33, 150, 243, 0.05); font-weight: 600; }
+
+    .pres-controls {
+        display: flex; gap: 0.75rem; flex-wrap: wrap;
+    }
+    .pres-btn { padding: 0.5rem 1rem; font-size: 0.85rem; }
+</style>
+
+<div class="pres-container">
+    <div class="pres-header">
+        <div>
+            <div class="pres-title">Code Spotter</div>
+            <div style="font-size: 0.9rem; color: var(--text-light);">Player: <strong id="playerName">Loading...</strong></div>
+        </div>
+        <div class="pres-timer" id="timer">5</div>
+    </div>
+
+    <div class="pres-layout">
+        <div class="pres-code-section">
+            <div class="pres-code-title">Code to Hunt</div>
+            <div id="descriptionContainer" style="background: rgba(33, 150, 243, 0.05); border-left: 4px solid var(--primary); padding: 1rem; margin-bottom: 1rem; border-radius: var(--radius-sm); display: none;">
+                <p style="margin: 0; color: var(--text-dark); line-height: 1.6; font-size: 0.95rem;" id="description"></p>
+            </div>
+            <div class="pres-code-display" id="codeDisplay">
+                <p style="color: var(--text-light);">Loading...</p>
+            </div>
+        </div>
+
+        <div class="pres-sidebar">
+            <div class="pres-card">
+                <div class="pres-card-title">Score This Round</div>
+                <div class="pres-score" id="score">0/0</div>
+                <div class="pres-status" id="status">Waiting to start...</div>
+            </div>
+
+            <div class="pres-card">
+                <div class="pres-card-title">Scores</div>
+                <div class="pres-scoreboard" id="scores">
+                    <p style="color: var(--text-light); font-size: 0.9rem;">Loading...</p>
+                </div>
+            </div>
+
+            <div class="pres-card">
+                <div class="pres-card-title">Controls</div>
+                <div class="pres-controls">
+                    <button class="admin-btn pres-btn" onclick="skipRound()">Skip Player</button>
+                    <button class="admin-btn pres-btn" onclick="endGame()">End Game</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const sessionId = {{ session.id }};
+    let gameState = null;
+    let currentSnippet = null;
+    let timeRemaining = 0;
+    let maxTime = 5;
+    let pollInterval = null;
+
+    async function loadGameState() {
+        const res = await fetch(`/class-games/api/session/${sessionId}`);
+        gameState = await res.json();
+        return gameState;
+    }
+
+    async function loadSnippet(snippetId) {
+        const res = await fetch(`/class-games/api/snippet/${snippetId}`);
+        currentSnippet = await res.json();
+        renderCode();
+    }
+
+    function renderCode() {
+        if (!currentSnippet) return;
+        const lines = currentSnippet.code.split('\n');
+        const bugs = (currentSnippet.bugs || []).map(b => b.line);
+
+        let html = '';
+        lines.forEach((line, i) => {
+            const lineNum = i + 1;
+            const isBug = bugs.includes(lineNum);
+            const selectedClass = isBug ? 'bug' : '';
+            html += `<div class="pres-code-line ${selectedClass}">
+                <span class="pres-line-num">${lineNum}</span>
+                <span>${escapeHtml(line)}</span>
+            </div>`;
+        });
+        document.getElementById('codeDisplay').innerHTML = html;
+    }
+
+    function updateUI() {
+        const state = gameState.state;
+        const currentPlayerIdx = state.current_player;
+        const currentPlayer = state.players[currentPlayerIdx];
+
+        document.getElementById('playerName').textContent = currentPlayer.name;
+
+        // Update scores
+        let scoresHtml = '';
+        state.players.forEach((p, idx) => {
+            const isActive = idx === currentPlayerIdx;
+            scoresHtml += `<div class="pres-score-row ${isActive ? 'active' : ''}">
+                <span>${p.name}</span>
+                <span>${p.score}</span>
+            </div>`;
+        });
+        document.getElementById('scores').innerHTML = scoresHtml;
+    }
+
+    function updateTimer() {
+        const timerEl = document.getElementById('timer');
+        timerEl.textContent = Math.max(0, timeRemaining);
+        if (timeRemaining <= 2) {
+            timerEl.classList.add('warning');
+        }
+    }
+
+    function skipRound() {
+        if (confirm('Skip this player?')) {
+            // Move to next player
+            fetch(`/class-games/api/session/${sessionId}/action`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'skip_player' })
+            }).then(() => {
+                location.reload();
+            });
+        }
+    }
+
+    function endGame() {
+        if (confirm('End the game?')) {
+            fetch(`/class-games/api/session/${sessionId}/action`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'end_game' })
+            }).then(() => {
+                location.href = '/class-games/results/' + sessionId;
+            });
+        }
+    }
+
+    function escapeHtml(text) {
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    // Poll for updates
+    function poll() {
+        loadGameState().then(state => {
+            updateUI();
+            timeRemaining = Math.max(0, maxTime - Math.floor((Date.now() / 1000) % (maxTime + 1)));
+            updateTimer();
+        });
+    }
+
+    // Initialize
+    async function init() {
+        await loadGameState();
+        const state = gameState.state;
+        const config = gameState.config;
+        const currentPlayerIdx = state.current_player;
+
+        // Set timer from config
+        maxTime = config.timer_seconds || 5;
+
+        // Get current snippet
+        const snippetIds = config.snippet_ids;
+        const roundIdx = state.current_round % snippetIds.length;
+        const snippetId = snippetIds[roundIdx];
+
+        await loadSnippet(snippetId);
+
+        // Show description if available
+        if (currentSnippet.description) {
+            document.getElementById('description').textContent = currentSnippet.description;
+            document.getElementById('descriptionContainer').style.display = 'block';
+        }
+
+        updateUI();
+        updateTimer();
+
+        // Start polling
+        pollInterval = setInterval(poll, 500);
+    }
+
+    init().catch(err => {
+        console.error('Failed to initialize:', err);
+        document.getElementById('codeDisplay').innerHTML = '<p style="color: red;">Error loading game</p>';
+    });
+
+    // Cleanup
+    window.addEventListener('beforeunload', () => {
+        if (pollInterval) clearInterval(pollInterval);
+    });
+</script>
+{% endblock %}

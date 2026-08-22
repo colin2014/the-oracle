@@ -1,0 +1,234 @@
+{% extends "student_base.html" %}
+{% block title %}Reading — The Oracle{% endblock %}
+
+{% block content %}
+<style>
+    .reading-header {
+        margin-bottom: 2rem;
+    }
+
+    .reading-header h1 {
+        font-size: 1.6rem;
+        margin: 0 0 0.5rem 0;
+        background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .reading-header p {
+        color: var(--text-light);
+        margin: 0;
+    }
+
+    .reading-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-tile {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.5rem;
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary);
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-label {
+        font-size: 0.85rem;
+        color: var(--text-light);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .continue-card {
+        background: linear-gradient(135deg, rgba(157, 132, 255, 0.05), rgba(168, 79, 212, 0.05));
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--primary);
+        border-radius: var(--radius);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .continue-info h3 {
+        font-size: 1rem;
+        margin: 0 0 0.5rem 0;
+        color: var(--text-dark);
+    }
+
+    .continue-meta {
+        font-size: 0.85rem;
+        color: var(--text-light);
+    }
+
+    @media (max-width: 768px) {
+        .reading-header h1 {
+            font-size: 1.3rem;
+        }
+
+        .reading-header p {
+            font-size: 0.8rem;
+        }
+
+        .reading-stats {
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-tile {
+            padding: 1rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+        }
+
+        .continue-card {
+            padding: 1rem;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .continue-info h3 {
+            font-size: 0.95rem;
+        }
+
+        .continue-meta {
+            font-size: 0.75rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .reading-header h1 {
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .continue-card {
+            border-left-width: 3px;
+        }
+    }
+</style>
+
+<div class="reading-header">
+    <h1>📖 Reading Assignments</h1>
+    <p>Your assigned reading materials and progress tracking</p>
+</div>
+
+<!-- Reading Stats -->
+{% if assignments %}
+<div class="reading-stats">
+    <div class="stat-tile">
+        <div class="stat-value" id="totalAssigned">0</div>
+        <div class="stat-label">Assignments</div>
+    </div>
+    <div class="stat-tile">
+        <div class="stat-value" id="totalCompleted">0</div>
+        <div class="stat-label">Completed</div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Continue Reading -->
+{% if assignments %}
+<div id="continueCard"></div>
+{% endif %}
+
+<!-- Reading Assignments -->
+<div class="progress-card">
+    <div class="progress-header">
+        <span style="font-size:1.1rem; font-weight:600;">📚 Assignments</span>
+        <span style="font-size:0.85rem; color: var(--text-light); font-weight:400;" id="completeCount"></span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:0.35rem;" id="assignments-list">
+        <div style="color: var(--text-light); padding: 1rem; text-align: center;">Loading assignments...</div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const ASSIGNMENTS_DATA = {{ assignments | tojson }};
+
+    function formatDueDate(dateStr) {
+        if (!dateStr) return 'No due date';
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diff = date - now;
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+        if (days < 0) return 'Overdue';
+        if (days === 0) return 'Due today';
+        if (days === 1) return 'Due tomorrow';
+        if (days <= 7) return `Due in ${days} days`;
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function getDueColor(dateStr) {
+        if (!dateStr) return 'var(--text-light)';
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diff = date - now;
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+        if (days < 0) return '#ef4444';
+        if (days <= 3) return '#d97706';
+        return '#10b981';
+    }
+
+    function renderAssignments() {
+        const list = document.getElementById('assignments-list');
+        if (!ASSIGNMENTS_DATA.length) {
+            list.innerHTML = '<div style="color: var(--text-light); padding: 1rem; text-align: center;">No reading assignments yet</div>';
+            return;
+        }
+
+        const completed = ASSIGNMENTS_DATA.filter(a => a.completed).length;
+        document.getElementById('totalAssigned').textContent = ASSIGNMENTS_DATA.length;
+        document.getElementById('totalCompleted').textContent = completed;
+        document.getElementById('completeCount').textContent = `${completed}/${ASSIGNMENTS_DATA.length} complete`;
+
+        list.innerHTML = ASSIGNMENTS_DATA.map(a => `
+            <a href="${a.link}" style="text-decoration: none; color: inherit;">
+                <div style="background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; transition: all 0.2s;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;">
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="font-weight: 600; color: var(--text-dark); margin-bottom: 0.25rem;">${a.title}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 0.5rem;">${a.class_name}</div>
+                            <div style="display: flex; gap: 1rem; font-size: 0.8rem;">
+                                ${a.progress_pct !== undefined ? `<span>Progress: <strong>${a.progress_pct}%</strong></span>` : ''}
+                                ${a.completed ? '<span style="color: #10b981;">✓ Complete</span>' : ''}
+                            </div>
+                        </div>
+                        <div style="text-align: right; white-space: nowrap;">
+                            <div style="color: ${getDueColor(a.due_date_raw)}; font-weight: 600; font-size: 0.9rem;">${formatDueDate(a.due_date_raw)}</div>
+                            ${a.due_date ? `<div style="color: var(--text-light); font-size: 0.8rem;">${a.due_date}</div>` : ''}
+                        </div>
+                    </div>
+                </div>
+            </a>
+        `).join('');
+    }
+
+    renderAssignments();
+</script>
+{% endblock %}

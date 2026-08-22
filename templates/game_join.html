@@ -1,0 +1,46 @@
+{% extends "student_base.html" %}
+{% block title %}Join a class game - The Oracle{% endblock %}
+
+{% block content %}
+<style>
+    .gj-wrap { max-width: 420px; margin: 3rem auto; padding: 0 1rem; text-align: center; }
+    .gj-card {
+        background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius);
+        padding: 2rem 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .gj-card h1 { font-size: 1.3rem; margin: 0 0 0.4rem; }
+    .gj-card p { color: var(--text-light); font-size: 0.9rem; margin: 0 0 1.5rem; }
+    .gj-code-input {
+        width: 100%; text-align: center; font-size: 1.8rem; font-weight: 800; letter-spacing: 0.25em;
+        padding: 0.6rem 0.4rem 0.6rem 0.65em; border: 2px solid var(--border); border-radius: var(--radius-sm);
+        background: var(--bg-light); color: var(--text-dark); font-family: inherit; text-transform: uppercase;
+        font-variant-numeric: tabular-nums;
+    }
+    .gj-code-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(131,102,232,0.15); }
+    .gj-submit {
+        width: 100%; margin-top: 1rem; padding: 0.75rem; border: none; border-radius: 6px;
+        background: var(--primary); color: #fff; font-weight: 700; font-size: 1rem;
+        font-family: inherit; cursor: pointer; transition: background 150ms ease;
+    }
+    .gj-submit:hover { background: var(--primary-dark); }
+    .gj-error {
+        margin-top: 1rem; padding: 0.65rem 0.9rem; border-radius: var(--radius-sm);
+        background: color-mix(in srgb, var(--danger) 10%, transparent); color: #b91c1c; font-size: 0.88rem; font-weight: 600;
+    }
+    [data-theme="dark"] .gj-error { color: #f87171; }
+</style>
+
+<div class="gj-wrap">
+    <div class="gj-card">
+        <h1>Join a class game</h1>
+        <p>Enter the code on the board.</p>
+        <form method="post">
+            <input class="gj-code-input" type="text" name="code" maxlength="6" autocomplete="off"
+                   autocapitalize="characters" spellcheck="false" value="{{ prefill }}"
+                   placeholder="ABC123" aria-label="Game code" autofocus>
+            <button class="gj-submit" type="submit">Join</button>
+        </form>
+        {% if error %}<div class="gj-error">{{ error }}</div>{% endif %}
+    </div>
+</div>
+{% endblock %}

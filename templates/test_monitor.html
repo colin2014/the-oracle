@@ -1,0 +1,319 @@
+{% extends "admin_base.html" %}
+{% block title %}Monitor — {{ paper.title }}{% endblock %}
+
+{% block content %}
+<style>
+    /* Full bleed rather than the admin column: .admin-main caps every other admin
+       page at 1300px, which on a full class costs a whole row of student cards per
+       screen. Scoped to this page only — the rule lives in this page's style block. */
+    .admin-main { max-width: none; }
+    .mon-container { max-width: none; width: 100%; margin: 0; }
+    .mon-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
+    .mon-header h1 { font-size: 1.4rem; margin: 0 0 0.2rem; }
+    .mon-header p { color: var(--text-light); margin: 0; font-size: 0.85rem; }
+    .mon-live-dot {
+        display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981;
+        margin-right: 0.4rem; animation: monPulse 1.4s ease-in-out infinite;
+    }
+    @keyframes monPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+    .mon-tally { font-size: 0.82rem; color: var(--text-light); margin-bottom: 1rem; }
+    .mon-tally b { color: var(--text-dark); }
+
+    /* One card per student, as many across as the screen allows. The card is sized
+       so a whole class is scannable at a glance — the detail lives in the expansion,
+       not in every card at once. */
+    .mon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 0.9rem; align-items: start; }
+    .mon-card {
+        background: var(--bg-white); border: 1px solid var(--border); border-radius: 12px;
+        padding: 0.9rem 1rem; cursor: pointer; transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .mon-card:hover { border-color: var(--primary); box-shadow: 0 4px 14px rgba(26,26,26,0.07); }
+    /* A student who hasn't joined has nothing to read, so the card recedes rather
+       than taking the same visual weight as one whose answers are changing. */
+    .mon-card.not-started { opacity: 0.7; }
+    /* Expanded card takes the full row: the answers need reading width, and
+       re-flowing the grid around a tall card leaves ragged gaps. */
+    .mon-card.expanded { grid-column: 1 / -1; cursor: default; }
+
+    .mon-student-row { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; }
+    .mon-student-name { font-weight: 700; font-size: 0.95rem; }
+    .mon-status { font-size: 0.68rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+    .mon-status.in_progress { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    .mon-status.submitted, .mon-status.marked { background: var(--bg-light); color: var(--text-light); }
+    .mon-status.not_started { background: rgba(245, 158, 11, 0.15); color: #b45309; }
+    .mon-timer { font-family: ui-monospace, Consolas, monospace; font-size: 0.8rem; color: var(--text-light); white-space: nowrap; }
+    .mon-timer.mon-timer-low { color: #ef4444; font-weight: 700; }
+
+    .mon-progress { display: flex; align-items: center; gap: 0.5rem; font-size: 0.73rem; color: var(--text-light); margin: 0.6rem 0 0.55rem; }
+    .mon-progress-track { flex: 1; height: 5px; border-radius: 999px; background: var(--bg-light); overflow: hidden; }
+    .mon-progress-fill { height: 100%; width: 0; background: var(--primary); border-radius: 999px; transition: width 0.4s ease; }
+
+    /* The at-a-glance row: one tile per question, so "who is stuck on Q4" is
+       readable across thirty cards without opening any of them. */
+    .mon-tiles { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+    .mon-tile {
+        min-width: 1.65rem; height: 1.65rem; padding: 0 0.3rem; border-radius: 6px;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 0.72rem; font-weight: 700; background: var(--bg-light); color: var(--text-light);
+        border: 1px solid transparent; transition: background 0.4s ease;
+    }
+    .mon-tile.answered { background: rgba(157, 132, 255, 0.18); color: var(--primary); }
+    .mon-tile.flash { background: rgba(16, 185, 129, 0.35); color: #065f46; }
+    .mon-expand-hint { font-size: 0.7rem; color: var(--text-light); margin-top: 0.5rem; }
+
+    .mon-answers { margin-top: 0.9rem; border-top: 1px solid var(--border); padding-top: 0.9rem; }
+    .mon-q { border: 1px solid var(--border); border-radius: 8px; padding: 0.7rem 0.9rem; margin-bottom: 0.6rem; }
+    .mon-q-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; margin-bottom: 0.4rem; }
+    .mon-q-text { font-size: 0.85rem; font-weight: 600; }
+    .mon-q-marks { font-size: 0.72rem; color: var(--text-light); white-space: nowrap; }
+    .mon-answer-text { font-size: 0.88rem; color: var(--text-dark); white-space: pre-wrap; min-height: 1.4em; transition: background 0.4s ease; border-radius: 4px; padding: 0.3rem 0.4rem; margin: -0.3rem -0.4rem; }
+    .mon-answer-text.empty { color: var(--text-light); font-style: italic; }
+    .mon-answer-text.flash { background: rgba(157, 132, 255, 0.18); }
+    .mon-answer-meta { font-size: 0.72rem; color: var(--text-light); margin-top: 0.3rem; }
+    .mon-mcq-option { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 999px; font-size: 0.8rem; background: var(--bg-light); }
+    .mon-mcq-option.answered { background: rgba(157, 132, 255, 0.15); color: var(--primary); font-weight: 600; }
+
+    .mon-empty { text-align: center; padding: 3rem; color: var(--text-light); }
+</style>
+
+<div class="mon-container">
+    <p><a href="{{ url_for('test_builder.test_builder_edit', paper_id=paper.id) }}" class="admin-btn-text">&larr; {{ paper.title }}</a></p>
+    <div class="mon-header">
+        <div>
+            <h1><span class="mon-live-dot"></span>Live monitor</h1>
+            <p>{{ paper.title }} — updates every few seconds. Click a student to read their answers.</p>
+        </div>
+    </div>
+    <div class="mon-tally" id="monTally"></div>
+    <!-- Starts empty rather than saying "Loading…": the first poll lands in well
+         under a second, and a loading message that reappears on every refresh is
+         what made the page look like it was resetting itself. -->
+    <div id="monList"></div>
+</div>
+
+<script>
+const PAPER_ID = {{ paper.id | tojson }};
+const previousText = {};   // `${studentId}:${questionId}` -> last-seen answer, for flash-on-change
+const expanded = new Set();  // student ids whose answers are open, kept across polls
+const AVATAR_EMOJI = {{ AVATAR_BY_KEY | tojson }};
+const STATUS_LABEL = { in_progress: 'Working', not_started: 'Not started', submitted: 'Submitted', marked: 'Submitted' };
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+}
+
+// Some display names already begin with the student's own emoji ("🐻 Code Bear"),
+// in which case drawing the avatar as well shows the same bear twice.
+function nameStartsWithEmoji(name) {
+    return /^\p{Extended_Pictographic}/u.test((name || '').trim());
+}
+
+function avatarHtml(key, size) {
+    if (key === null) return '';
+    size = size || 26;
+    const a = AVATAR_EMOJI[key];
+    const emoji = a ? a.emoji : '';
+    return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:50%;background:rgba(131,102,232,0.12);font-size:${Math.round(size * 0.6)}px;flex-shrink:0;">${emoji}</span>`;
+}
+
+function timeAgo(iso) {
+    if (!iso) return null;
+    const seconds = Math.max(0, Math.floor((Date.now() - new Date(iso)) / 1000));
+    if (seconds < 5) return 'just now';
+    if (seconds < 60) return `${seconds}s ago`;
+    return `${Math.floor(seconds / 60)}m ago`;
+}
+
+function timeRemaining(deadlineIso) {
+    const msLeft = new Date(deadlineIso) - new Date();
+    if (msLeft <= 0) return { text: '00:00', low: true };
+    const totalSeconds = Math.floor(msLeft / 1000);
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return { text: `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`, low: msLeft < 5 * 60 * 1000 };
+}
+
+/** What one question's tile shows: the chosen letter for an MCQ, the word count
+ *  for a written answer — enough to tell progress from a metre away. */
+function tileLabel(a, index) {
+    if (a.is_mcq) {
+        const chosen = (a.selected_options || []).map(i => String.fromCharCode(65 + i)).join('');
+        return chosen || (index + 1);
+    }
+    return a.word_count ? `${a.word_count}w` : (index + 1);
+}
+
+function answerHtml(key, a) {
+    if (a.is_mcq) {
+        const opts = a.options || [];
+        return opts.map((opt, idx) => `
+            <span class="mon-mcq-option ${a.selected_options.includes(idx) ? 'answered' : ''}">${escapeHtml(opt)}</span>
+        `).join(' ');
+    }
+    const text = a.response_text || '';
+    const meta = a.last_saved_at
+        ? `${a.word_count} word${a.word_count === 1 ? '' : 's'} · saved ${timeAgo(a.last_saved_at)}`
+        : 'Nothing saved yet';
+    return `
+        <div class="mon-answer-text ${text ? '' : 'empty'}">${escapeHtml(text) || 'Nothing typed yet…'}</div>
+        <div class="mon-answer-meta">${meta}</div>`;
+}
+
+function cardShell(sub, questions) {
+    return `
+        <div class="mon-card" data-student="${sub.student_id}" onclick="toggleCard(event, ${sub.student_id})">
+            <div class="mon-student-row">
+                <div style="display:flex; align-items:center; gap:0.5rem; min-width:0;">
+                    ${avatarHtml(nameStartsWithEmoji(sub.student_name) ? null : sub.student_avatar)}
+                    <span class="mon-student-name">${escapeHtml(sub.student_name)}</span>
+                </div>
+                <span class="mon-status" data-role="status"></span>
+            </div>
+            <div class="mon-progress">
+                <span class="mon-progress-track"><span class="mon-progress-fill"></span></span>
+                <span data-role="progress-label"></span>
+                <span class="mon-timer" data-role="timer"></span>
+            </div>
+            <div class="mon-tiles" data-role="tiles">
+                ${questions.map(q => `<span class="mon-tile" data-tile="${sub.student_id}:${q.id}"></span>`).join('')}
+            </div>
+            <div class="mon-expand-hint" data-role="hint"></div>
+            <div class="mon-answers" data-role="answers" style="display:none;">
+                ${questions.map(q => `
+                    <div class="mon-q">
+                        <div class="mon-q-head">
+                            <div class="mon-q-text">${escapeHtml(q.text)}</div>
+                            <div class="mon-q-marks">${q.marks} mark${q.marks === 1 ? '' : 's'}</div>
+                        </div>
+                        <div data-answer="${sub.student_id}:${q.id}"></div>
+                    </div>`).join('')}
+            </div>
+        </div>`;
+}
+
+function toggleCard(event, studentId) {
+    if (window.getSelection && String(window.getSelection())) return;  // don't collapse mid-selection
+    if (expanded.has(studentId)) expanded.delete(studentId); else expanded.add(studentId);
+    // Repainted from the last poll's data rather than by re-fetching, so the card
+    // opens on the click instead of on the next 3-second tick.
+    if (lastData) paint(lastData);
+}
+
+function updateCard(card, sub, questions, questionCount) {
+    const status = card.querySelector('[data-role="status"]');
+    status.className = `mon-status ${sub.status}`;
+    status.textContent = STATUS_LABEL[sub.status] || sub.status;
+    card.classList.toggle('not-started', sub.status === 'not_started');
+
+    const done = sub.answered_count;
+    card.querySelector('.mon-progress-fill').style.width = questionCount ? `${Math.round(100 * done / questionCount)}%` : '0%';
+    card.querySelector('[data-role="progress-label"]').textContent = `${done}/${questionCount}`;
+
+    const timerEl = card.querySelector('[data-role="timer"]');
+    const timer = sub.status === 'in_progress' && sub.deadline_iso ? timeRemaining(sub.deadline_iso) : null;
+    timerEl.textContent = timer ? `${timer.text} left` : (sub.started_at ? `from ${sub.started_at}` : '');
+    timerEl.classList.toggle('mon-timer-low', !!(timer && timer.low));
+
+    const isOpen = expanded.has(sub.student_id);
+    card.classList.toggle('expanded', isOpen);
+    card.querySelector('[data-role="answers"]').style.display = isOpen ? 'block' : 'none';
+    card.querySelector('[data-role="hint"]').textContent =
+        sub.status === 'not_started' ? 'Not joined yet' : (isOpen ? 'Click to collapse' : 'Click to read answers');
+
+    questions.forEach((q, i) => {
+        const a = sub.answers[i];
+        const key = `${sub.student_id}:${q.id}`;
+        const value = a.is_mcq ? (a.selected_options || []).join(',') : (a.response_text || '');
+        const changed = previousText[key] !== undefined && previousText[key] !== value;
+        previousText[key] = value;
+
+        const tile = card.querySelector(`[data-tile="${key}"]`);
+        if (tile) {
+            tile.textContent = tileLabel(a, i);
+            tile.classList.toggle('answered', !!value);
+            if (changed) tile.classList.add('flash');
+        }
+        if (isOpen) {
+            const slot = card.querySelector(`[data-answer="${key}"]`);
+            if (slot) {
+                slot.innerHTML = answerHtml(key, a);
+                if (changed) slot.querySelector('.mon-answer-text')?.classList.add('flash');
+            }
+        }
+    });
+}
+
+let lastData = null;
+
+/** Reconciles the grid against the poll: cards are created once and thereafter
+ *  only moved and patched. Nothing is ever torn down and rebuilt — rebuilding the
+ *  grid every 3 seconds is what made the whole page blink out and reappear, and
+ *  it dropped whatever the teacher was reading with it. */
+function paint(data) {
+    const list = document.getElementById('monList');
+    const tally = document.getElementById('monTally');
+
+    let grid = list.querySelector('.mon-grid');
+    if (!grid) {
+        list.innerHTML = '<div class="mon-grid"></div>';
+        grid = list.querySelector('.mon-grid');
+    }
+
+    const counts = data.students.reduce((acc, s) => { acc[s.status] = (acc[s.status] || 0) + 1; return acc; }, {});
+    const done = (counts.submitted || 0) + (counts.marked || 0);
+    tally.innerHTML = data.students.length
+        ? `<b>${data.students.length}</b> student${data.students.length === 1 ? '' : 's'} · `
+          + `<b>${counts.in_progress || 0}</b> working · <b>${counts.not_started || 0}</b> not started · <b>${done}</b> submitted`
+        : '';
+
+    const seen = new Set();
+    data.students.forEach(sub => {
+        seen.add(String(sub.student_id));
+        let card = grid.querySelector(`[data-student="${sub.student_id}"]`);
+        if (!card) {
+            card = document.createElement('div');
+            card.innerHTML = cardShell(sub, data.questions);
+            card = card.firstElementChild;
+            grid.appendChild(card);
+        }
+        updateCard(card, sub, data.questions, data.question_count);
+        // Re-appending an existing node moves it in place — the element (and any
+        // selection or open state inside it) survives the reorder.
+        grid.appendChild(card);
+    });
+
+    grid.querySelectorAll('[data-student]').forEach(card => {
+        if (!seen.has(card.dataset.student)) card.remove();
+    });
+
+    const empty = list.querySelector('.mon-empty');
+    if (!data.students.length && !empty) {
+        grid.insertAdjacentHTML('afterend', '<div class="mon-empty">This paper has not been assigned to anyone yet.</div>');
+    } else if (data.students.length && empty) {
+        empty.remove();
+    }
+
+    // Clear the flash classes shortly after paint so the next real change flashes again.
+    setTimeout(() => {
+        document.querySelectorAll('.flash').forEach(el => el.classList.remove('flash'));
+    }, 700);
+}
+
+async function loadMonitor() {
+    // A failed or slow poll leaves the last good picture on screen rather than
+    // clearing it — a blank monitor mid-exam reads as "nobody is working".
+    try {
+        const res = await fetch(`/admin/api/test-papers/${PAPER_ID}/monitor`);
+        if (!res.ok) return;
+        lastData = await res.json();
+        paint(lastData);
+    } catch (e) { /* keep showing the last poll */ }
+}
+
+loadMonitor();
+setInterval(loadMonitor, 3000);
+</script>
+{% endblock %}

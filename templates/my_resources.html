@@ -1,0 +1,283 @@
+{% extends "student_base.html" %}
+{% block title %}My Resources — The Oracle{% endblock %}
+
+{% block content %}
+<style>
+    .myres-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1rem 1.25rem;
+        margin-bottom: 0.75rem;
+        text-decoration: none;
+        color: inherit;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .myres-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(157, 132, 255, 0.15);
+    }
+
+    .myres-item.completed {
+        border-left: 4px solid #10b981;
+    }
+
+    .myres-icon {
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .myres-main {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .myres-title {
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .myres-meta {
+        font-size: 0.8rem;
+        color: var(--text-light);
+        margin-top: 0.2rem;
+    }
+
+    .myres-badge {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 0.35rem 0.7rem;
+        border-radius: 4px;
+        background: var(--bg-light);
+        color: var(--text-light);
+        flex-shrink: 0;
+    }
+
+    .myres-badge.complete {
+        background: rgba(10, 157, 88, 0.15);
+        color: #10b981;
+    }
+
+    .myres-empty {
+        text-align: center;
+        padding: 3rem;
+        color: var(--text-light);
+    }
+
+    .analytics-section {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .analytics-title {
+        font-size: 1rem;
+        font-weight: 700;
+        margin: 0 0 1.25rem 0;
+        color: var(--text-dark);
+        border-bottom: 2px solid var(--primary);
+        padding-bottom: 0.75rem;
+    }
+
+    .analytics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .analytics-stat {
+        background: rgba(157, 132, 255, 0.08);
+        padding: 1rem;
+        border-radius: 6px;
+        border: 1px solid rgba(157, 132, 255, 0.2);
+        text-align: center;
+    }
+
+    .analytics-stat-value {
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: var(--primary);
+        margin-bottom: 0.4rem;
+    }
+
+    .analytics-stat-label {
+        font-size: 0.8rem;
+        color: var(--text-light);
+        font-weight: 600;
+    }
+
+    .analytics-progress {
+        background: var(--bg-light);
+        border-radius: 6px;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+
+    .progress-header {
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .progress-bar {
+        height: 8px;
+        background: var(--border);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #c77dff, #a84fd4);
+        transition: width 0.3s ease;
+    }
+</style>
+
+<div class="student-card" style="text-align: center; margin-bottom: 2rem;">
+    <h1>📚 My Resources</h1>
+    <p>
+        {% if classes %}
+            Assigned across: <strong>{{ classes | map(attribute='name') | join(', ') }}</strong>
+        {% else %}
+            You are not yet enrolled in a class.
+        {% endif %}
+    </p>
+</div>
+
+<!-- Reading Analytics Section -->
+<div class="analytics-section">
+    <h3 class="analytics-title">📊 Your Reading Analytics</h3>
+    <div class="analytics-grid">
+        <div class="analytics-stat">
+            <div class="analytics-stat-value" id="totalReadingTime">0h</div>
+            <div class="analytics-stat-label">Total Time</div>
+        </div>
+        <div class="analytics-stat">
+            <div class="analytics-stat-value" id="pagesRead">0</div>
+            <div class="analytics-stat-label">Pages Read</div>
+        </div>
+        <div class="analytics-stat">
+            <div class="analytics-stat-value" id="avgPerPage">0m</div>
+            <div class="analytics-stat-label">Avg per Page</div>
+        </div>
+        <div class="analytics-stat">
+            <div class="analytics-stat-value" id="readingStreak">0</div>
+            <div class="analytics-stat-label">Day Streak</div>
+        </div>
+    </div>
+
+    <div class="analytics-progress">
+        <div class="progress-header">
+            <span>Assignment Completion</span>
+            <span id="completionPercent">0%</span>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Resources List -->
+{% if assignments %}
+    {% for a in assignments %}
+    <a href="{{ a.link }}" class="myres-item {{ 'completed' if a.completed else '' }}">
+        <span class="myres-icon">{{ '📄' if a.resource_type == 'exemplar' else '🗓️' if a.resource_type == 'unit_plan_week' else '📖' }}</span>
+        <div class="myres-main">
+            <div class="myres-title">{{ a.title }}</div>
+            <div class="myres-meta">
+                {{ a.class_name }} · {{ a.resource_label }}
+                {% if a.due_date %} · Due {{ a.due_date }}{% endif %}
+                {% if a.estimated_minutes %} · {{ a.estimated_minutes }} min read{% endif %}
+                {% if a.total_minutes and a.total_minutes > 0 %} ({{ a.total_minutes }} spent){% endif %}
+            </div>
+        </div>
+        <span class="myres-badge {{ 'complete' if a.completed else '' }}">
+            {{ '✓ Complete' if a.completed else 'Not started' }}
+        </span>
+    </a>
+    {% endfor %}
+{% else %}
+    <div class="student-card" style="text-align: center;">
+        <div class="myres-empty">
+            <p style="margin: 0;">📚 No resources have been assigned to you yet.</p>
+        </div>
+    </div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function loadReadingAnalytics() {
+        try {
+            const response = await fetch('/api/reading-stats');
+            const stats = await response.json();
+
+            const totalSeconds = stats.total_seconds || 0;
+            const totalHours = Math.floor(totalSeconds / 3600);
+            const totalMinutes = Math.floor((totalSeconds % 3600) / 60);
+
+            document.getElementById('totalReadingTime').textContent = totalHours > 0
+                ? `${totalHours}h ${totalMinutes}m`
+                : `${totalMinutes}m`;
+
+            document.getElementById('pagesRead').textContent = stats.total_pages || 0;
+
+            const avgMinutes = stats.total_pages > 0
+                ? Math.round((totalSeconds / 60) / stats.total_pages)
+                : 0;
+            document.getElementById('avgPerPage').textContent = `${avgMinutes}m`;
+
+            const activities = stats.activities || [];
+            const activityDates = activities
+                .map(a => new Date(a.last_opened_at).toISOString().split('T')[0])
+                .filter(Boolean);
+
+            let streak = 0;
+            if (activityDates.length > 0) {
+                const today = new Date().toISOString().split('T')[0];
+                const uniqueDates = [...new Set(activityDates)].sort().reverse();
+
+                let currentDate = today;
+                for (const date of uniqueDates) {
+                    if (date === currentDate) {
+                        streak++;
+                        currentDate = new Date(new Date(currentDate) - 86400000).toISOString().split('T')[0];
+                    } else {
+                        break;
+                    }
+                }
+            }
+            document.getElementById('readingStreak').textContent = streak;
+
+            const assignmentElements = document.querySelectorAll('.myres-item');
+            if (assignmentElements.length > 0) {
+                const completedElements = document.querySelectorAll('.myres-item.completed');
+                const completionPercent = Math.round((completedElements.length / assignmentElements.length) * 100);
+                document.getElementById('completionPercent').textContent = `${completionPercent}%`;
+                document.getElementById('progressFill').style.width = `${completionPercent}%`;
+            }
+        } catch (error) {
+            console.error('Failed to load reading analytics:', error);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadReadingAnalytics);
+</script>
+{% endblock %}

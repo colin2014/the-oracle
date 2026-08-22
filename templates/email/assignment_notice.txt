@@ -1,0 +1,8 @@
+Hi {{ student.name }},
+
+A new reading has been assigned to {% if class_obj %}your class, {{ class_obj.name }}{% else %}you{% endif %}:
+
+  {{ assignment.title }}
+  Due: {{ due }}
+
+Open it here: {{ link }}

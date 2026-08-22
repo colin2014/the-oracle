@@ -1,0 +1,141 @@
+{% extends "admin_base.html" %}
+{% block title %}Code Spotter — Setup{% endblock %}
+
+{% block content %}
+<style>
+    .cs-container { max-width: 720px; margin: 0 auto; }
+    .cs-container h1 { font-size: 1.5rem; margin: 0 0 0.25rem 0; }
+    .cs-sub { font-size: 0.9rem; color: var(--text-light); margin: 0 0 1.5rem 0; }
+    .cs-card { background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .cs-card h2 { font-size: 1rem; margin: 0 0 0.75rem 0; }
+
+    .cs-row { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+    .cs-field { display: flex; flex-direction: column; gap: 0.3rem; flex: 1; min-width: 200px; }
+    .cs-field label { font-size: 0.8rem; font-weight: 600; }
+    .cs-field input, .cs-field select {
+        padding: 0.5rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius-control);
+        background: var(--bg-light); color: var(--text-dark); font-family: inherit; font-size: 0.9rem;
+    }
+    .cs-field .hint { font-size: 0.75rem; color: var(--text-light); }
+
+    .cs-players { margin-bottom: 0.5rem; }
+    .cs-player-row { display: flex; gap: 0.6rem; margin-bottom: 0.5rem; align-items: center; }
+    .cs-player-row input { flex: 1; max-width: none; }
+    .cs-remove { border: none; background: none; color: var(--text-dark); font-weight: 600; cursor: pointer; padding: 0.4rem 0.6rem; border-radius: var(--radius-control); font-family: inherit; font-size: 0.85rem; }
+    .cs-remove:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); }
+
+    .cs-difficulty { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    .cs-difficulty label { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; margin: 0; }
+    .cs-difficulty input { margin: 0; }
+
+    .cs-snippets { display: grid; gap: 1rem; margin-top: 0.75rem; max-height: 400px; overflow-y: auto; }
+    .cs-snippet-item {
+        background: var(--bg-light); border: 2px solid var(--border); border-radius: var(--radius-sm);
+        padding: 1rem; cursor: pointer; transition: all 150ms ease;
+        display: flex; gap: 1rem; align-items: flex-start;
+    }
+    .cs-snippet-item:hover { border-color: var(--primary); background: var(--bg-white); }
+    .cs-snippet-item.selected { border-color: var(--primary); background: rgba(33, 150, 243, 0.05); }
+    .cs-snippet-item input { margin-top: 0.2rem; accent-color: var(--primary); }
+    .cs-snippet-info { flex: 1; }
+    .cs-snippet-title { font-weight: 600; font-size: 0.95rem; }
+    .cs-snippet-meta { font-size: 0.8rem; color: var(--text-light); margin-top: 0.3rem; }
+    .cs-snippet-desc { font-size: 0.85rem; color: var(--text-dark); margin-top: 0.5rem; line-height: 1.4; }
+
+    .cs-actions { display: flex; gap: 0.75rem; align-items: center; }
+</style>
+
+<div class="cs-container">
+    <h1>Code Spotter</h1>
+    <p class="cs-sub">Students have 5 seconds each to spot bugs in code. Find as many as you can!</p>
+
+    <form method="post" id="setupForm">
+        <div class="cs-card">
+            <h2>Players</h2>
+            <div id="playerRows" class="cs-players">
+                <div class="cs-player-row"><input type="text" name="player_name" placeholder="Player name" value="Alice" aria-label="Player name"></div>
+                <div class="cs-player-row"><input type="text" name="player_name" placeholder="Player name" value="Bob" aria-label="Player name"></div>
+            </div>
+            <button type="button" class="admin-btn-ghost" onclick="addPlayer()">+ Add player</button>
+        </div>
+
+        <div class="cs-card">
+            <h2>Code Snippets</h2>
+            <p style="font-size: 0.9rem; color: var(--text-light); margin: 0 0 1rem;">Select which snippets to include in the game</p>
+            <div class="cs-snippets" id="snippetsList">
+                {% if snippets %}
+                    {% for sn in snippets %}
+                    <label class="cs-snippet-item">
+                        <input type="checkbox" name="snippet_ids" value="{{ sn.id }}">
+                        <div class="cs-snippet-info">
+                            <div class="cs-snippet-title">{{ sn.title }}</div>
+                            <div class="cs-snippet-meta">{{ sn.language }} · {{ sn.difficulty }} · {{ sn.bugs_list()|length }} bug{{ "s" if sn.bugs_list()|length != 1 }} · {{ sn.line_count() }} lines</div>
+                            {% if sn.description %}
+                            <div class="cs-snippet-desc">{{ sn.description }}</div>
+                            {% endif %}
+                        </div>
+                    </label>
+                    {% endfor %}
+                {% else %}
+                <p style="color: var(--text-light); padding: 1rem;">No snippets available. <a href="{{ url_for('games.bughunt_snippets') }}">Create one</a> first.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="cs-card">
+            <h2>Game Settings</h2>
+            <div class="cs-row">
+                <div class="cs-field">
+                    <label for="timer_seconds">Timer (seconds)</label>
+                    <input type="number" id="timer_seconds" name="timer_seconds" value="5" min="1" max="60">
+                    <span class="hint">How long each player has to find bugs</span>
+                </div>
+                <div class="cs-field">
+                    <label for="num_rounds">Rounds per player</label>
+                    <input type="number" id="num_rounds" name="num_rounds" value="3" min="1" max="20">
+                    <span class="hint">How many code snippets each player sees</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="cs-actions">
+            <button type="submit" class="admin-btn">Start Code Spotter</button>
+            <a class="admin-btn-text" href="{{ url_for('games.hub') }}">Back to games</a>
+        </div>
+    </form>
+</div>
+
+<script>
+function addPlayer() {
+    const row = document.createElement("div");
+    row.className = "cs-player-row";
+    row.innerHTML = `<input type="text" name="player_name" placeholder="Player name" aria-label="Player name">
+        <button type="button" class="cs-remove" onclick="this.parentElement.remove()">Remove</button>`;
+    document.getElementById("playerRows").appendChild(row);
+}
+
+document.getElementById('setupForm').addEventListener('submit', function(e) {
+    const players = Array.from(document.querySelectorAll('input[name="player_name"]'))
+        .map(input => input.value.trim())
+        .filter(Boolean);
+
+    if (players.length < 2) {
+        e.preventDefault();
+        alert('Add at least 2 players');
+        return;
+    }
+
+    const snippets = Array.from(document.querySelectorAll('input[name="snippet_ids"]:checked'));
+    if (snippets.length === 0) {
+        e.preventDefault();
+        alert('Select at least one code snippet');
+        return;
+    }
+
+    // Mark selected snippets visually
+    document.querySelectorAll('.cs-snippet-item input:checked').forEach(input => {
+        input.closest('.cs-snippet-item').classList.add('selected');
+    });
+});
+</script>
+{% endblock %}

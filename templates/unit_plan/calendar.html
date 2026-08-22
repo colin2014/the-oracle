@@ -1,0 +1,49 @@
+{% extends "unit_plan/_base.html" %}
+{% block title %}Academic Calendar{% endblock %}
+
+{% block content %}
+<style>
+  .cal-year { margin-bottom: 44px; }
+  .cal-year h2 { font-size: 1.4rem; margin: 0 0 18px; letter-spacing: -0.01em; }
+  .cal-semesters { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 700px) { .cal-semesters { grid-template-columns: 1fr; } }
+  .cal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px; }
+  .cal-card h3 { margin: 0 0 14px; font-size: 1rem; color: var(--accent); }
+  .cal-card ul { list-style: none; margin: 0; padding: 0; }
+  .cal-card li { display: flex; justify-content: space-between; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+  .cal-card li:last-child { border-bottom: none; }
+  .cal-card .ev-label { color: var(--text); }
+  .cal-card .ev-date { color: var(--text-faint); white-space: nowrap; font-weight: 600; text-align: right; }
+</style>
+
+<header class="sem-header">
+  <div class="wrap">
+    <div class="breadcrumb"><a href="{{ url_for('unit_plan.index') }}">Home</a> / Academic Calendar</div>
+    <h1>Academic Calendar</h1>
+    <p class="sub">Official school dates for the two school years this course spans — orientation, breaks, and exam-adjacent milestones.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="calendar-root"></div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <span>DP Computer Science unit planner</span>
+    <a href="{{ url_for('unit_plan.index') }}">← Back to course overview</a>
+  </div>
+</footer>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='unit_plan/app.js') }}?v={{ asset_v }}"></script>
+<script>
+fetch("{{ url_for('unit_plan.api_calendar') }}")
+  .then(function (r) { return r.json(); })
+  .then(function (data) {
+    window.SCHOOL_CALENDAR = data;
+    renderSchoolCalendar();
+  });
+</script>
+{% endblock %}

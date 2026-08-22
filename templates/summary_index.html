@@ -1,0 +1,198 @@
+{% extends "admin_base.html" %}
+{% block title %}Page summaries — {{ book_title }}{% endblock %}
+
+{% block content %}
+<style>
+    .si-container { max-width: 800px; margin: 0 auto; }
+    .si-header { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+    .si-header h1 { font-size: 1.5rem; margin: 0 0 0.3rem 0; }
+    .si-header p { color: var(--text-light); margin: 0; font-size: 0.9rem; }
+
+    .si-bulk {
+        background: var(--primary, #8366e8);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 0.55rem 1rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .si-bulk:disabled { opacity: 0.6; cursor: default; }
+    .si-bulk-status { font-size: 0.85rem; color: var(--text-light); margin-right: 0.75rem; }
+
+    .si-page {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.85rem 1.1rem;
+        margin-bottom: 0.5rem;
+    }
+    .si-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    .si-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+    .si-badge { font-size: 0.8rem; font-weight: 700; padding: 0.25rem 0.7rem; border-radius: 999px; white-space: nowrap; }
+    .si-badge.has { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    .si-badge.none { background: var(--bg-light); color: var(--text-light); font-weight: 400; }
+
+    .si-summary {
+        width: 100%;
+        margin-top: 0.6rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.55rem 0.7rem;
+        font-size: 0.85rem;
+        font-family: inherit;
+        color: var(--text-dark);
+        background: var(--bg-light);
+        resize: vertical;
+        min-height: 3.2rem;
+    }
+    .si-actions { margin-top: 0.45rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .si-btn {
+        background: none;
+        border: 1px solid var(--primary, #8366e8);
+        color: var(--primary, #8366e8);
+        border-radius: 8px;
+        padding: 0.35rem 0.8rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .si-btn:disabled { opacity: 0.6; cursor: default; }
+    .si-status { font-size: 0.8rem; color: var(--text-light); }
+    .si-status.err { color: #ef4444; }
+    .si-status.ok { color: #10b981; }
+    .si-empty { text-align: center; padding: 3rem; color: var(--text-light); }
+</style>
+
+<div class="si-container">
+    <div class="si-header">
+        <div>
+            <h1>📄 Page summaries — {{ book_title }}</h1>
+            <p>30-50 word overviews students see in their quiz analytics.
+               <a href="/book/{{ book_folder }}/learn">Book home</a> ·
+               <a href="{{ url_for('quiz.quiz_index', book_folder=book_folder) }}">Quizzes</a></p>
+        </div>
+        <div>
+            <span class="si-bulk-status" id="bulkStatus"></span>
+            <button class="si-bulk" id="bulkBtn" onclick="generateAllMissing()">✨ Generate all missing</button>
+        </div>
+    </div>
+    <div id="pageList"><div class="si-empty">Loading…</div></div>
+</div>
+
+<script>
+const BOOK_FOLDER = {{ book_folder | tojson }};
+let PAGES = [];
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+}
+
+function setStatus(pageId, msg, cls) {
+    const el = document.getElementById(`status-${pageId}`);
+    if (el) { el.textContent = msg; el.className = 'si-status ' + (cls || ''); }
+}
+
+function setBadge(pageId, has) {
+    const el = document.getElementById(`badge-${pageId}`);
+    if (el) {
+        el.className = 'si-badge ' + (has ? 'has' : 'none');
+        el.textContent = has ? 'has summary' : 'no summary yet';
+    }
+}
+
+async function loadIndex() {
+    const list = document.getElementById('pageList');
+    try {
+        const [pagesRes, sumRes] = await Promise.all([
+            fetch(`/api/book/${encodeURIComponent(BOOK_FOLDER)}/pages`),
+            fetch(`/api/summaries/${encodeURIComponent(BOOK_FOLDER)}`),
+        ]);
+        PAGES = (await pagesRes.json()).pages || [];
+        const summaries = (await sumRes.json()).summaries || {};
+        if (!PAGES.length) {
+            list.innerHTML = '<div class="si-empty">This book has no pages.</div>';
+            return;
+        }
+        list.innerHTML = PAGES.map(p => {
+            const s = summaries[p.id] || '';
+            return `
+                <div class="si-page" id="page-${escapeHtml(p.id)}">
+                    <div class="si-row">
+                        <span class="si-title">${escapeHtml(p.title)}</span>
+                        <span class="si-badge ${s ? 'has' : 'none'}" id="badge-${escapeHtml(p.id)}">${s ? 'has summary' : 'no summary yet'}</span>
+                    </div>
+                    <textarea class="si-summary" id="text-${escapeHtml(p.id)}" placeholder="No summary yet — generate one or write your own.">${escapeHtml(s)}</textarea>
+                    <div class="si-actions">
+                        <button class="si-btn" id="gen-${escapeHtml(p.id)}" onclick="generateOne('${escapeHtml(p.id)}')">✨ ${s ? 'Regenerate' : 'Generate'}</button>
+                        <button class="si-btn" onclick="saveOne('${escapeHtml(p.id)}')">💾 Save</button>
+                        <span class="si-status" id="status-${escapeHtml(p.id)}"></span>
+                    </div>
+                </div>`;
+        }).join('');
+    } catch (e) {
+        list.innerHTML = '<div class="si-empty">Could not load pages.</div>';
+    }
+}
+
+async function generateOne(pageId) {
+    const btn = document.getElementById(`gen-${pageId}`);
+    btn.disabled = true;
+    setStatus(pageId, 'Generating…');
+    try {
+        const res = await fetch(`/api/summaries/${encodeURIComponent(BOOK_FOLDER)}/${encodeURIComponent(pageId)}/ai-generate`, { method: 'POST' });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Generation failed');
+        document.getElementById(`text-${pageId}`).value = data.summary;
+        setBadge(pageId, true);
+        setStatus(pageId, '✓ Generated & saved', 'ok');
+        btn.textContent = '✨ Regenerate';
+        return true;
+    } catch (e) {
+        setStatus(pageId, '✗ ' + e.message, 'err');
+        return false;
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function saveOne(pageId) {
+    const text = document.getElementById(`text-${pageId}`).value.trim();
+    setStatus(pageId, 'Saving…');
+    try {
+        const res = await fetch(`/api/summaries/${encodeURIComponent(BOOK_FOLDER)}/${encodeURIComponent(pageId)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ summary: text }),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Save failed');
+        setBadge(pageId, !!text);
+        setStatus(pageId, text ? '✓ Saved' : '✓ Cleared', 'ok');
+    } catch (e) {
+        setStatus(pageId, '✗ ' + e.message, 'err');
+    }
+}
+
+async function generateAllMissing() {
+    const btn = document.getElementById('bulkBtn');
+    const status = document.getElementById('bulkStatus');
+    const missing = PAGES.filter(p => !document.getElementById(`text-${p.id}`).value.trim());
+    if (!missing.length) { status.textContent = 'Nothing missing — all pages have summaries.'; return; }
+    btn.disabled = true;
+    let done = 0, failed = 0;
+    for (const p of missing) {
+        status.textContent = `Generating ${done + failed + 1}/${missing.length}…`;
+        const ok = await generateOne(p.id);
+        if (ok) done++; else failed++;
+    }
+    status.textContent = `✓ ${done} generated` + (failed ? `, ${failed} failed` : '');
+    btn.disabled = false;
+}
+
+loadIndex();
+</script>
+{% endblock %}

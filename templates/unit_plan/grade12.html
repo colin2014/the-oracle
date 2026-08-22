@@ -1,0 +1,69 @@
+{% extends "unit_plan/_base.html" %}
+{% block title %}Grade 12 Tracker{% endblock %}
+
+{% block content %}
+<header class="sem-header">
+  <div class="wrap">
+    <div class="breadcrumb"><a href="{{ url_for('unit_plan.index') }}">Home</a> / Grade 12 Tracker</div>
+    <h1>Grade 12 — Syllabus Tracker &amp; Exam-Prep Plan</h1>
+    <p class="sub">This cohort didn't follow the unit plans week-for-week, so this tracks the individual syllabus statements directly. {% if can_edit %}Mark each one done or not done, then drag what's left into an ordered plan to get through before exams.{% else %}Below is the current status and the planned order for getting through everything before exams.{% endif %}</p>
+
+    <div id="g12-stats" class="g12-stats"></div>
+
+    <div class="toolbar">
+      <input class="search-input" id="g12-search" type="text" placeholder="Search by code or keyword, e.g. “A3.2”, “encryption”, “recursion”…" />
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="g12-board">
+    <div class="g12-column">
+      <h3>Not Done <span class="g12-col-count" id="g12-count-incomplete">0</span></h3>
+      <p class="g12-col-sub">Not yet taught this year</p>
+      <div class="g12-list" id="g12-incomplete"></div>
+    </div>
+    <div class="g12-column">
+      <h3>Done <span class="g12-col-count" id="g12-count-complete">0</span></h3>
+      <p class="g12-col-sub">Already taught this year</p>
+      <div class="g12-list" id="g12-complete"></div>
+    </div>
+    <div class="g12-column">
+      <h3>Plan to Exam Date <span class="g12-col-count" id="g12-count-plan">0</span></h3>
+      <p class="g12-col-sub">{% if can_edit %}Drag topics here from either column, then drag within this list to reorder your teaching sequence{% else %}The teaching order planned to get through everything before exams{% endif %}</p>
+      <div class="g12-list" id="g12-plan"></div>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <span>DP Computer Science unit planner</span>
+    <a href="{{ url_for('unit_plan.index') }}">← Back to course overview</a>
+  </div>
+</footer>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="modal-close" aria-label="Close">✕</button>
+    <div id="modal-body"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='unit_plan/app.js') }}?v={{ asset_v }}"></script>
+<script src="{{ url_for('static', filename='unit_plan/editor.js') }}?v={{ asset_v }}"></script>
+<script src="{{ url_for('static', filename='unit_plan/grade12.js') }}?v={{ asset_v }}"></script>
+<script>
+Promise.all([
+  fetch("{{ url_for('unit_plan.api_course_data') }}").then(function (r) { return r.json(); }),
+  fetch("{{ url_for('unit_plan.api_grade12') }}").then(function (r) { return r.json(); })
+]).then(function (results) {
+  window.COURSE_DATA = results[0];
+  window.GRADE12_TOPICS = results[1].topics;
+  window.GRADE12_EXAM_PLAN = results[1].plan;
+  document.dispatchEvent(new Event("unitplan:grade12-ready"));
+});
+</script>
+{% endblock %}

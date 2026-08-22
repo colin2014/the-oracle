@@ -1,0 +1,540 @@
+{% extends "admin_base.html" %}
+{% block title %}Quiz — {{ page_title }}{% endblock %}
+
+{% block content %}
+<style>
+    /* Let this page use the full window width so the pages panel sits flush right.
+       The fade-in animation is disabled because its transform would make .admin-main
+       the containing block for the fixed-position pages panel, pulling it off the
+       viewport's right edge. */
+    .admin-main { max-width: none; animation: none; }
+    .qm-container { max-width: 900px; margin: 0 auto; }
+    .qm-header { margin-bottom: 1.5rem; }
+    .qm-header h1 { font-size: 1.5rem; margin: 0 0 0.3rem 0; }
+    .qm-header p { color: var(--text-light); margin: 0; font-size: 0.9rem; }
+
+    .qm-card {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .qm-card h2 { font-size: 1rem; margin: 0 0 0.5rem 0; }
+    .qm-card .hint { font-size: 0.85rem; color: var(--text-light); margin-bottom: 1rem; }
+
+    .qm-card textarea {
+        width: 100%;
+        min-height: 140px;
+        padding: 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--bg-light);
+        color: var(--text-dark);
+        font-family: 'Courier New', monospace;
+        font-size: 0.82rem;
+        box-sizing: border-box;
+        resize: vertical;
+        white-space: pre-wrap;
+        overflow-wrap: break-word;
+    }
+
+    .qm-row { display: flex; gap: 0.75rem; align-items: center; margin-top: 0.75rem; flex-wrap: wrap; }
+    .qm-btn {
+        padding: 0.55rem 1.2rem;
+        background: var(--primary, #8366e8);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    .qm-btn.secondary { background: var(--bg-light); color: var(--text-dark); border: 1px solid var(--border); }
+    .qm-status { font-size: 0.85rem; color: var(--text-light); }
+    .qm-status.ok { color: #10b981; }
+    .qm-status.err { color: #ef4444; }
+
+    .qm-question {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        background: var(--bg-light);
+    }
+    .qm-question .q-text { font-weight: 600; margin-bottom: 0.4rem; overflow-wrap: break-word; }
+    .qm-question .q-ms { font-size: 0.88rem; color: #059669; margin-bottom: 0.4rem; overflow-wrap: break-word; }
+    .qm-question .q-explain { font-size: 0.85rem; color: var(--text-dark); margin-bottom: 0.4rem; overflow-wrap: break-word; padding: 0.5rem; background: rgba(157, 132, 255, 0.08); border-left: 3px solid var(--primary); border-radius: 3px; }
+    .qm-question .q-kw { font-size: 0.8rem; color: var(--text-light); font-family: 'Courier New', monospace; white-space: pre-wrap; overflow-wrap: break-word; word-break: break-word; }
+    .qm-question .q-top { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; }
+    .q-delete { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.85rem; white-space: nowrap; }
+    .q-edit { background: none; border: none; color: var(--primary, #8366e8); cursor: pointer; font-size: 0.85rem; white-space: nowrap; }
+    .q-edit-form { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem; }
+    .q-edit-form label { font-size: 0.78rem; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.04em; }
+    .q-edit-form textarea { min-height: 60px; }
+    .q-edit-form .kw-box { min-height: 80px; }
+    label.qm-check { font-size: 0.85rem; color: var(--text-dark); display: flex; align-items: center; gap: 0.4rem; }
+
+    /* Right-hand pages panel */
+    .qp-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 300px;
+        height: 100vh;
+        background: var(--bg-white);
+        border-left: 1px solid var(--border);
+        box-shadow: -2px 0 8px rgba(0, 0, 0, 0.06);
+        display: flex;
+        flex-direction: column;
+        z-index: 50;
+        transform: translateX(100%);
+        transition: transform 0.2s ease;
+    }
+    .qp-panel.open { transform: translateX(0); }
+    .qp-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.9rem 1rem;
+        border-bottom: 1px solid var(--border);
+    }
+    .qp-head h2 { font-size: 0.95rem; margin: 0; }
+    .qp-close { background: none; border: none; color: var(--text-light); cursor: pointer; font-size: 1.1rem; line-height: 1; }
+    .qp-list { flex: 1; overflow-y: auto; padding: 0.5rem; }
+    .qp-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.5rem 0.6rem;
+        border-radius: 6px;
+        text-decoration: none;
+        color: var(--text-dark);
+        font-size: 0.85rem;
+        margin-bottom: 2px;
+    }
+    .qp-item:hover { background: var(--bg-light); }
+    .qp-item.current { background: rgba(123, 44, 191, 0.1); font-weight: 600; }
+    .qp-item .qp-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .qp-badge { font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: 999px; white-space: nowrap; }
+    .qp-badge.has { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    .qp-badge.none { background: var(--bg-light); color: var(--text-light); font-weight: 400; }
+    .qp-toggle {
+        position: fixed;
+        top: 50%;
+        right: 0;
+        transform: translateY(-50%);
+        background: var(--primary, #8366e8);
+        color: white;
+        border: none;
+        border-radius: 8px 0 0 8px;
+        padding: 0.7rem 0.45rem;
+        cursor: pointer;
+        font-size: 0.8rem;
+        writing-mode: vertical-rl;
+        z-index: 49;
+    }
+    body.qp-open { padding-right: 300px; }
+    @media (max-width: 1250px) {
+        body.qp-open { padding-right: 0; }
+    }
+</style>
+
+<div class="qm-container">
+    <div class="qm-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+        <div>
+            <h1>📝 Manage quiz — {{ page_title }}</h1>
+            <p>
+                <a href="/book/{{ book_folder }}/quizzes">All quizzes in this book</a> ·
+                <a href="/book/{{ book_folder }}/page/{{ page_id }}">View page</a> ·
+                <a href="{{ url_for('quiz.quiz_review') }}">Review queue</a>
+            </p>
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <a id="prevPageBtn" class="qm-btn secondary" style="display: none; text-decoration: none;" title="">← Prev</a>
+            <a id="nextPageBtn" class="qm-btn secondary" style="display: none; text-decoration: none;" title="">Next →</a>
+        </div>
+    </div>
+
+    <div class="qm-card">
+        <h2>✨ Generate with AI</h2>
+        <div class="hint">One click: the section text is sent to the AI and the questions, markschemes and auto-marking keywords are imported automatically. Review and edit them below afterwards.</div>
+        <div class="qm-row" style="margin-top: 0;">
+            <label class="qm-check">Questions: <input type="number" id="aiNumQuestions" value="9" min="1" max="20" style="width: 60px; padding: 0.3rem;"></label>
+            <label class="qm-check"><input type="checkbox" id="aiReplaceExisting"> Replace existing questions</label>
+            <button class="qm-btn" id="aiGenerateBtn" onclick="aiGenerate()">✨ Generate questions</button>
+            <span class="qm-status" id="aiStatus"></span>
+        </div>
+    </div>
+
+    <div class="qm-card">
+        <h2>1 · Copy the AI prompt (manual fallback)</h2>
+        <div class="hint">This bundles the section text with instructions to generate questions, markschemes and auto-marking keywords. Paste it into your AI of choice.</div>
+        <div class="qm-row" style="margin-top: 0;">
+            <label class="qm-check">Questions: <input type="number" id="numQuestions" value="9" min="1" max="20" style="width: 60px; padding: 0.3rem;"></label>
+            <button class="qm-btn" onclick="copyPrompt()">📋 Copy prompt to clipboard</button>
+            <span class="qm-status" id="promptStatus"></span>
+        </div>
+        <div class="qm-row"><textarea id="promptBox" placeholder="Prompt appears here after you click copy…" readonly></textarea></div>
+    </div>
+
+    <div class="qm-card">
+        <h2>2 · Paste the AI's JSON back</h2>
+        <div class="hint">Paste the JSON reply below (code fences are fine) and import. Questions go live for students immediately.</div>
+        <textarea id="importBox" placeholder='{"questions": [{"text": "…", "markscheme": "…", "keywords": [["…"]]}]}'></textarea>
+        <div class="qm-row">
+            <button class="qm-btn" onclick="importQuestions()">⬆ Import questions</button>
+            <label class="qm-check"><input type="checkbox" id="replaceExisting"> Replace existing questions</label>
+            <span class="qm-status" id="importStatus"></span>
+        </div>
+    </div>
+
+    <div class="qm-card">
+        <h2 style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+            <span>3 · Current questions</span>
+            <span style="display: flex; gap: 0.75rem; align-items: center; font-weight: 400;">
+                <span class="qm-status" id="deleteAllStatus"></span>
+                <button class="q-delete" id="deleteAllBtn" style="display: none;" onclick="deleteAllPageQuestions()">🗑 Delete all on this page</button>
+            </span>
+        </h2>
+        <div id="questionList"><div class="hint">Loading…</div></div>
+    </div>
+</div>
+
+<button class="qp-toggle" id="pagesToggle" onclick="togglePagesPanel()" title="Show book pages">📖 Pages</button>
+<aside class="qp-panel" id="pagesPanel">
+    <div class="qp-head">
+        <h2>📖 Pages in this book</h2>
+        <button class="qp-close" onclick="togglePagesPanel()" title="Hide panel">✕</button>
+    </div>
+    <div class="qp-list" id="pagesPanelList"><div class="hint" style="padding: 0.5rem;">Loading…</div></div>
+</aside>
+
+<script>
+const BOOK_FOLDER = {{ book_folder | tojson }};
+const PAGE_ID = {{ page_id | tojson }};
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+}
+
+// 700px wide so it fits in the empty space right of the content.
+// Size features make it a separate window rather than a tab; the shared
+// name means every page reuses one Gemini window instead of stacking them.
+function openGemini() {
+    // Positioned 800px in from the right edge of the screen
+    const left = Math.max(0, screen.availWidth - 700 - 800);
+    window.open('https://gemini.google.com/app', 'gemini-window', `width=700,height=900,left=${left}`);
+}
+
+async function copyPrompt() {
+    const n = document.getElementById('numQuestions').value || 5;
+    const status = document.getElementById('promptStatus');
+    status.textContent = 'Building…'; status.className = 'qm-status';
+    try {
+        const res = await fetch(`/api/quiz/${encodeURIComponent(BOOK_FOLDER)}/${encodeURIComponent(PAGE_ID)}/export-prompt?n=${n}`);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        document.getElementById('promptBox').value = data.prompt;
+        try {
+            // Copy BEFORE opening Gemini: the clipboard API only works while
+            // this page still has focus, and the popup would steal it.
+            await navigator.clipboard.writeText(data.prompt);
+            status.textContent = '✓ Copied — paste it into Gemini'; status.className = 'qm-status ok';
+        } catch (e) {
+            status.textContent = 'Shown below — copy manually, then paste into Gemini'; status.className = 'qm-status';
+        }
+        openGemini();
+    } catch (e) {
+        status.textContent = '✗ ' + e.message; status.className = 'qm-status err';
+    }
+}
+
+async function aiGenerate() {
+    const status = document.getElementById('aiStatus');
+    const btn = document.getElementById('aiGenerateBtn');
+    const n = document.getElementById('aiNumQuestions').value || 5;
+    const replace = document.getElementById('aiReplaceExisting').checked;
+    if (replace && !confirm('Replace all existing questions on this page with newly generated ones?')) return;
+    btn.disabled = true;
+    status.className = 'qm-status';
+
+    // Animated loading dots
+    let dotCount = 0;
+    const loadingInterval = setInterval(() => {
+        dotCount = (dotCount + 1) % 4;
+        status.textContent = '✨ Claude is thinking' + '.'.repeat(dotCount + 1);
+    }, 500);
+
+    try {
+        const res = await fetch(`/api/quiz/${encodeURIComponent(BOOK_FOLDER)}/${encodeURIComponent(PAGE_ID)}/ai-generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ count: parseInt(n), replace }),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Generation failed');
+        status.textContent = `✓ Generated ${data.imported} question(s) — review them below`; status.className = 'qm-status ok';
+        loadQuestions();
+    } catch (e) {
+        status.textContent = '✗ ' + e.message; status.className = 'qm-status err';
+    } finally {
+        clearInterval(loadingInterval);
+        btn.disabled = false;
+    }
+}
+
+async function importQuestions() {
+    const status = document.getElementById('importStatus');
+    const text = document.getElementById('importBox').value.trim();
+    if (!text) { status.textContent = 'Paste the JSON first'; status.className = 'qm-status err'; return; }
+    status.textContent = 'Importing…'; status.className = 'qm-status';
+    try {
+        const res = await fetch(`/api/quiz/${encodeURIComponent(BOOK_FOLDER)}/${encodeURIComponent(PAGE_ID)}/import`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ json_text: text, replace: document.getElementById('replaceExisting').checked })
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Import failed');
+        status.textContent = `✓ Imported ${data.imported} question(s)`; status.className = 'qm-status ok';
+        document.getElementById('importBox').value = '';
+        loadQuestions();
+    } catch (e) {
+        status.textContent = '✗ ' + e.message; status.className = 'qm-status err';
+    }
+}
+
+async function deleteQuestion(id) {
+    if (!confirm('Delete this question (and any student answers to it)?')) return;
+    await fetch(`/api/quiz/question/${id}`, { method: 'DELETE' });
+    loadQuestions();
+}
+
+async function deleteAllPageQuestions() {
+    if (!confirm('Delete ALL questions on this page?\n\nThis also deletes every student answer to them and cannot be undone.')) return;
+    const status = document.getElementById('deleteAllStatus');
+    status.textContent = 'Deleting…'; status.className = 'qm-status';
+    try {
+        const res = await fetch(`/api/quiz/${encodeURIComponent(BOOK_FOLDER)}/questions?page_id=${encodeURIComponent(PAGE_ID)}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Delete failed');
+        status.textContent = `✓ Deleted ${data.deleted} question(s)`; status.className = 'qm-status ok';
+        loadQuestions();
+    } catch (e) {
+        status.textContent = '✗ ' + e.message; status.className = 'qm-status err';
+    }
+}
+
+let questionCache = [];
+
+async function loadQuestions() {
+    const list = document.getElementById('questionList');
+    const res = await fetch(`/api/quiz/${encodeURIComponent(BOOK_FOLDER)}/${encodeURIComponent(PAGE_ID)}/questions`);
+    const data = await res.json();
+    questionCache = data.questions || [];
+    document.getElementById('deleteAllBtn').style.display = questionCache.length ? 'inline' : 'none';
+    if (!questionCache.length) { list.innerHTML = '<div class="hint">No questions yet.</div>'; return; }
+    list.innerHTML = '';
+    questionCache.forEach((q, i) => {
+        const div = document.createElement('div');
+        div.className = 'qm-question';
+        div.id = `question-${q.id}`;
+        div.innerHTML = questionViewHTML(q, i);
+        list.appendChild(div);
+    });
+}
+
+function questionViewHTML(q, i) {
+    const isMcq = q.question_type === 'multiple_choice';
+    const typeBadge = isMcq
+        ? '<span style="display:inline-block;margin-left:0.5rem;padding:0.1rem 0.5rem;border-radius:999px;background:rgba(157,132,255,0.15);color:var(--primary);font-size:0.7rem;font-weight:700;vertical-align:middle;">🔘 Multiple choice</span>'
+        : '';
+    // MCQ is authored via the batch generator; teachers can delete but not inline-edit yet.
+    const editBtn = isMcq ? '' : `<button class="q-edit" onclick="editQuestion(${q.id}, ${i})">✏️ Edit</button>`;
+    let html = `
+        <div class="q-top">
+            <div style="flex: 1;">
+                <div style="font-size: 0.8rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 0.25rem;">
+                    ${escapeHtml(q.difficulty || 'question')} · ${q.marks || 1} mark${q.marks !== 1 ? 's' : ''}${typeBadge}
+                </div>
+                ${q.summary ? `<div style="font-size: 0.9rem; color: var(--primary); font-weight: 600; margin-bottom: 0.4rem;">📋 ${escapeHtml(q.summary)}</div>` : ''}
+                <div class="q-text">Q${i + 1}. ${escapeHtml(q.text)}</div>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                ${editBtn}
+                <button class="q-delete" onclick="deleteQuestion(${q.id})">🗑 Delete</button>
+            </div>
+        </div>`;
+    if (isMcq) {
+        const correct = q.correct_options || [];
+        const opts = (q.options || []).map((opt, oi) => {
+            const ok = correct.includes(oi);
+            return `<div style="padding:0.35rem 0.6rem;margin:0.2rem 0;border-radius:6px;${ok ? 'background:rgba(16,185,129,0.12);font-weight:600;' : 'background:var(--bg-light);'}">${ok ? '✓ ' : '&nbsp;&nbsp;&nbsp; '}${escapeHtml(opt)}</div>`;
+        }).join('');
+        html += `<div style="margin-top:0.5rem;">${opts}</div>`;
+        html += `<div class="q-kw">${correct.length > 1 ? 'multi-select · ' : ''}correct: ${escapeHtml(JSON.stringify(correct))}</div>`;
+    } else {
+        html += `<div class="q-ms">✓ Markscheme: ${escapeHtml(q.markscheme)}</div>`;
+        html += `<div class="q-kw">keywords: ${escapeHtml(JSON.stringify(q.keywords))}</div>`;
+    }
+    if (q.explanation) {
+        html += `<div class="q-explain">💡 Deeper explanation: ${escapeHtml(q.explanation)}</div>`;
+    }
+    return html;
+}
+
+function editQuestion(id, i) {
+    const q = questionCache.find(x => x.id === id);
+    const div = document.getElementById(`question-${id}`);
+    if (!q || !div) return;
+    div.innerHTML = `
+        <div class="q-edit-form">
+            <label>Summary (brief title shown in analytics)</label>
+            <input type="text" class="ef-summary" value="${escapeHtml(q.summary || '')}" placeholder="e.g., CPU Cache Levels" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem;">
+            <label>Marks</label>
+            <input type="number" class="ef-marks" value="${q.marks || 1}" min="1" max="10" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; width: 60px; font-size: 0.85rem;">
+            <label>Question</label>
+            <textarea class="ef-text">${escapeHtml(q.text)}</textarea>
+            <label>Markscheme</label>
+            <textarea class="ef-ms">${escapeHtml(q.markscheme)}</textarea>
+            <label>Deeper Explanation (optional — why this answer matters, common misconceptions, context)</label>
+            <textarea class="ef-explain" style="min-height: 80px;">${escapeHtml(q.explanation || '')}</textarea>
+            <label>Keywords (JSON — list of groups; answer needs one phrase from every group)</label>
+            <textarea class="ef-kw kw-box">${escapeHtml(JSON.stringify(q.keywords, null, 2))}</textarea>
+            <div class="qm-row" style="margin-top: 0;">
+                <button class="qm-btn" onclick="saveQuestion(${id}, ${i})">💾 Save</button>
+                <button class="qm-btn secondary" onclick="cancelEdit(${id}, ${i})">Cancel</button>
+                <span class="qm-status" id="editStatus-${id}"></span>
+            </div>
+        </div>`;
+    div.querySelector('.ef-summary').focus();
+}
+
+function cancelEdit(id, i) {
+    const q = questionCache.find(x => x.id === id);
+    const div = document.getElementById(`question-${id}`);
+    if (q && div) div.innerHTML = questionViewHTML(q, i);
+}
+
+async function saveQuestion(id, i) {
+    const div = document.getElementById(`question-${id}`);
+    const status = document.getElementById(`editStatus-${id}`);
+    const body = {
+        text: div.querySelector('.ef-text').value.trim(),
+        markscheme: div.querySelector('.ef-ms').value.trim(),
+        explanation: div.querySelector('.ef-explain').value.trim(),
+        summary: div.querySelector('.ef-summary').value.trim(),
+        marks: parseInt(div.querySelector('.ef-marks').value) || 1,
+        keywords: div.querySelector('.ef-kw').value.trim(),
+    };
+    try {
+        if (body.keywords) JSON.parse(body.keywords);  // fail fast with a clear message
+    } catch (e) {
+        status.textContent = '✗ Keywords are not valid JSON: ' + e.message;
+        status.className = 'qm-status err';
+        return;
+    }
+    status.textContent = 'Saving…'; status.className = 'qm-status';
+    try {
+        const res = await fetch(`/api/quiz/question/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Save failed');
+        loadQuestions();
+    } catch (e) {
+        status.textContent = '✗ ' + e.message; status.className = 'qm-status err';
+    }
+}
+
+// Right-hand pages panel (hideable, remembers state)
+function togglePagesPanel(forceOpen) {
+    const panel = document.getElementById('pagesPanel');
+    const open = typeof forceOpen === 'boolean' ? forceOpen : !panel.classList.contains('open');
+    panel.classList.toggle('open', open);
+    document.body.classList.toggle('qp-open', open);
+    document.getElementById('pagesToggle').style.display = open ? 'none' : 'block';
+    localStorage.setItem('quizPagesPanelOpen', open ? '1' : '0');
+}
+
+function renderPagesPanel(pages, counts) {
+    const list = document.getElementById('pagesPanelList');
+    if (!pages.length) {
+        list.innerHTML = '<div class="hint" style="padding: 0.5rem;">This book has no pages.</div>';
+        return;
+    }
+    list.innerHTML = pages.map(p => {
+        const n = counts[p.id] || 0;
+        const current = String(p.id) === String(PAGE_ID);
+        return `
+            <a class="qp-item${current ? ' current' : ''}" href="/book/${encodeURIComponent(BOOK_FOLDER)}/quiz/${encodeURIComponent(p.id)}/manage" title="${escapeHtml(p.title)}">
+                <span class="qp-title">${escapeHtml(p.title)}</span>
+                <span class="qp-badge ${n ? 'has' : 'none'}">${n ? n + ' Q' + (n === 1 ? '' : 's') : 'no quiz'}</span>
+            </a>`;
+    }).join('');
+    const cur = list.querySelector('.qp-item.current');
+    if (cur) cur.scrollIntoView({ block: 'center' });
+}
+
+// Prev/next arrows following the book's page order + pages panel
+async function setupPageNav() {
+    try {
+        const [pagesRes, countsRes] = await Promise.all([
+            fetch(`/api/book/${encodeURIComponent(BOOK_FOLDER)}/pages`),
+            fetch(`/api/quiz/${encodeURIComponent(BOOK_FOLDER)}/counts`),
+        ]);
+        const pages = (await pagesRes.json()).pages || [];
+        const counts = (await countsRes.json()).counts || {};
+        renderPagesPanel(pages, counts);
+        if (localStorage.getItem('quizPagesPanelOpen') !== '0') togglePagesPanel(true);
+        const idx = pages.findIndex(p => String(p.id) === String(PAGE_ID));
+        if (idx === -1) return;
+        const wire = (btn, page, label) => {
+            if (!page) return;
+            btn.href = `/book/${encodeURIComponent(BOOK_FOLDER)}/quiz/${encodeURIComponent(page.id)}/manage`;
+            btn.title = page.title;
+            btn.textContent = label;
+            btn.style.display = 'inline-block';
+            // On click: copy the destination page's prompt, open Gemini, then
+            // navigate. All inside the click gesture — a freshly loaded page
+            // can neither write the clipboard nor open popups on its own.
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const n = document.getElementById('numQuestions').value || 5;
+                try {
+                    const res = await fetch(`/api/quiz/${encodeURIComponent(BOOK_FOLDER)}/${encodeURIComponent(page.id)}/export-prompt?n=${n}`);
+                    const data = await res.json();
+                    if (data.prompt) {
+                        // Copy before opening Gemini — the popup steals the focus the clipboard API needs
+                        await navigator.clipboard.writeText(data.prompt);
+                        sessionStorage.setItem('promptAutoCopied', '1');
+                    }
+                } catch (err) { /* copy is best-effort; still navigate */ }
+                openGemini();
+                window.location.href = btn.href;
+            });
+        };
+        wire(document.getElementById('prevPageBtn'), pages[idx - 1], '← Prev');
+        wire(document.getElementById('nextPageBtn'), pages[idx + 1], 'Next →');
+    } catch (e) { /* nav stays hidden */ }
+}
+
+loadQuestions();
+setupPageNav();
+
+// Arrived via Prev/Next? The prompt for THIS page was already copied during that click.
+if (sessionStorage.getItem('promptAutoCopied')) {
+    sessionStorage.removeItem('promptAutoCopied');
+    const status = document.getElementById('promptStatus');
+    status.textContent = '✓ Prompt already copied — paste it into Gemini';
+    status.className = 'qm-status ok';
+}
+</script>
+{% endblock %}

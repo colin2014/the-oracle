@@ -1,0 +1,66 @@
+{% extends "unit_plan/_base.html" %}
+{% block title %}
+{% if semester_key == 'year1sem1' %}Year 1 · Semester 1
+{% elif semester_key == 'year1sem2' %}Year 1 · Semester 2
+{% elif semester_key == 'year2sem1' %}Year 2 · Semester 1
+{% else %}Year 2 · Semester 2
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<header class="sem-header">
+  <div class="wrap">
+    <div class="breadcrumb">
+      <a href="{{ url_for('unit_plan.index') }}">Home</a> /
+      {% if semester_key == 'year1sem1' %} Year 1 / Semester 1
+      {% elif semester_key == 'year1sem2' %} Year 1 / Semester 2
+      {% elif semester_key == 'year2sem1' %} Year 2 / Semester 1
+      {% else %} Year 2 / Semester 2
+      {% endif %}
+    </div>
+    <h1 id="sem-title">Loading…</h1>
+    <p class="sub" id="sem-sub"></p>
+    <span class="daterange" id="sem-daterange"></span>
+
+    <div class="toolbar">
+      <input class="search-input" id="week-search" type="text" placeholder="Search topics, e.g. “recursion”, “Big O”, “hardware”…" />
+      <label class="wk-filter-check"><input type="checkbox" id="wk-not-taught-filter" /> Not yet taught</label>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--accent-2)"></span>Full lesson plan available</span>
+        <span><span class="swatch" style="background:var(--border)"></span>Break week</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="week-grid" id="week-grid"></div>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <span>DP Computer Science unit planner</span>
+    <a href="{{ url_for('unit_plan.index') }}">← Back to course overview</a>
+  </div>
+</footer>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="modal-close" aria-label="Close">✕</button>
+    <div id="modal-body"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='unit_plan/app.js') }}?v={{ asset_v }}"></script>
+<script src="{{ url_for('static', filename='unit_plan/editor.js') }}?v={{ asset_v }}"></script>
+<script>
+fetch("{{ url_for('unit_plan.api_course_data') }}")
+  .then(function (r) { return r.json(); })
+  .then(function (data) {
+    window.COURSE_DATA = data;
+    initSemesterPage("{{ semester_key }}");
+  });
+</script>
+{% endblock %}

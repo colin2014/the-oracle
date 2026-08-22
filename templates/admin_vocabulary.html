@@ -1,0 +1,259 @@
+{% extends "admin_base.html" %}
+{% block title %}Vocabulary Management — Admin{% endblock %}
+
+{% block content %}
+<style>
+    .vocab-container { max-width: 1100px; margin: 0 auto; }
+    .vocab-header h1 { font-size: 1.5rem; margin: 0 0 0.3rem 0; }
+    .vocab-header p { color: var(--text-light); margin: 0 0 1.5rem 0; font-size: 0.9rem; }
+    .vocab-card {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.25rem;
+        margin-bottom: 1.25rem;
+    }
+    .vocab-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .vocab-table th, .vocab-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .vocab-table th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-light); }
+    .vocab-table input, .vocab-table textarea {
+        width: 100%; padding: 0.4rem 0.5rem; border: 1px solid var(--border);
+        border-radius: 5px; background: var(--bg-white); color: var(--text-dark);
+        font-size: 0.85rem; font-family: inherit;
+    }
+    .vocab-table textarea { resize: vertical; min-height: 2.4rem; }
+    .vocab-del { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1rem; }
+    .vocab-actions { margin-top: 0.9rem; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+    .vocab-status { font-size: 0.85rem; color: var(--text-light); }
+    .vocab-info { background: rgba(59, 130, 246, 0.08); border-left: 3px solid #3b82f6; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; }
+    .vocab-info p { margin: 0.3rem 0; font-size: 0.9rem; }
+    .vocab-empty { color: var(--text-light); padding: 1rem 0; font-size: 0.9rem; }
+</style>
+
+<div class="vocab-container">
+    <div class="subnav-tabs">
+        <a href="{{ url_for('flashcards.flashcards_home') }}" class="subnav-tab">🃏 Flashcard Sets</a>
+        <a href="{{ url_for('flashcards.vocabulary_management') }}" class="subnav-tab active">📚 Vocabulary</a>
+    </div>
+    <div class="vocab-header">
+        <h1>📚 Vocabulary Management</h1>
+        <p id="bookTitle">Select a book to manage vocabulary</p>
+    </div>
+
+    <!-- Book selector -->
+    <div class="vocab-card">
+        <label for="bookSelect" style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Choose a book</label>
+        <select id="bookSelect" style="width:100%; max-width:480px; padding:0.55rem 0.7rem; border:1px solid var(--border); border-radius:6px; background:var(--bg-white); color:var(--text-dark); font-size:0.9rem;">
+            <option value="">— loading books —</option>
+        </select>
+    </div>
+
+    <!-- Vocabulary section -->
+    <div class="vocab-card" id="vocabSection" style="display:none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+            <h2 style="font-size:1.1rem; margin:0;">All vocabulary terms</h2>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                <button class="btn btn-primary" id="scanBtn" onclick="scanVocabulary()">🔍 Scan & Add New Terms</button>
+                <button class="btn" style="background:#ef4444; color:white;" id="deleteAllBtn" onclick="deleteAllVocabulary()">🗑 Delete All</button>
+            </div>
+        </div>
+
+        <div class="vocab-info">
+            <p><strong id="termCount">0</strong> terms found</p>
+            <p id="duplicateWarning" style="color:#f97316; font-size:0.85rem; display:none;"></p>
+            <p id="lastScan" style="color:var(--text-light); font-size:0.85rem;"></p>
+        </div>
+
+        <table class="vocab-table">
+            <thead><tr><th style="width:20%;">Term</th><th style="width:60%;">Definition</th><th style="width:15%;">Page</th><th style="width:36px;"></th></tr></thead>
+            <tbody id="vocabBody"></tbody>
+        </table>
+
+        <div class="vocab-actions">
+            <button class="btn" onclick="addVocabRow()">＋ Add term</button>
+            <button class="btn btn-primary" onclick="saveVocabulary()">Save changes</button>
+            <span class="vocab-status" id="saveStatus"></span>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentBook = null;
+let vocabData = [];
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+}
+
+async function loadBooks() {
+    const sel = document.getElementById('bookSelect');
+    try {
+        const res = await fetch('/api/books');
+        const books = (await res.json()).books || [];
+        sel.innerHTML = '<option value="">— choose a book —</option>' +
+            books.map(b => `<option value="${escapeHtml(b.folder)}">${escapeHtml(b.title || b.folder)}</option>`).join('');
+    } catch (e) {
+        sel.innerHTML = '<option value="">Could not load books</option>';
+    }
+}
+
+async function loadVocabulary(bookFolder) {
+    currentBook = bookFolder;
+    const section = document.getElementById('vocabSection');
+    const vocabBody = document.getElementById('vocabBody');
+
+    try {
+        const res = await fetch(`/admin/api/vocabulary/${encodeURIComponent(bookFolder)}`);
+        const data = await res.json();
+
+        document.getElementById('bookTitle').textContent = data.book_title || bookFolder;
+        vocabData = data.vocabulary || [];
+
+        vocabBody.innerHTML = '';
+        vocabData.forEach(vocab => addVocabRow(vocab));
+
+        document.getElementById('termCount').textContent = vocabData.length;
+        section.style.display = 'block';
+        document.getElementById('saveStatus').textContent = '';
+    } catch (e) {
+        document.getElementById('vocabSection').style.display = 'none';
+        alert('Could not load vocabulary');
+    }
+}
+
+function addVocabRow(vocab) {
+    const body = document.getElementById('vocabBody');
+    const tr = document.createElement('tr');
+    if (vocab && vocab.id) tr.dataset.vocabId = vocab.id;
+    tr.innerHTML = `
+        <td><input class="v-term" value="${escapeHtml(vocab ? vocab.term : '')}" placeholder="Term"></td>
+        <td><textarea class="v-def" rows="1">${escapeHtml(vocab ? vocab.definition : '')}</textarea></td>
+        <td><input class="v-page" value="${escapeHtml(vocab ? (vocab.page_id || '') : '')}" placeholder="—"></td>
+        <td><button class="vocab-del" title="Delete term" onclick="this.closest('tr').remove();">✕</button></td>`;
+    body.appendChild(tr);
+    updateCount();
+}
+
+function updateCount() {
+    const n = document.querySelectorAll('#vocabBody tr').length;
+    document.getElementById('termCount').textContent = n;
+}
+
+async function saveVocabulary() {
+    if (!currentBook) return;
+    const status = document.getElementById('saveStatus');
+
+    status.textContent = 'Saving…';
+    const rows = [...document.querySelectorAll('#vocabBody tr')];
+    let saved = 0, failed = 0;
+
+    for (const tr of rows) {
+        const vocabId = tr.dataset.vocabId ? parseInt(tr.dataset.vocabId) : null;
+        const term = tr.querySelector('.v-term').value.trim();
+        const definition = tr.querySelector('.v-def').value.trim();
+
+        if (!term || !definition) continue;
+
+        try {
+            if (vocabId) {
+                // Update existing
+                const res = await fetch(`/admin/api/vocabulary/${vocabId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ term, definition }),
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    status.textContent = `✗ "${term}" conflicts with "${data.duplicate_of}" (${data.duplicate_type})`;
+                    tr.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                    failed++;
+                    continue;
+                }
+                saved++;
+                tr.style.backgroundColor = '';
+            }
+        } catch (e) {
+            status.textContent = '✗ Save failed: ' + e.message;
+            return;
+        }
+    }
+
+    status.textContent = saved > 0 ? `✓ Saved ${saved} term${saved !== 1 ? 's' : ''}` + (failed > 0 ? ` (${failed} conflicts)` : '') : '✗ No changes saved';
+    await loadVocabulary(currentBook);
+}
+
+async function scanVocabulary() {
+    if (!currentBook) return;
+    const status = document.getElementById('saveStatus');
+    const dupWarning = document.getElementById('duplicateWarning');
+
+    status.textContent = 'Scanning pages…';
+    dupWarning.style.display = 'none';
+    try {
+        const res = await fetch(`/admin/api/vocabulary/${encodeURIComponent(currentBook)}/scan`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Scan failed');
+
+        let msg = `✓ Found ${data.new_terms_added} new terms`;
+        if (data.duplicates_skipped > 0) {
+            msg += ` (skipped ${data.duplicates_skipped} duplicate term${data.duplicates_skipped !== 1 ? 's' : ''})`;
+            dupWarning.innerHTML = `<strong>⚠️ Skipped ${data.duplicates_skipped} duplicate term${data.duplicates_skipped !== 1 ? 's' : ''}:</strong><br>`;
+            if (data.skipped_details.length > 0) {
+                const detailsHtml = data.skipped_details.map(d => {
+                    return `• "${d.term}" - kept "${d.duplicate_of}"`;
+                }).join('<br>');
+                dupWarning.innerHTML += detailsHtml;
+            }
+            dupWarning.style.display = 'block';
+        }
+        status.textContent = msg;
+        await loadVocabulary(currentBook);
+    } catch (e) {
+        status.textContent = '✗ ' + e.message;
+    }
+}
+
+async function deleteAllVocabulary() {
+    if (!currentBook) return;
+
+    const count = document.querySelectorAll('#vocabBody tr').length;
+    if (count === 0) {
+        alert('No terms to delete.');
+        return;
+    }
+
+    const confirmed = confirm(`Are you sure you want to delete all ${count} vocabulary terms for this book? This cannot be undone.`);
+    if (!confirmed) return;
+
+    const status = document.getElementById('saveStatus');
+    status.textContent = 'Deleting all terms…';
+
+    try {
+        const res = await fetch(`/admin/api/vocabulary/${encodeURIComponent(currentBook)}/delete-all`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Delete failed');
+
+        status.textContent = `✓ Deleted ${data.deleted} terms`;
+        await loadVocabulary(currentBook);
+    } catch (e) {
+        status.textContent = '✗ ' + e.message;
+    }
+}
+
+document.getElementById('bookSelect').addEventListener('change', e => {
+    if (e.target.value) loadVocabulary(e.target.value);
+    else document.getElementById('vocabSection').style.display = 'none';
+});
+
+loadBooks();
+</script>
+{% endblock %}

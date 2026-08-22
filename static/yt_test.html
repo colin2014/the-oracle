@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>YouTube Embed Test</title>
+    <style>
+        body { font-family: sans-serif; max-width: 700px; margin: 2rem auto; }
+        .box { position: relative; padding-bottom: 56.25%; height: 0; margin-bottom: 2rem; background: #000; }
+        .box iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+        h3 { margin-bottom: 0.5rem; }
+    </style>
+</head>
+<body>
+    <h1>YouTube Embed Test</h1>
+    <p>If both players below fail with "An error occurred", the problem is the browser/viewer, not the app.</p>
+
+    <h3>1. youtube-nocookie.com (what the app now uses)</h3>
+    <div class="box">
+        <iframe src="https://www.youtube-nocookie.com/embed/clCPQo0-quo?rel=0&playsinline=1"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    </div>
+
+    <h3>2. youtube.com (standard embed)</h3>
+    <div class="box">
+        <iframe src="https://www.youtube.com/embed/clCPQo0-quo?rel=0&playsinline=1"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+    </div>
+
+    <h3>3. Direct link</h3>
+    <p><a href="https://www.youtube.com/watch?v=clCPQo0-quo" target="_blank">Open the same video on youtube.com</a></p>
+</body>
+</html>

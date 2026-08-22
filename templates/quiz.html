@@ -1,0 +1,1174 @@
+{% extends "student_base.html" %}
+{% block title %}Quiz — {{ page_title }}{% endblock %}
+
+{% block content %}
+<style>
+    .quiz-container {
+        display: grid;
+        grid-template-columns: 1fr 280px;
+        gap: 2rem;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1rem;
+    }
+
+    .quiz-main { }
+
+    .score-card {
+        background: var(--bg-white);
+        border: 2px solid var(--primary);
+        border-radius: var(--radius);
+        padding: 1.5rem;
+        height: fit-content;
+        position: sticky;
+        top: 1rem;
+    }
+
+    .score-card h3 {
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-light);
+        margin: 0 0 1rem 0;
+        letter-spacing: 0.05em;
+    }
+
+    .score-card-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .score-card-section:last-child {
+        margin-bottom: 0;
+    }
+
+    .score-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.6rem;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .score-row:last-child {
+        border-bottom: none;
+    }
+
+    .score-label {
+        font-size: 0.85rem;
+        color: var(--text-light);
+    }
+
+    .score-value {
+        font-weight: 700;
+        color: var(--primary);
+        font-size: 1.1rem;
+    }
+
+    .score-divider {
+        border-top: 2px solid var(--primary);
+        margin: 1rem 0;
+    }
+
+    .quiz-mark-badge {
+        display: inline-block;
+        margin-left: 0.4rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    .quiz-header { margin-bottom: 2rem; }
+    .quiz-header h1 {
+        font-size: 1.6rem;
+        margin: 0 0 0.4rem 0;
+        background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    .quiz-header p { color: var(--text-light); margin: 0; font-size: 0.95rem; }
+
+    .quiz-progress {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        font-size: 0.9rem;
+        color: var(--text-light);
+    }
+
+    .progress-bar {
+        flex: 1;
+        height: 6px;
+        background: var(--border);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary-light), var(--primary-dark));
+        width: 0%;
+        transition: width 0.3s ease;
+    }
+
+    .quiz-card {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 2rem;
+        min-height: 400px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .quiz-card .q-number {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--primary);
+        margin-bottom: 0.75rem;
+    }
+
+    .quiz-card .q-text {
+        font-size: 1.15rem;
+        font-weight: 500;
+        color: var(--text-dark);
+        margin-bottom: 1.5rem;
+        line-height: 1.6;
+    }
+
+    .quiz-input-area {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .quiz-card textarea {
+        flex: 1;
+        min-height: 120px;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--bg-light);
+        color: var(--text-dark);
+        font-size: 0.95rem;
+        font-family: inherit;
+        resize: vertical;
+        box-sizing: border-box;
+    }
+
+    @media (max-width: 1024px) {
+        .quiz-container {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        .score-card {
+            position: static;
+            margin-bottom: 1rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .quiz-container {
+            max-width: 100%;
+            padding: 0.75rem;
+        }
+
+        .quiz-header h1 {
+            font-size: 1.3rem;
+            margin: 0 0 0.25rem 0;
+        }
+
+        .quiz-header p {
+            font-size: 0.8rem;
+        }
+
+        .quiz-card {
+            padding: 1rem;
+            min-height: auto;
+        }
+
+        .quiz-card .q-number {
+            font-size: 0.7rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .quiz-card .q-text {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .quiz-card textarea {
+            min-height: 100px;
+            padding: 0.6rem 0.75rem;
+            font-size: 0.9rem;
+        }
+
+        .answer-toolbar {
+            gap: 0.5rem;
+        }
+
+        .q-mic {
+            padding: 0.6rem 0.8rem;
+            font-size: 0.85rem;
+        }
+
+        .q-submit {
+            padding: 0.6rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .your-answer {
+            padding: 0.6rem 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .your-answer-label {
+            font-size: 0.7rem;
+        }
+
+        .your-answer-text {
+            font-size: 0.85rem;
+        }
+
+        .feedback-section {
+            padding: 0.75rem;
+            margin: 0.75rem 0 0 0;
+        }
+
+        .feedback-label {
+            font-size: 0.7rem;
+        }
+
+        .feedback-text {
+            font-size: 0.85rem;
+        }
+
+        .markscheme-section {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+        }
+
+        .markscheme-label {
+            font-size: 0.7rem;
+        }
+
+        .markscheme-text {
+            font-size: 0.85rem;
+        }
+
+        .quiz-nav {
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .quiz-nav button {
+            padding: 0.5rem 0.8rem;
+            font-size: 0.8rem;
+            flex: 1;
+        }
+
+        .quiz-progress {
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+        }
+
+        .q-result {
+            padding: 0.75rem;
+            font-size: 0.85rem;
+        }
+
+        .r-status {
+            font-size: 0.8rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .quiz-container {
+            padding: 0.5rem;
+        }
+
+        .quiz-header {
+            margin-bottom: 1rem;
+        }
+
+        .quiz-header h1 {
+            font-size: 1.1rem;
+        }
+
+        .quiz-header p {
+            font-size: 0.75rem;
+        }
+
+        .quiz-card {
+            padding: 0.75rem;
+        }
+
+        .quiz-card .q-text {
+            font-size: 0.95rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .quiz-card textarea {
+            min-height: 80px;
+            font-size: 0.85rem;
+        }
+
+        .answer-toolbar {
+            flex-direction: column;
+        }
+
+        .q-mic,
+        .q-submit {
+            width: 100%;
+            padding: 0.6rem;
+            font-size: 0.8rem;
+        }
+
+        .quiz-nav {
+            flex-direction: column;
+        }
+
+        .quiz-nav button {
+            width: 100%;
+        }
+
+        .quiz-complete h2 {
+            font-size: 1.2rem;
+        }
+
+        .quiz-complete p {
+            font-size: 0.85rem;
+        }
+
+        .quiz-complete-btn {
+            display: block;
+            width: 100%;
+            margin-top: 1rem;
+        }
+    }
+
+    .quiz-card textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(157, 132, 255, 0.1);
+    }
+
+    .answer-toolbar { display: flex; gap: 0.75rem; align-items: center; }
+    .answer-toolbar .q-submit { flex: 1; }
+    .q-mic {
+        padding: 0.7rem 1rem;
+        background: var(--bg-light);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .q-mic:hover { border-color: var(--primary); }
+    .q-mic.recording {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: #ef4444;
+        animation: mic-pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes mic-pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
+        50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    }
+
+    .q-submit {
+        padding: 0.7rem 1.6rem;
+        background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+
+    .q-submit:hover:not(:disabled) {
+        box-shadow: 0 6px 16px rgba(157, 132, 255, 0.3);
+        transform: translateY(-2px);
+    }
+
+    .q-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .q-result {
+        padding: 1.25rem;
+        border-radius: 8px;
+        font-size: 0.95rem;
+    }
+
+    .q-result.correct {
+        background: rgba(16, 185, 129, 0.1);
+        border-left: 4px solid #10b981;
+    }
+
+    .q-result.incorrect {
+        background: rgba(239, 68, 68, 0.08);
+        border-left: 4px solid #ef4444;
+    }
+
+    .q-result.unknown {
+        background: rgba(157, 132, 255, 0.08);
+        border-left: 4px solid var(--primary);
+    }
+
+    .q-result .r-status {
+        font-weight: 700;
+        margin-bottom: 0.75rem;
+        font-size: 0.95rem;
+    }
+
+    .your-answer {
+        margin-bottom: 1rem;
+        padding: 0.75rem 1rem;
+        background: var(--bg-light);
+        border-radius: 6px;
+        border-left: 3px solid var(--border);
+    }
+
+    .your-answer-label {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-light);
+        margin-bottom: 0.25rem;
+    }
+
+    .your-answer-text {
+        color: var(--text-dark);
+        font-style: italic;
+    }
+
+    .feedback-section {
+        margin: 1rem 0 0 0;
+        padding: 1rem;
+        background: rgba(157, 132, 255, 0.06);
+        border-radius: 6px;
+        border-left: 3px solid var(--primary);
+    }
+
+    .feedback-label {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .feedback-text {
+        color: var(--text-dark);
+        line-height: 1.5;
+        font-size: 0.9rem;
+    }
+
+    .markscheme-section {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px dashed var(--border);
+    }
+
+    .markscheme-label {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: #059669;
+        margin-bottom: 0.5rem;
+    }
+
+    .markscheme-text {
+        color: var(--text-dark);
+        line-height: 1.5;
+        font-size: 0.9rem;
+    }
+
+    .quiz-nav {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        justify-content: space-between;
+    }
+
+    .quiz-nav button {
+        padding: 0.6rem 1.2rem;
+        border: 1px solid var(--border);
+        background: var(--bg-light);
+        color: var(--text-dark);
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+
+    .quiz-nav button:hover:not(:disabled) {
+        background: rgba(157, 132, 255, 0.12);
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    .quiz-nav button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+    .quiz-complete {
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .quiz-complete h2 {
+        font-size: 1.4rem;
+        margin-bottom: 1rem;
+        color: var(--text-dark);
+    }
+
+    .quiz-complete p {
+        color: var(--text-light);
+        margin-bottom: 1.5rem;
+        line-height: 1.6;
+    }
+
+    .quiz-complete-btn {
+        display: inline-block;
+        padding: 0.7rem 1.6rem;
+        background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+
+    .quiz-complete-btn:hover {
+        box-shadow: 0 6px 16px rgba(157, 132, 255, 0.3);
+        transform: translateY(-2px);
+    }
+
+    .quiz-empty { text-align: center; padding: 3rem 1rem; color: var(--text-light); }
+    /* ── Retakes & improvement tracking ── */
+    .attempt-badge {
+        display: inline-block;
+        margin-left: 0.4rem;
+        padding: 0.15rem 0.6rem;
+        border-radius: 999px;
+        background: rgba(157, 132, 255, 0.15);
+        color: var(--primary);
+        font-size: 0.72rem;
+        font-weight: 700;
+        vertical-align: middle;
+    }
+
+    .retry-toolbar {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+    }
+
+    .q-improvement {
+        padding: 0.6rem 1.3rem;
+        border: 2px solid var(--primary);
+        background: none;
+        color: var(--primary);
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .q-improvement:hover:not(:disabled) {
+        background: rgba(157, 132, 255, 0.1);
+    }
+
+    .q-improvement:disabled { opacity: 0.6; cursor: wait; }
+
+    .previous-answer {
+        margin-bottom: 1rem;
+        padding: 0.75rem 1rem;
+        background: var(--bg-light);
+        border-radius: 6px;
+        border-left: 3px solid var(--primary);
+    }
+
+    .previous-answer-label {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-light);
+        margin-bottom: 0.25rem;
+    }
+
+    .previous-answer-text {
+        color: var(--text-dark);
+        font-style: italic;
+        font-size: 0.9rem;
+    }
+
+    .improvement-box {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: rgba(16, 185, 129, 0.07);
+        border-left: 4px solid #10b981;
+        border-radius: 8px;
+        font-size: 0.92rem;
+        line-height: 1.6;
+        white-space: pre-wrap;
+    }
+
+    .improvement-label {
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .quiz-retake-btn {
+        border: none;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: inherit;
+    }
+
+    /* ── Multiple choice ── */
+    .mcq-options { display: flex; flex-direction: column; gap: 0.6rem; }
+    .mcq-hint {
+        font-size: 0.85rem;
+        color: var(--text-light);
+        font-style: italic;
+        margin-bottom: 0.2rem;
+    }
+    .mcq-option {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.7rem;
+        padding: 0.85rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--bg-light);
+        cursor: pointer;
+        transition: all 0.15s;
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+    .mcq-option:hover { border-color: var(--primary); background: rgba(157, 132, 255, 0.06); }
+    .mcq-option input { margin-top: 0.2rem; flex-shrink: 0; cursor: pointer; }
+    .mcq-option:has(input:checked) {
+        border-color: var(--primary);
+        background: rgba(157, 132, 255, 0.1);
+    }
+
+    .mcq-review { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .mcq-review-option {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.6rem;
+        padding: 0.65rem 0.9rem;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--bg-light);
+        font-size: 0.92rem;
+        line-height: 1.5;
+    }
+    .mcq-review-option.mcq-correct {
+        border-color: #10b981;
+        background: rgba(16, 185, 129, 0.1);
+    }
+    .mcq-review-option.mcq-wrong {
+        border-color: #ef4444;
+        background: rgba(239, 68, 68, 0.08);
+    }
+    .mcq-icon { font-weight: 700; flex-shrink: 0; width: 1.1em; text-align: center; }
+    .mcq-correct .mcq-icon { color: #059669; }
+    .mcq-wrong .mcq-icon { color: #ef4444; }
+    .mcq-your {
+        margin-left: 0.4rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--primary);
+        white-space: nowrap;
+    }
+
+    .back-link { display: inline-block; margin-bottom: 1rem; color: var(--primary); text-decoration: none; font-size: 0.9rem; }
+
+    @media (max-width: 768px) {
+        .back-link {
+            font-size: 0.8rem;
+            margin-bottom: 0.75rem;
+        }
+    }
+</style>
+
+<div class="quiz-container">
+    <div class="quiz-main">
+        <a class="back-link" href="/book/{{ book_folder }}/page/{{ page_id }}">← Back to reading</a>
+        <div class="quiz-header">
+            <h1>📝 Section quiz</h1>
+            <p>{{ page_title }} — multiple-choice questions are marked instantly; written answers are provisionally marked and reviewed by your teacher.</p>
+        </div>
+        <div id="quizBody"><div class="quiz-empty">Loading questions…</div></div>
+    </div>
+    <div class="score-card">
+        <h3>Your score</h3>
+        <div class="score-card-section">
+            <div class="score-row">
+                <span class="score-label">This question</span>
+                <span class="score-value" id="currentQuestionScore">—</span>
+            </div>
+        </div>
+        <div class="score-divider"></div>
+        <div class="score-card-section">
+            <div class="score-row">
+                <span class="score-label">Quiz total</span>
+                <span class="score-value" id="totalQuizScore">0 / <span id="totalPossible">0</span></span>
+            </div>
+            <div class="score-row" id="answeredRow" style="display: none;">
+                <span class="score-label">Answered</span>
+                <span class="score-value" id="answeredCount">0</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const BOOK_FOLDER = {{ book_folder | tojson }};
+const PAGE_ID = {{ page_id | tojson }};
+
+let allQuestions = [];
+let currentIndex = 0;
+
+function resultHTML(answer) {
+    if (answer.question_type === 'multiple_choice') return mcqResultHTML(answer);
+    let cls = 'unknown', status = '⏳ Submitted — waiting for your teacher to mark this.';
+    const mark = (answer.status === 'reviewed') ? answer.final_correct : answer.auto_correct;
+    if (mark === true) {
+        cls = 'correct';
+        status = (answer.status === 'reviewed') ? '✅ Correct — confirmed by your teacher.' : '✅ Provisionally correct — your teacher will confirm.';
+    } else if (mark === false) {
+        cls = 'incorrect';
+        status = (answer.status === 'reviewed') ? '❌ Not awarded — marked by your teacher.' : '❌ Provisionally not awarded — your teacher will review.';
+    }
+
+    const attemptBadge = (answer.attempt_number || 1) > 1
+        ? `<span class="attempt-badge">Attempt ${answer.attempt_number}</span>` : '';
+
+    // Show marks awarded if available
+    const marksInfo = (typeof answer.marks_awarded === 'number')
+        ? ` — <strong>${answer.marks_awarded} / ${answer.question_marks || 1} marks</strong>`
+        : '';
+
+    let html = `
+        <div class="q-result ${cls}">
+            <div class="r-status">${status} ${attemptBadge}${marksInfo}</div>
+            <div class="your-answer">
+                <div class="your-answer-label">Your answer</div>
+                <div class="your-answer-text">${escapeHtml(answer.answer_text)}</div>
+            </div>`;
+
+    // Show detailed feedback: why it was wrong, or how a correct answer could improve
+    if (answer.feedback) {
+        const label = (mark === true) ? '🚀 How to make your answer even better' : '💡 Why this wasn\'t quite right';
+        html += `
+            <div class="feedback-section">
+                <div class="feedback-label">${label}</div>
+                <div class="feedback-text">${formatFeedback(answer.feedback)}</div>
+            </div>`;
+    }
+
+    html += `
+            <div class="markscheme-section">
+                <div class="markscheme-label">✓ What we're looking for</div>
+                <div class="markscheme-text">${escapeHtml(answer.markscheme || '')}</div>
+            </div>
+        </div>`;
+
+    return html;
+}
+
+// Multiple-choice results are auto-marked and final (no teacher review).
+function mcqResultHTML(answer) {
+    const correct = answer.final_correct === true;
+    const cls = correct ? 'correct' : 'incorrect';
+    let status = correct ? '✅ Correct!' : '❌ Not quite.';
+
+    const attemptBadge = (answer.attempt_number || 1) > 1
+        ? `<span class="attempt-badge">Attempt ${answer.attempt_number}</span>` : '';
+
+    // Show marks awarded
+    const marksInfo = (typeof answer.marks_awarded === 'number')
+        ? ` — <strong>${answer.marks_awarded} / ${answer.question_marks || 1} marks</strong>`
+        : '';
+
+    const selected = answer.selected_options || [];
+    const correctOpts = answer.correct_options || [];
+    const options = answer.options || [];
+
+    const optsHtml = options.map((opt, i) => {
+        const isCorrect = correctOpts.includes(i);
+        const isChosen = selected.includes(i);
+        let icon = '', optCls = '';
+        if (isCorrect) { icon = '✓'; optCls = 'mcq-correct'; }
+        else if (isChosen) { icon = '✗'; optCls = 'mcq-wrong'; }
+        const chosenTag = isChosen ? '<span class="mcq-your">your choice</span>' : '';
+        return `<div class="mcq-review-option ${optCls}">
+            <span class="mcq-icon">${icon}</span>
+            <span>${escapeHtml(opt)}${chosenTag}</span>
+        </div>`;
+    }).join('');
+
+    let html = `
+        <div class="q-result ${cls}">
+            <div class="r-status">${status} ${attemptBadge}${marksInfo}</div>
+            <div class="mcq-review">${optsHtml}</div>`;
+
+    if (answer.explanation) {
+        html += `
+            <div class="feedback-section">
+                <div class="feedback-label">💡 Explanation</div>
+                <div class="feedback-text">${formatFeedback(answer.explanation)}</div>
+            </div>`;
+    }
+
+    html += `</div>`;
+    return html;
+}
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+}
+
+// Escape, then turn **text** into bold and [1 mark(s)] into green badge
+function formatFeedback(s) {
+    let html = escapeHtml(s);
+    // Turn **text** into bold
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    // Turn [1 mark], [2 marks], etc. into green badges (case-insensitive)
+    html = html.replace(/\[(\d+)\s+marks?\]/gi, '<span class="quiz-mark-badge">[$1 mark]</span>');
+    return html;
+}
+
+function calculateQuizTotals() {
+    let totalEarned = 0;
+    let totalPossible = 0;
+    let answeredCount = 0;
+
+    for (const q of allQuestions) {
+        totalPossible += q.marks || 1;
+        if (q.answer) {
+            answeredCount++;
+            totalEarned += q.answer.marks_awarded || 0;
+        }
+    }
+
+    return { totalEarned, totalPossible, answeredCount };
+}
+
+function updateScoreCard() {
+    const { totalEarned, totalPossible, answeredCount } = calculateQuizTotals();
+    document.getElementById('totalQuizScore').textContent = `${totalEarned} / `;
+    document.getElementById('totalPossible').textContent = totalPossible;
+    document.getElementById('answeredCount').textContent = `${answeredCount} / ${allQuestions.length}`;
+    if (answeredCount > 0) {
+        document.getElementById('answeredRow').style.display = 'flex';
+    }
+}
+
+function updateCurrentQuestionScore(index) {
+    if (index >= 0 && index < allQuestions.length) {
+        const q = allQuestions[index];
+        if (q.answer && typeof q.answer.marks_awarded === 'number') {
+            const qMarks = q.answer.question_marks || q.marks || 1;
+            document.getElementById('currentQuestionScore').textContent = `${q.answer.marks_awarded} / ${qMarks}`;
+        } else {
+            document.getElementById('currentQuestionScore').textContent = '—';
+        }
+    }
+}
+
+function renderQuestion(index) {
+    stopDictation();  // don't leave the mic running across questions
+    const body = document.getElementById('quizBody');
+    if (index < 0 || index >= allQuestions.length) return;
+
+    const q = allQuestions[index];
+    const total = allQuestions.length;
+    const progressPercent = ((index + 1) / total) * 100;
+
+    // Update score display for this question
+    updateCurrentQuestionScore(index);
+
+    let html = `
+        <div class="quiz-progress">
+            <span>Question ${index + 1} of ${total}</span>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: ${progressPercent}%"></div>
+            </div>
+        </div>
+
+        <div class="quiz-card">
+            <div class="q-number">Question ${index + 1} of ${total}</div>
+            <div class="q-text">${escapeHtml(q.text)}</div>
+            <div class="quiz-input-area">`;
+
+    if (q.answer) {
+        html += resultHTML(q.answer);
+        if ((q.answer.attempt_number || 1) > 1) {
+            html += `
+                <div class="retry-toolbar">
+                    <button id="improvementBtn" class="q-improvement">📈 See my improvement</button>
+                </div>`;
+        }
+        html += `<div id="improvementPanel"></div>`;
+    } else {
+        if (q.previousAnswer) {
+            html += `
+                <div class="previous-answer">
+                    <div class="previous-answer-label">Your previous answer (attempt ${q.previousAnswer.attempt_number || 1}) — try to improve on it:</div>
+                    <div class="previous-answer-text">${escapeHtml(q.previousAnswer.answer_text)}</div>
+                </div>`;
+        }
+        if (q.question_type === 'multiple_choice') {
+            const inputType = q.multi_select ? 'checkbox' : 'radio';
+            const hint = q.multi_select ? '<div class="mcq-hint">Select all that apply.</div>' : '';
+            const opts = (q.options || []).map((opt, i) => `
+                <label class="mcq-option">
+                    <input type="${inputType}" name="mcq-${q.id}" value="${i}">
+                    <span>${escapeHtml(opt)}</span>
+                </label>`).join('');
+            html += `
+                <div class="mcq-options">${hint}${opts}</div>
+                <div class="answer-toolbar">
+                    <button id="submitBtn" class="q-submit">Submit answer</button>
+                </div>`;
+        } else {
+            html += `
+                <textarea id="answerInput" placeholder="Type your answer here…"></textarea>
+                <div class="answer-toolbar">
+                    <button id="micBtn" class="q-mic" style="display: none;" title="Dictate your answer">🎤 Dictate</button>
+                    <button id="submitBtn" class="q-submit">Submit answer</button>
+                </div>`;
+        }
+    }
+
+    html += `
+            </div>
+            <div class="quiz-nav">
+                <button id="prevBtn" onclick="previousQuestion()" ${index === 0 ? 'disabled' : ''}>← Previous</button>
+                <button id="nextBtn" onclick="nextQuestion()" ${index === total - 1 && !q.answer && !q.previousAnswer ? 'disabled' : ''}>Next →</button>
+            </div>
+        </div>`;
+
+    body.innerHTML = html;
+
+    if (q.answer) {
+        document.getElementById('nextBtn').disabled = false;
+        const impBtn = document.getElementById('improvementBtn');
+        if (impBtn) impBtn.addEventListener('click', () => showImprovement(q.id));
+    } else {
+        document.getElementById('submitBtn').addEventListener('click', () => submitAnswer(q.id, index));
+        if (q.question_type !== 'multiple_choice') setupDictation();
+    }
+}
+
+async function showImprovement(questionId) {
+    const panel = document.getElementById('improvementPanel');
+    const btn = document.getElementById('improvementBtn');
+    if (!panel) return;
+    if (btn) { btn.disabled = true; btn.textContent = '📈 Analysing…'; }
+    try {
+        const res = await fetch(`/api/quiz/${questionId}/improvement`);
+        const data = await res.json();
+        if (data.analysis) {
+            panel.innerHTML = `
+                <div class="improvement-box">
+                    <div class="improvement-label">📈 Your progress across ${data.total_attempts} attempts</div>
+                    <div class="improvement-text">${formatFeedback(data.analysis)}</div>
+                </div>`;
+            if (btn) btn.style.display = 'none';
+        } else {
+            panel.innerHTML = '<div class="improvement-box">Could not analyse your attempts right now — try again later.</div>';
+            if (btn) { btn.disabled = false; btn.textContent = '📈 See my improvement'; }
+        }
+    } catch (e) {
+        panel.innerHTML = '<div class="improvement-box">Could not analyse your attempts right now — try again later.</div>';
+        if (btn) { btn.disabled = false; btn.textContent = '📈 See my improvement'; }
+    }
+}
+
+// --- Dictation via the browser's built-in speech recognition (Chrome/Edge).
+// The button only appears when the API exists; nothing runs server-side.
+let recognition = null;
+
+function setupDictation() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const micBtn = document.getElementById('micBtn');
+    if (!SpeechRecognition || !micBtn) return;
+    micBtn.style.display = 'inline-block';
+    micBtn.addEventListener('click', () => {
+        if (recognition) { stopDictation(); return; }
+
+        const ta = document.getElementById('answerInput');
+        const baseText = ta.value.replace(/\s+$/, '');  // text typed before dictation started
+        recognition = new SpeechRecognition();
+        recognition.lang = document.documentElement.lang || 'en';
+        recognition.continuous = true;       // keep listening until the student stops it
+        recognition.interimResults = true;   // show words as they're spoken
+
+        recognition.onresult = (event) => {
+            let transcript = '';
+            for (const result of event.results) transcript += result[0].transcript;
+            ta.value = (baseText ? baseText + ' ' : '') + transcript.trim();
+        };
+        recognition.onerror = stopDictation;
+        recognition.onend = stopDictation;   // Chrome auto-stops after silence
+
+        recognition.start();
+        micBtn.classList.add('recording');
+        micBtn.textContent = '⏹ Stop dictating';
+    });
+}
+
+function stopDictation() {
+    if (recognition) {
+        recognition.onend = null;  // avoid re-entry when stop() fires onend
+        recognition.stop();
+        recognition = null;
+    }
+    const micBtn = document.getElementById('micBtn');
+    if (micBtn) {
+        micBtn.classList.remove('recording');
+        micBtn.textContent = '🎤 Dictate';
+    }
+}
+
+function renderComplete() {
+    const body = document.getElementById('quizBody');
+    const total = allQuestions.length;
+    const answered = allQuestions.filter(q => q.answer || q.previousAnswer).length;
+
+    body.innerHTML = `
+        <div class="quiz-card quiz-complete">
+            <h2>✅ Quiz complete!</h2>
+            <p>You've answered ${answered} of ${total} questions. Your teacher will review your answers and provide final feedback.</p>
+            <p style="font-size: 0.9rem; color: var(--text-light);">Want a better score? You can retake the quiz — every attempt is saved and your teacher sees your improvement.</p>
+            <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+                <button class="quiz-complete-btn quiz-retake-btn" onclick="retakeQuiz()">🔄 Retake quiz</button>
+                <a href="/book/${escapeHtml(BOOK_FOLDER)}/page/${escapeHtml(PAGE_ID)}" class="quiz-complete-btn">Return to reading</a>
+            </div>
+            <p style="margin-top: 1rem;"><a href="/student/quiz-analytics" style="color: var(--primary); font-size: 0.9rem;">📊 See your strengths &amp; focus areas →</a></p>
+        </div>`;
+}
+
+// Retake the whole quiz: previous attempts stay saved (and visible as a
+// reference on each question); answers submitted now count as new attempts.
+function retakeQuiz() {
+    allQuestions.forEach(q => {
+        if (q.answer) {
+            q.previousAnswer = q.answer;
+            q.answer = null;
+        }
+    });
+    currentIndex = 0;
+    updateScoreCard();  // Reset score display for retake
+    renderQuestion(0);
+}
+
+function nextQuestion() {
+    const last = allQuestions[allQuestions.length - 1];
+    if (currentIndex < allQuestions.length - 1) {
+        currentIndex++;
+        renderQuestion(currentIndex);
+    } else if (currentIndex === allQuestions.length - 1 && (last.answer || last.previousAnswer)) {
+        // During a retake, skipped questions keep their previous attempt
+        renderComplete();
+    }
+}
+
+function previousQuestion() {
+    if (currentIndex > 0) {
+        currentIndex--;
+        renderQuestion(currentIndex);
+    }
+}
+
+async function submitAnswer(questionId, index) {
+    const q = allQuestions[index];
+    let requestBody;
+
+    if (q.question_type === 'multiple_choice') {
+        const checked = Array.from(
+            document.querySelectorAll(`input[name="mcq-${questionId}"]:checked`)
+        ).map(el => parseInt(el.value, 10));
+        if (!checked.length) return;  // require at least one selection
+        requestBody = { question_id: questionId, selected_options: checked };
+    } else {
+        stopDictation();
+        const ta = document.getElementById('answerInput');
+        const text = ta.value.trim();
+        if (!text) { ta.focus(); return; }
+        requestBody = { question_id: questionId, answer_text: text };
+    }
+
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Marking…';
+
+    try {
+        const res = await fetch('/api/quiz/answer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+
+        const data = await res.json();
+        if (data.answer) {
+            allQuestions[index].answer = data.answer;
+            updateScoreCard();  // Update score display after answer is recorded
+            renderQuestion(index);
+        } else {
+            btn.disabled = false;
+            btn.textContent = 'Submit answer';
+            alert(data.error || 'Could not submit — please try again.');
+        }
+    } catch (e) {
+        btn.disabled = false;
+        btn.textContent = 'Submit answer';
+        alert('Could not submit — please try again.');
+    }
+}
+
+async function loadQuiz() {
+    try {
+        const res = await fetch(`/api/quiz/${encodeURIComponent(BOOK_FOLDER)}/${encodeURIComponent(PAGE_ID)}/questions`);
+        const data = await res.json();
+        allQuestions = data.questions || [];
+
+        if (!allQuestions.length) {
+            document.getElementById('quizBody').innerHTML = '<div class="quiz-empty">No quiz questions for this section yet — check back later.</div>';
+            return;
+        }
+
+        currentIndex = 0;
+        updateScoreCard();  // Initialize score card with total possible marks
+        renderQuestion(0);
+    } catch (e) {
+        document.getElementById('quizBody').innerHTML = '<div class="quiz-empty">Could not load the quiz. Please refresh.</div>';
+    }
+}
+
+loadQuiz();
+</script>
+{% endblock %}

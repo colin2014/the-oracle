@@ -1,0 +1,92 @@
+{% extends "student_base.html" %}
+{% block title %}My Flashcard Difficulty{% endblock %}
+
+{% block content %}
+<style>
+    .my-diff-container { max-width: 1200px; margin: 0 auto; }
+    .my-diff-header { margin-bottom: 2rem; }
+    .my-diff-header h1 { font-size: 1.6rem; margin: 0 0 0.5rem 0; }
+    .my-diff-header p { color: var(--text-light); font-size: 0.9rem; margin: 0; }
+
+    .my-diff-sets { display: grid; grid-template-columns: 1fr; gap: 2rem; margin-top: 1.5rem; }
+    .my-diff-set-card { background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
+    .my-diff-set-title { font-size: 1.1rem; font-weight: 600; color: var(--text-dark); margin-bottom: 0.5rem; }
+    .my-diff-set-subtitle { font-size: 0.85rem; color: var(--text-light); margin-bottom: 1rem; }
+
+    .my-diff-set-link {
+        display: inline-block;
+        margin-top: 1rem;
+        padding: 0.5rem 1rem;
+        background: var(--bg-light);
+        border-radius: 6px;
+        color: var(--primary);
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    .my-diff-set-link:hover { background: rgba(157, 132, 255, 0.2); }
+
+    .my-diff-empty { text-align: center; padding: 2rem; color: var(--text-light); }
+    .my-diff-loading { text-align: center; padding: 2rem; color: var(--text-light); }
+</style>
+
+{% include "_word_cloud.html" %}
+
+<div class="my-diff-container">
+    <div class="my-diff-header">
+        <h1>🔥 My Flashcard Difficulty</h1>
+        <p>See which words you're finding easy and which ones you're still mastering, across all your flashcard sets.</p>
+    </div>
+
+    <div id="mySetsContainer" class="my-diff-sets">
+        <div class="my-diff-loading">Loading your difficulty data…</div>
+    </div>
+</div>
+
+<script>
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+}
+
+async function loadAllDifficulty() {
+    const res = await fetch('/api/flashcards/my-difficulty');
+    const d = await res.json();
+    const container = document.getElementById('mySetsContainer');
+
+    if (!d.sets || !d.sets.length) {
+        container.innerHTML = '<div class="my-diff-empty">No flashcard sets assigned yet. Check back after your teacher assigns some!</div>';
+        return;
+    }
+
+    container.innerHTML = d.sets.map(setData => {
+        if (!setData.cards || !setData.cards.length) {
+            return `
+                <div class="my-diff-set-card">
+                    <div class="my-diff-set-title">${escapeHtml(setData.title)}</div>
+                    <div class="my-diff-set-subtitle">Study some cards to see your progress!</div>
+                </div>`;
+        }
+
+        return `
+            <div class="my-diff-set-card">
+                <div class="my-diff-set-title">${escapeHtml(setData.title)}</div>
+                <div class="my-diff-set-subtitle">${setData.cards.length} word${setData.cards.length !== 1 ? 's' : ''} studied · ⭐&nbsp;=&nbsp;mastered · bigger&nbsp;=&nbsp;harder · hover for stats</div>
+                <div id="wcSet${setData.set_id}"></div>
+                <a href="/flashcards/${setData.set_id}" class="my-diff-set-link">Study this set →</a>
+            </div>`;
+    }).join('');
+
+    // Render each set's animated cloud into its placeholder
+    d.sets.forEach(setData => {
+        if (!setData.cards || !setData.cards.length) return;
+        const el = document.getElementById(`wcSet${setData.set_id}`);
+        if (el) renderWordCloud(el, setData.cards, { limit: 40, controls: true });
+    });
+}
+
+loadAllDifficulty();
+</script>
+{% endblock %}

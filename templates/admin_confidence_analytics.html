@@ -1,0 +1,419 @@
+{% extends "admin_base.html" %}
+{% block title %}Confidence Analytics{% endblock %}
+{% block content %}
+<style>
+    .confidence-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    .filters {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+    .filter-group label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-light);
+    }
+    .filter-group select {
+        padding: 0.6rem 0.8rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--bg-light);
+        color: var(--text-dark);
+        font-size: 0.9rem;
+    }
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    .stat-card {
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    .stat-label {
+        font-size: 0.85rem;
+        color: var(--text-light);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.5rem;
+    }
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--primary);
+    }
+    .distribution-chart {
+        display: flex;
+        align-items: flex-end;
+        gap: 0.5rem;
+        height: 150px;
+        margin-top: 1rem;
+    }
+    .bar-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        flex: 1;
+    }
+    .bar {
+        width: 100%;
+        background: linear-gradient(135deg, #c77dff 0%, #a84fd4 100%);
+        border-radius: 4px 4px 0 0;
+        min-height: 4px;
+        transition: all 0.3s ease;
+    }
+    .bar:hover {
+        opacity: 0.8;
+    }
+    .bar-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-dark);
+    }
+    .bar-count {
+        font-size: 0.75rem;
+        color: var(--text-light);
+    }
+    .confidence-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        margin-bottom: 2rem;
+    }
+    .confidence-table th, .confidence-table td {
+        text-align: left;
+        padding: 0.8rem 1rem;
+        border-bottom: 1px solid var(--border);
+        font-size: 0.9rem;
+    }
+    .confidence-table th {
+        background: var(--bg-light);
+        font-weight: 600;
+        color: var(--text-dark);
+    }
+    .confidence-table tr:hover {
+        background: rgba(157, 132, 255, 0.05);
+    }
+    .confidence-table th {
+        position: relative;
+        user-select: none;
+    }
+    .resource-cell {
+        max-width: 300px;
+        word-break: break-word;
+        cursor: help;
+    }
+    .resource-name {
+        display: inline-block;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .resize-handle {
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: transparent;
+        cursor: col-resize;
+        user-select: none;
+        padding: 0 2px;
+    }
+    .resize-handle:hover {
+        background: rgba(157, 132, 255, 0.5);
+    }
+    .confidence-badge {
+        display: inline-block;
+        padding: 0.35rem 0.7rem;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 0.8rem;
+        text-align: center;
+        min-width: 40px;
+    }
+    .confidence-1 {
+        background: rgba(239, 68, 68, 0.15);
+        color: #dc2626;
+    }
+    .confidence-2 {
+        background: rgba(249, 115, 22, 0.15);
+        color: #ea580c;
+    }
+    .confidence-3 {
+        background: rgba(251, 146, 60, 0.15);
+        color: #d97706;
+    }
+    .confidence-4 {
+        background: rgba(34, 197, 94, 0.15);
+        color: #16a34a;
+    }
+    .confidence-5 {
+        background: rgba(34, 197, 94, 0.15);
+        color: #15803d;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text-light);
+    }
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin: 2rem 0 1rem 0;
+        color: var(--text-dark);
+    }
+    .filter-reset {
+        text-decoration: none;
+        color: var(--text-light);
+        font-size: 0.85rem;
+        padding: 0.4rem 0.8rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        display: inline-block;
+        transition: all 0.2s ease;
+    }
+    .filter-reset:hover {
+        background: rgba(157, 132, 255, 0.1);
+        color: var(--primary);
+    }
+    .filters-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .filters-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-left: auto;
+    }
+</style>
+
+<div class="confidence-header">
+    <div>
+        <h1>Confidence Analytics</h1>
+        <p style="color: var(--text-light); margin-top: 0.5rem;">Track and analyze student confidence levels across reading assignments</p>
+    </div>
+    <a href="{{ url_for('admin.confidence_matrix', **({'class': selected_class.id} if selected_class else {})) }}" class="admin-btn">Confidence Matrix →</a>
+</div>
+
+<!-- Filters -->
+<div class="filters">
+    <form method="GET" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; width: 100%;">
+        <div class="filter-group">
+            <label for="student-filter">Filter by Student</label>
+            <select id="student-filter" name="student">
+                <option value="">All Students</option>
+                {% for s in all_students %}
+                <option value="{{ s.id }}" {% if selected_student and selected_student.id == s.id %}selected{% endif %}>
+                    {{ s.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label for="class-filter">Filter by Class</label>
+            <select id="class-filter" name="class">
+                <option value="">All Classes</option>
+                {% for c in all_classes %}
+                <option value="{{ c.id }}" {% if selected_class and selected_class.id == c.id %}selected{% endif %}>
+                    {{ c.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="filters-actions">
+            <button type="submit" class="admin-btn" style="margin-top: auto;">Apply Filters</button>
+            <a href="{{ url_for('admin.confidence_analytics') }}" class="filter-reset">Reset</a>
+        </div>
+    </form>
+</div>
+
+{% if stats.total_records > 0 %}
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Total Responses</div>
+            <div class="stat-value">{{ stats.total_records }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Average Confidence</div>
+            <div class="stat-value">{{ "%.2f" | format(stats.avg_confidence) }}/5</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Unique Students</div>
+            <div class="stat-value">{{ stats.by_student | length }}</div>
+        </div>
+    </div>
+
+    <!-- Confidence Distribution Chart -->
+    <div class="admin-card">
+        <h2 class="section-title">Confidence Distribution</h2>
+        <div class="distribution-chart">
+            {% for level in [1, 2, 3, 4, 5] %}
+            <div class="bar-wrapper">
+                <div class="bar" style="height: {% if stats.confidence_distribution[level] > 0 %}{{ (stats.confidence_distribution[level] / stats.total_records * 100) * 2 }}px{% else %}0px{% endif %};" title="{{ stats.confidence_distribution[level] }} responses"></div>
+                <div class="bar-label">{{ level }}</div>
+                <div class="bar-count">{{ stats.confidence_distribution[level] }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Confidence by Student -->
+    {% if stats.by_student_sorted %}
+    <div class="admin-card">
+        <h2 class="section-title">Average Confidence by Student</h2>
+        <table class="confidence-table">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Avg Confidence</th>
+                    <th>Responses</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sid, data in stats.by_student_sorted %}
+                <tr>
+                    <td>{{ data.name }}</td>
+                    <td>
+                        <span class="confidence-badge confidence-{{ (data.avg | round(0) | int) }}">
+                            {{ "%.2f" | format(data.avg) }}
+                        </span>
+                    </td>
+                    <td>{{ data.count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Detailed Confidence Records -->
+    <div class="admin-card">
+        <h2 class="section-title">Confidence Records</h2>
+        <table class="confidence-table" id="records-table">
+            <thead>
+                <tr>
+                    <th style="width: 150px;">Student</th>
+                    <th style="width: 300px; position: relative;">
+                        Resource
+                        <div class="resize-handle" data-column="resource"></div>
+                    </th>
+                    <th style="width: 140px;">Confidence Level</th>
+                    <th style="width: 160px;">Date Recorded</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in confidence_records[:100] %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('admin.analytics_student', student_id=record.student_id) }}" style="color: var(--primary); text-decoration: none;">
+                            {{ record.student.name }}
+                        </a>
+                    </td>
+                    <td class="resource-cell" title="{% set title = resource_titles.get((record.book_folder, record.page_id), record.page_id) %}{{ title }}">
+                        <span class="resource-name">
+                            {% set title = resource_titles.get((record.book_folder, record.page_id), record.page_id) %}
+                            {% if title %}
+                                {{ title }}
+                            {% else %}
+                                (Unknown)
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="confidence-badge confidence-{{ record.confidence_level }}">
+                            {{ record.confidence_level }}/5
+                        </span>
+                    </td>
+                    <td style="font-size: 0.85rem; color: var(--text-light);">
+                        {{ record.recorded_at.strftime('%m/%d/%Y %H:%M') if record.recorded_at else 'N/A' }}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" style="text-align: center; color: var(--text-light);">No confidence records found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if confidence_records | length > 100 %}
+        <div style="margin-top: 1rem; color: var(--text-light); font-size: 0.85rem;">
+            Showing 100 of {{ confidence_records | length }} records
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        // Resizable table columns
+        const table = document.getElementById('records-table');
+        if (table) {
+            const handles = table.querySelectorAll('.resize-handle');
+            handles.forEach(handle => {
+                let startX, startWidth, column;
+
+                handle.addEventListener('mousedown', (e) => {
+                    startX = e.clientX;
+                    column = handle.closest('th');
+                    startWidth = column.offsetWidth;
+                    document.addEventListener('mousemove', resize);
+                    document.addEventListener('mouseup', stopResize);
+                    e.preventDefault();
+                });
+
+                function resize(e) {
+                    const diff = e.clientX - startX;
+                    column.style.width = (startWidth + diff) + 'px';
+                }
+
+                function stopResize() {
+                    document.removeEventListener('mousemove', resize);
+                    document.removeEventListener('mouseup', stopResize);
+                }
+            });
+        }
+    </script>
+
+{% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">📊</div>
+        <h2>No Confidence Data Yet</h2>
+        <p>Confidence data will appear here once students start submitting confidence ratings for reading assignments.</p>
+        {% if selected_student or selected_class %}
+        <p style="margin-top: 1rem;">
+            <a href="{{ url_for('admin.confidence_analytics') }}" class="filter-reset">Clear filters to see all data</a>
+        </p>
+        {% endif %}
+    </div>
+{% endif %}
+{% endblock %}

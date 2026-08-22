@@ -1,0 +1,91 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Connections — Setup{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-8">
+    <h1 class="text-3xl font-bold mb-6">Connections Puzzle Setup</h1>
+
+    <form method="POST" class="space-y-8 bg-white p-6 rounded-lg shadow">
+        <div>
+            <label for="class_id" class="block text-sm font-medium mb-2">Class</label>
+            <select name="class_id" id="class_id" required class="w-full border rounded px-3 py-2">
+                <option value="">—</option>
+                {% for c in classes %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="title" class="block text-sm font-medium mb-2">Puzzle title</label>
+            <input type="text" name="title" id="title" value="Connections Puzzle" class="w-full border rounded px-3 py-2">
+        </div>
+
+        <div class="border-t pt-6">
+            <h2 class="text-lg font-bold mb-4">Group 1 (Yellow)</h2>
+            <div class="space-y-3">
+                <div>
+                    <label for="group_0_title" class="block text-sm font-medium mb-2">Connection/Theme</label>
+                    <input type="text" name="group_0_title" id="group_0_title" placeholder="e.g., Fruits" class="w-full border rounded px-3 py-2">
+                </div>
+                <input type="hidden" name="group_0_color" value="yellow">
+                {% for i in range(4) %}
+                    <input type="text" name="group_0_words" placeholder="Word {{ i+1 }}" class="w-full border rounded px-3 py-2 uppercase">
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="border-t pt-6">
+            <h2 class="text-lg font-bold mb-4">Group 2 (Green)</h2>
+            <div class="space-y-3">
+                <div>
+                    <label for="group_1_title" class="block text-sm font-medium mb-2">Connection/Theme</label>
+                    <input type="text" name="group_1_title" id="group_1_title" placeholder="e.g., Vegetables" class="w-full border rounded px-3 py-2">
+                </div>
+                <input type="hidden" name="group_1_color" value="green">
+                {% for i in range(4) %}
+                    <input type="text" name="group_1_words" placeholder="Word {{ i+1 }}" class="w-full border rounded px-3 py-2 uppercase">
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="border-t pt-6">
+            <h2 class="text-lg font-bold mb-4">Group 3 (Blue)</h2>
+            <div class="space-y-3">
+                <div>
+                    <label for="group_2_title" class="block text-sm font-medium mb-2">Connection/Theme</label>
+                    <input type="text" name="group_2_title" id="group_2_title" placeholder="e.g., Proteins" class="w-full border rounded px-3 py-2">
+                </div>
+                <input type="hidden" name="group_2_color" value="blue">
+                {% for i in range(4) %}
+                    <input type="text" name="group_2_words" placeholder="Word {{ i+1 }}" class="w-full border rounded px-3 py-2 uppercase">
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="border-t pt-6">
+            <h2 class="text-lg font-bold mb-4">Group 4 (Purple)</h2>
+            <div class="space-y-3">
+                <div>
+                    <label for="group_3_title" class="block text-sm font-medium mb-2">Connection/Theme</label>
+                    <input type="text" name="group_3_title" id="group_3_title" placeholder="e.g., Dairy" class="w-full border rounded px-3 py-2">
+                </div>
+                <input type="hidden" name="group_3_color" value="purple">
+                {% for i in range(4) %}
+                    <input type="text" name="group_3_words" placeholder="Word {{ i+1 }}" class="w-full border rounded px-3 py-2 uppercase">
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="flex gap-4 border-t pt-6">
+            <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                Create Puzzle
+            </button>
+            <a href="{{ url_for('games.hub') }}" class="bg-gray-400 text-white px-6 py-2 rounded hover:bg-gray-500">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

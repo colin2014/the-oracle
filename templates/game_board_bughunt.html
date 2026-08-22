@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bug Hunt Auction — Board</title>
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script>document.documentElement.dataset.theme = localStorage.getItem('theme') || 'light';</script>
+    <style>
+        :root {
+            --bg: #f7f5fd; --bg-wash: rgba(131, 102, 232, 0.07);
+            --bg-elevated: #ffffff; --text: #1a1a1a; --text-light: #6b7280; --border: #e5e7eb;
+            --primary: #8366e8; --primary-dark: #6b52cc; --primary-soft: rgba(131,102,232,0.10);
+            --teal: #10b981; --teal-soft: rgba(16,185,129,0.12); --teal-ink: #047857;
+            --amber: #f59e0b; --amber-soft: rgba(245,158,11,0.12); --amber-ink: #b45309;
+            --red: #ef4444; --red-soft: rgba(239,68,68,0.10); --red-ink: #b91c1c;
+            --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+            --radius: 12px; --radius-sm: 8px; --radius-control: 6px;
+        }
+        [data-theme="dark"] {
+            --bg: #121319; --bg-wash: rgba(157, 132, 255, 0.08);
+            --bg-elevated: #17181f; --text: #ececf1; --text-light: #9a9aa8; --border: #262833;
+            --primary: #9d84ff; --primary-dark: #8366e8; --primary-soft: rgba(157,132,255,0.14);
+            --teal: #34d399; --teal-soft: rgba(52,211,153,0.14); --teal-ink: #34d399;
+            --amber: #fbbf24; --amber-soft: rgba(251,191,36,0.14); --amber-ink: #fbbf24;
+            --red: #f87171; --red-soft: rgba(248,113,113,0.14); --red-ink: #f87171;
+            color-scheme: dark;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: radial-gradient(ellipse 1100px 520px at 50% -12%, var(--bg-wash), transparent), var(--bg);
+            background-attachment: fixed; color: var(--text); line-height: 1.5; min-height: 100vh;
+        }
+
+        .bb-top {
+            display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+            padding: 0.9rem 1.6rem; background: var(--bg-elevated); border-bottom: 1px solid var(--border);
+        }
+        .bb-top-title { font-weight: 700; font-size: 1.05rem; }
+        .bb-top-meta { font-size: 0.85rem; color: var(--text-light); }
+        .bb-timer { font-size: 2.1rem; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+        .bb-timer.low { color: var(--red); }
+
+        .bb-wrap { max-width: 1200px; margin: 0 auto; padding: 1.25rem 1.6rem 8rem; }
+
+        /* Scoreboard strip: always visible, the game's spine */
+        .bb-teams { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+        .bb-team {
+            flex: 1; min-width: 150px; background: var(--bg-elevated); border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm); padding: 0.7rem 1rem;
+        }
+        .bb-team.attempting { border-color: var(--primary); background: var(--primary-soft); }
+        .bb-team.attempted { opacity: 0.55; }
+        .bb-team .n { font-size: 0.8rem; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.04em; }
+        .bb-team .p { font-size: 1.7rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+        .bb-team .b { font-size: 0.78rem; font-weight: 700; color: var(--primary); }
+        .bb-pot {
+            min-width: 130px; text-align: center; background: var(--amber-soft); border: 1.5px solid var(--amber);
+            border-radius: var(--radius-sm); padding: 0.7rem 1rem;
+        }
+        .bb-pot .n { font-size: 0.8rem; font-weight: 700; color: var(--amber-ink); text-transform: uppercase; letter-spacing: 0.04em; }
+        .bb-pot .p { font-size: 1.7rem; font-weight: 800; color: var(--amber-ink); font-variant-numeric: tabular-nums; }
+
+        .bb-stage-card {
+            background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius);
+            padding: 1.6rem 1.8rem; box-shadow: 0 8px 24px rgba(26,26,26,0.06);
+        }
+        .bb-snippet-title { font-size: 1.35rem; font-weight: 700; margin: 0 0 0.35rem; }
+        .bb-snippet-meta { display: flex; gap: 0.6rem; align-items: center; font-size: 0.85rem; color: var(--text-light); margin-bottom: 1.1rem; }
+        .bb-pill { font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.65rem; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em; }
+        .bb-pill.bugs { background: var(--red-soft); color: var(--red-ink); }
+        .bb-pill.diff { background: var(--primary-soft); color: var(--primary); }
+
+        .bb-code {
+            font-family: var(--mono); font-size: 1.15rem; line-height: 1.7;
+            background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+            padding: 0.9rem 0; overflow-x: auto; counter-reset: line;
+        }
+        .bb-line { display: flex; padding: 0 1.1rem; white-space: pre; }
+        .bb-line .no {
+            width: 2.4rem; flex-shrink: 0; text-align: right; padding-right: 1rem;
+            color: var(--text-light); user-select: none; font-variant-numeric: tabular-nums;
+        }
+        .bb-line.found { background: var(--teal-soft); }
+        .bb-line.found .no { color: var(--teal-ink); font-weight: 700; }
+        .bb-line.revealed { background: var(--red-soft); }
+        .bb-line.revealed .no { color: var(--red-ink); font-weight: 700; }
+
+        .bb-found-list { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.4rem; }
+        .bb-found-item {
+            display: flex; gap: 0.7rem; align-items: baseline; font-size: 0.95rem;
+            padding: 0.55rem 0.9rem; border-radius: var(--radius-sm);
+        }
+        .bb-found-item.ok { background: var(--teal-soft); color: var(--teal-ink); }
+        .bb-found-item.missed { background: var(--red-soft); color: var(--red-ink); }
+        .bb-found-item .ln { font-family: var(--mono); font-weight: 700; white-space: nowrap; }
+
+        .bb-center { text-align: center; padding: 2.5rem 1rem; }
+        .bb-center h1 { font-size: 1.9rem; margin: 0 0 0.6rem; }
+        .bb-center .lead { color: var(--text-light); font-size: 1.05rem; margin: 0; }
+        .bb-bid-note { margin-top: 1.2rem; font-size: 1rem; color: var(--text-light); }
+        .bb-bids { display: flex; gap: 0.6rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem; }
+        .bb-bid-chip {
+            padding: 0.45rem 1rem; border-radius: 999px; background: var(--primary-soft);
+            color: var(--primary); font-weight: 800; font-size: 1.05rem; font-variant-numeric: tabular-nums;
+        }
+
+        .bb-winner { font-size: 2.4rem; font-weight: 800; margin: 0.5rem 0; }
+
+        /* Teacher drawer: quiet, bottom-pinned. Mark buttons never leak line
+           numbers of unfound bugs — the room can see this screen. */
+        .bb-controls {
+            position: fixed; inset: auto 0 0 0; background: var(--bg-elevated);
+            border-top: 1px solid var(--border); padding: 0.8rem 1.5rem;
+            display: flex; align-items: center; justify-content: center; gap: 0.6rem; flex-wrap: wrap;
+        }
+        .bb-btn {
+            padding: 0.6rem 1.2rem; border: none; border-radius: var(--radius-control);
+            background: var(--primary); color: #fff; font-weight: 700; font-size: 0.9rem;
+            font-family: inherit; cursor: pointer; transition: background 150ms ease;
+        }
+        .bb-btn:hover { background: var(--primary-dark); }
+        .bb-btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+        .bb-btn.ghost:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+        .bb-btn.danger { background: var(--red); }
+        .bb-btn.found { background: var(--teal); }
+        .bb-btn:disabled { opacity: 0.35; cursor: default; }
+        .bb-bid-entry { display: flex; gap: 0.4rem; align-items: center; }
+        .bb-bid-entry select, .bb-bid-entry input {
+            padding: 0.5rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius-control);
+            background: var(--bg); color: var(--text); font-family: inherit; font-size: 0.9rem;
+        }
+        .bb-bid-entry input { width: 84px; }
+
+        @media (max-width: 760px) {
+            .bb-code { font-size: 0.9rem; }
+            .bb-teams { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bb-top">
+        <div>
+            <div class="bb-top-title">Bug Hunt Auction</div>
+            <div class="bb-top-meta" id="topMeta"></div>
+        </div>
+        <div class="bb-timer" id="timer" hidden>--</div>
+    </div>
+
+    <div class="bb-wrap">
+        <div class="bb-teams" id="teams"></div>
+        <div id="stage"></div>
+    </div>
+
+    <div class="bb-controls" id="controls"></div>
+
+<script>
+const STATE_URL = "{{ url_for('games.bughunt_state', session_id=session_obj.id) }}";
+const ACTION_URL = "{{ url_for('games.board_action', session_id=session_obj.id) }}";
+const HUB_URL = "{{ url_for('games.hub') }}";
+let S = null;
+let timerHandle = null;
+let isActing = false;
+let isRefreshing = false;
+
+function esc(t) { const d = document.createElement("div"); d.textContent = t == null ? "" : String(t); return d.innerHTML; }
+
+async function act(action, extra) {
+    if (isActing) return;
+    isActing = true;
+    try {
+        const res = await fetch(ACTION_URL, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(Object.assign({ action }, extra || {}))
+        });
+        if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            alert(body.error || "Action failed. Try again.");
+        }
+        await refresh();
+    } catch (e) {
+        console.error("Action error:", e);
+        alert("Network error. Try again.");
+    } finally {
+        isActing = false;
+    }
+}
+
+function teamsHTML() {
+    const bids = S.bids || {};
+    const html = (S.teams || []).map((t, i) => {
+        const cls = i === S.attempting ? "attempting" : (S.attempted || []).includes(i) ? "attempted" : "";
+        const bid = bids[String(i)];
+        return `<div class="bb-team ${cls}">
+            <div class="n">${esc(t.name)}</div>
+            <div class="p">${t.points}</div>
+            ${bid ? `<div class="b">bid ${bid}</div>` : ""}
+        </div>`;
+    }).join("");
+    return html + `<div class="bb-pot"><div class="n">Pot</div><div class="p">${S.pot}</div></div>`;
+}
+
+function codeHTML(highlight) {
+    if (!S.snippet) return "";
+    const foundLines = new Set((S.found || []).map(i => (S.bugs_secret[i] || {}).line));
+    const revealedLines = new Set((S.bugs_revealed || [])
+        .filter((b, i) => !(S.found || []).includes(i)).map(b => b.line));
+    return `<div class="bb-code">` + S.snippet.code.split("\n").map((line, i) => {
+        const n = i + 1;
+        const cls = foundLines.has(n) ? "found" : (highlight && revealedLines.has(n)) ? "revealed" : "";
+        return `<div class="bb-line ${cls}"><span class="no">${n}</span><span>${esc(line) || " "}</span></div>`;
+    }).join("") + `</div>`;
+}
+
+function snippetHeadHTML() {
+    const sn = S.snippet;
+    return `<h1 class="bb-snippet-title">${esc(sn.title)}</h1>
+        <div class="bb-snippet-meta">
+            <span class="bb-pill bugs">${sn.bug_count} bug${sn.bug_count !== 1 ? "s" : ""}</span>
+            <span class="bb-pill diff">${sn.difficulty}</span>
+            ${sn.topic_label ? `<span>${esc(sn.topic_label)}</span>` : ""}
+            <span>${sn.language === "pseudocode" ? "IB pseudocode" : sn.language}</span>
+        </div>`;
+}
+
+function stageHTML() {
+    if (S.phase === "finished") {
+        const best = Math.max(...(S.teams || []).map(t => t.points));
+        const winners = (S.teams || []).filter(t => t.points === best).map(t => esc(t.name));
+        return `<div class="bb-stage-card bb-center">
+            <h1>Final scores</h1>
+            <div class="bb-winner">${winners.join(" & ")}</div>
+            <p class="lead">take${winners.length === 1 ? "s" : ""} it with ${best} points.</p>
+        </div>`;
+    }
+    if (!S.snippet) return "";
+
+    if (S.phase === "round_intro") {
+        return `<div class="bb-stage-card bb-center">
+            ${snippetHeadHTML()}
+            <p class="lead">Round ${S.round_index + 1} of ${S.round_count} — worth ${S.snippet.bug_count * 20} to the pot.</p>
+            <div style="background: var(--primary-soft); border: 1px solid var(--primary); border-radius: var(--radius-sm); padding: 1rem; margin: 1rem 0; text-align: left; font-size: 0.9rem;">
+                <strong style="color: var(--primary);">Read the code:</strong> Find ${S.snippet.bug_count} deliberately planted bug${S.snippet.bug_count !== 1 ? 's' : ''} in the logic.
+                Each bug is a logic error or off-by-one mistake. Take a moment to review, then teams will bid on finding them all.
+            </div>
+            ${codeHTML(false)}
+        </div>`;
+    }
+
+    if (S.phase === "bidding") {
+        const bids = Object.entries(S.bids || {}).map(([t, b]) =>
+            `<span class="bb-bid-chip">${esc((S.teams[t] || {}).name)} · ${b}</span>`).join("");
+        const potValue = S.pot || 0;
+        return `<div class="bb-stage-card">
+            ${snippetHeadHTML()}
+            ${codeHTML(false)}
+            <div class="bb-center" style="padding: 1.2rem 0 0;">
+                <div style="background: var(--amber-soft); border: 1px solid var(--amber); border-radius: var(--radius-sm); padding: 0.9rem; margin-bottom: 1.2rem; font-size: 0.9rem; text-align: left;">
+                    <strong style="color: var(--amber-ink);">🏆 Bidding phase:</strong><br>
+                    • Each team bids points on finding <strong>all ${S.snippet.bug_count} bugs</strong><br>
+                    • Highest bidder gets the hunt attempt (${S.hunt_seconds} seconds)<br>
+                    • Find all bugs → win the pot (${potValue} points)<br>
+                    • Miss any bug → your bid goes into the pot
+                </div>
+                <div class="bb-bid-note">Current bids:</div>
+                <div class="bb-bids">${bids || `<span class="bb-bid-note" style="color: var(--text-light);">Waiting for first bid...</span>`}</div>
+            </div>
+        </div>`;
+    }
+
+    if (S.phase === "hunting") {
+        const team = S.teams[S.attempting] || {};
+        const found = (S.found || []).map(i => {
+            const b = S.bugs_secret[i];
+            return `<div class="bb-found-item ok"><span class="ln">line ${b.line}</span><span>${esc(b.description)}</span></div>`;
+        }).join("");
+        const remaining = S.snippet.bug_count - (S.found || []).length;
+        return `<div class="bb-stage-card">
+            ${snippetHeadHTML()}
+            <div style="background: var(--teal-soft); border: 1px solid var(--teal); border-radius: var(--radius-sm); padding: 0.9rem; margin-bottom: 1rem; font-size: 0.9rem;">
+                <strong style="color: var(--teal-ink);">⏱ ${esc(team.name)} hunting:</strong> ${(S.found || []).length}/${S.snippet.bug_count} bugs found.
+                ${remaining > 0 ? `${remaining} to go!` : "All bugs found!"}
+            </div>
+            ${codeHTML(false)}
+            ${found ? `<div class="bb-found-list"><strong style="font-size: 0.9rem; color: var(--teal-ink);">✓ Confirmed bugs:</strong>${found}</div>` : ''}
+        </div>`;
+    }
+
+    if (S.phase === "round_done") {
+        const items = (S.bugs_revealed || []).map((b, i) => {
+            const ok = (S.found || []).includes(i);
+            return `<div class="bb-found-item ${ok ? "ok" : "missed"}"><span class="ln">line ${b.line}</span><span>${esc(b.description)}${ok ? "" : " — missed"}</span></div>`;
+        }).join("");
+        const allFound = (S.found || []).length === S.bugs_revealed.length;
+        return `<div class="bb-stage-card">
+            ${snippetHeadHTML()}
+            <div style="background: ${allFound ? 'var(--teal-soft)' : 'var(--red-soft)'}; border: 1px solid ${allFound ? 'var(--teal)' : 'var(--red)'}; border-radius: var(--radius-sm); padding: 0.9rem; margin-bottom: 1rem; font-size: 0.9rem;">
+                <strong style="color: ${allFound ? 'var(--teal-ink)' : 'var(--red-ink)'};">${allFound ? '✓ Round won!' : '✗ Round failed'}</strong>
+                — ${allFound ? 'All bugs found! The pot is won.' : 'Not all bugs found. The bid goes to the pot.'}
+            </div>
+            ${codeHTML(true)}
+            <div class="bb-found-list"><strong style="font-size: 0.9rem;">Bug summary:</strong>${items}</div>
+        </div>`;
+    }
+    return "";
+}
+
+function controlsHTML() {
+    if (S.phase === "finished") {
+        return `<a class="bb-btn ghost" href="${HUB_URL}" style="text-decoration:none;">Back to games</a>`;
+    }
+    if (S.phase === "round_intro") {
+        return `<button class="bb-btn" onclick="act('start_bidding')">Open bidding</button>
+                <button class="bb-btn ghost" onclick="act('finish')">End game</button>`;
+    }
+    if (S.phase === "bidding") {
+        const opts = (S.teams || []).map((t, i) =>
+            (S.attempted || []).includes(i) ? "" : `<option value="${i}">${esc(t.name)} (${t.points}pts)</option>`).join("");
+        const anyBids = Object.keys(S.bids || {}).some(t => !(S.attempted || []).includes(parseInt(t)));
+        return `<div style="background: var(--bg-light); border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 1rem;">
+                <div class="bb-bid-entry" style="margin-bottom: 0.6rem;">
+                    <select id="bidTeam" aria-label="Select team" onchange="updateBidMax()">${opts}</select>
+                    <input type="number" id="bidPoints" min="1" max="999" placeholder="Points" aria-label="Bid points" onkeypress="if(event.key==='Enter') setBid()">
+                    <button class="bb-btn ghost" onclick="setBid()">Record</button>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-light);">Team max shown above. Record each team's bid before starting the hunt.</div>
+            </div>
+            <button class="bb-btn" ${anyBids ? "" : "disabled"} onclick="act('start_hunt')">Highest bidder hunts</button>
+            <button class="bb-btn ghost" onclick="act('next_round')">Skip round</button>`;
+    }
+    if (S.phase === "hunting") {
+        // Mark buttons: index only, no line numbers — unfound bug locations stay secret.
+        const marks = (S.bugs_secret || []).map((b, i) => {
+            const done = (S.found || []).includes(i);
+            return `<button class="bb-btn ${done ? "found" : "ghost"}" ${done ? "disabled" : ""}
+                onclick="act('mark_bug', { bug_index: ${i} })">${done ? "Found bug " : "Mark bug "}${i + 1}</button>`;
+        }).join("");
+        return `${marks}
+            <button class="bb-btn danger" onclick="act('fail_hunt')">Time's up — failed</button>`;
+    }
+    if (S.phase === "round_done") {
+        const last = S.round_index + 1 >= S.round_count;
+        return `<button class="bb-btn" onclick="act('next_round')">${last ? "Final scores" : "Next round"}</button>
+                <button class="bb-btn ghost" onclick="act('finish')">End game</button>`;
+    }
+    return "";
+}
+
+function updateBidMax() {
+    if (!S || !S.teams) return;
+    const teamIdx = parseInt(document.getElementById("bidTeam").value, 10);
+    const team = (S.teams || [])[teamIdx];
+    const input = document.getElementById("bidPoints");
+    if (team) {
+        input.max = team.points;
+        input.placeholder = `1-${team.points}`;
+    }
+}
+
+function setBid() {
+    const team = parseInt(document.getElementById("bidTeam").value, 10);
+    const bid = parseInt(document.getElementById("bidPoints").value, 10);
+    if (Number.isNaN(team) || Number.isNaN(bid)) {
+        alert("Please enter a valid team and bid amount.");
+        return;
+    }
+    if (bid < 1) {
+        alert("Bid must be at least 1 point.");
+        return;
+    }
+    act("set_bid", { team, bid });
+    document.getElementById("bidPoints").value = "";
+}
+
+function renderTimer() {
+    const el = document.getElementById("timer");
+    if (S.phase !== "hunting" || !S.hunt_ends_at) { el.hidden = true; clearInterval(timerHandle); return; }
+    const skew = Date.now() / 1000 - S.server_now;
+    const endsAt = (S.hunt_ends_at - skew) * 1000;
+    el.hidden = false;
+    clearInterval(timerHandle);
+    const tick = () => {
+        const left = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
+        el.textContent = String(Math.floor(left / 60)) + ":" + String(left % 60).padStart(2, "0");
+        el.classList.toggle("low", left <= 15 && left > 0);
+        if (left <= 0) clearInterval(timerHandle);
+    };
+    tick();
+    timerHandle = setInterval(tick, 500);
+}
+
+function render() {
+    if (!S) return;
+    document.getElementById("teams").innerHTML = teamsHTML();
+    document.getElementById("stage").innerHTML = stageHTML();
+    document.getElementById("controls").innerHTML = controlsHTML();
+    document.getElementById("topMeta").textContent =
+        S.phase === "finished" ? "Finished" : `Round ${S.round_index + 1} of ${S.round_count}`;
+    renderTimer();
+    if (S.phase === "bidding") {
+        setTimeout(updateBidMax, 0);
+    }
+}
+
+// The board is the only writer, so a poll refresh only matters for the timer
+// and multi-screen setups; 3s is plenty.
+let controlsFocused = false;
+document.addEventListener("focusin", e => { controlsFocused = e.target.closest(".bb-controls") != null; });
+document.addEventListener("focusout", () => { controlsFocused = false; });
+
+async function refresh() {
+    if (isRefreshing) return;
+    isRefreshing = true;
+    try {
+        const res = await fetch(STATE_URL);
+        if (res.ok) {
+            S = await res.json();
+            if (!controlsFocused) render();
+        }
+    } catch (e) {
+        console.error("Refresh error:", e);
+    } finally {
+        isRefreshing = false;
+    }
+}
+refresh();
+setInterval(refresh, 3000);
+</script>
+</body>
+</html>

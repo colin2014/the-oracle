@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Unit Plan{% endblock %} — DP Computer Science</title>
+<link rel="icon" href="{{ url_for('static', filename='images/favicon.svg') }}" type="image/svg+xml">
+<link rel="icon" href="{{ url_for('static', filename='images/favicon-32.png') }}" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='images/apple-touch-icon.png') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='unit_plan/styles.css') }}?v={{ asset_v }}">
+<style>
+  .up-shell { display: flex; min-height: 100vh; }
+  .up-main { flex: 1; overflow-x: hidden; }
+</style>
+{% include '_pwa_head.html' %}
+</head>
+<body>
+<div class="up-shell">
+  {% include "_sidebar.html" %}
+  <main class="up-main">
+    <div class="level-toggle" id="level-toggle" title="Filter HL/SL-specific content">
+      <button type="button" class="lvl-btn" data-level="all">All</button>
+      <button type="button" class="lvl-btn" data-level="HL">HL</button>
+      <button type="button" class="lvl-btn" data-level="SL">SL</button>
+    </div>
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script>
+  function toggleTheme() {
+    const newTheme = (document.documentElement.dataset.theme || 'light') === 'light' ? 'dark' : 'light';
+    document.documentElement.dataset.theme = newTheme;
+    localStorage.setItem('theme', newTheme);
+  }
+</script>
+<script>window.CAN_EDIT = {{ 'true' if can_edit else 'false' }};</script>
+<script>
+  (function () {
+    function getLevelView() { return localStorage.getItem('cs-level-view') || 'all'; }
+    function updateToggleUI() {
+      var level = getLevelView();
+      document.querySelectorAll('.lvl-btn').forEach(function (btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-level') === level);
+      });
+    }
+    function setLevelView(level) {
+      localStorage.setItem('cs-level-view', level);
+      updateToggleUI();
+      if (window.__editorCtx && window.__editorCtx.refresh) window.__editorCtx.refresh();
+    }
+    window.getLevelView = getLevelView;
+    updateToggleUI();
+    document.querySelectorAll('.lvl-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () { setLevelView(btn.getAttribute('data-level')); });
+    });
+  })();
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

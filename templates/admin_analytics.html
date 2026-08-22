@@ -1,0 +1,57 @@
+{% extends "admin_base.html" %}
+{% block title %}Analytics{% endblock %}
+{% block content %}
+{% set total_students = summary | sum(attribute='student_count') %}
+{% set total_assignments = summary | sum(attribute='assignment_count') %}
+{% set total_seconds = summary | sum(attribute='total_seconds') %}
+{% set avg_completion = (summary | sum(attribute='avg_completion') / summary|length) | round(1) if summary else 0 %}
+
+<div class="admin-page-header">
+    <h1>Analytics</h1>
+    <p class="page-description">Completion and reading-time overview across all classes.</p>
+</div>
+
+<div class="stat-strip">
+    <div class="stat-tile">
+        <div class="stat-tile-value">{{ total_students }}</div>
+        <div class="stat-tile-label">Total Students</div>
+    </div>
+    <div class="stat-tile">
+        <div class="stat-tile-value">{{ total_assignments }}</div>
+        <div class="stat-tile-label">Assignments</div>
+    </div>
+    <div class="stat-tile">
+        <div class="stat-tile-value">{{ avg_completion }}%</div>
+        <div class="stat-tile-label">Avg Completion</div>
+    </div>
+    <div class="stat-tile">
+        <div class="stat-tile-value">{{ (total_seconds / 3600) | round(1) }}h</div>
+        <div class="stat-tile-label">Total Reading Time</div>
+    </div>
+</div>
+
+<div class="analytics-table-wrap">
+<table class="analytics-table">
+    <thead>
+        <tr><th>Class</th><th>Students</th><th>Assignments</th><th>Avg Completion</th><th>Total Time (min)</th><th></th></tr>
+    </thead>
+    <tbody>
+        {% for row in summary %}
+        <tr>
+            <td>{{ row.class_obj.name }}</td>
+            <td>{{ row.student_count }}</td>
+            <td>{{ row.assignment_count }}</td>
+            <td>
+                {% set pct = row.avg_completion %}
+                <span class="pill-badge {{ 'pill-good' if pct >= 75 else ('pill-warn' if pct >= 40 else 'pill-bad') }}">{{ pct }}%</span>
+            </td>
+            <td>{{ (row.total_seconds / 60) | round(1) }}</td>
+            <td><a href="{{ url_for('admin.analytics_class', class_id=row.class_obj.id) }}">Details</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">No classes yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% endblock %}

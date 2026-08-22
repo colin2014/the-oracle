@@ -1,0 +1,78 @@
+{% extends "admin_base.html" %}
+{% block title %}{{ class_obj.name }} Analytics{% endblock %}
+{% block content %}
+{% set ns = namespace(completed=0, opened=0, total_seconds=0) %}
+{% for s in students %}
+    {% for a in assignments %}
+        {% set row = activity_by_key.get((s.id, a.book_folder, a.page_id)) %}
+        {% if row %}
+            {% set ns.opened = ns.opened + 1 %}
+            {% set ns.total_seconds = ns.total_seconds + (row.total_seconds or 0) %}
+            {% if row.completed %}{% set ns.completed = ns.completed + 1 %}{% endif %}
+        {% endif %}
+    {% endfor %}
+{% endfor %}
+{% set total_cells = students|length * assignments|length %}
+
+<div class="admin-page-header">
+    <h1>{{ class_obj.name }} — Analytics</h1>
+    <p class="page-description">Per-student progress across every assignment in this class.</p>
+</div>
+
+<div class="stat-strip">
+    <div class="stat-tile">
+        <div class="stat-tile-value">{{ students|length }}</div>
+        <div class="stat-tile-label">Students</div>
+    </div>
+    <div class="stat-tile">
+        <div class="stat-tile-value">{{ assignments|length }}</div>
+        <div class="stat-tile-label">Assignments</div>
+    </div>
+    <div class="stat-tile">
+        <div class="stat-tile-value">{{ (ns.completed / total_cells * 100) | round(1) if total_cells else 0 }}%</div>
+        <div class="stat-tile-label">Avg Completion</div>
+    </div>
+    <div class="stat-tile">
+        <div class="stat-tile-value">{{ (ns.total_seconds / 3600) | round(1) }}h</div>
+        <div class="stat-tile-label">Total Reading Time</div>
+    </div>
+</div>
+
+<div class="analytics-table-wrap">
+<table class="analytics-table">
+    <thead>
+        <tr>
+            <th>Student</th>
+            {% for a in assignments %}
+            <th>{{ a.title }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for s in students %}
+        <tr>
+            <td><a href="{{ url_for('admin.analytics_student', student_id=s.id) }}">{{ s.name }}</a></td>
+            {% for a in assignments %}
+            {% set row = activity_by_key.get((s.id, a.book_folder, a.page_id)) %}
+            {% set conf = confidence_by_key.get((s.id, a.book_folder, a.page_id)) %}
+            <td>
+                {% if row %}
+                    <span class="pill-badge {{ 'pill-good' if row.completed else 'pill-warn' }}">
+                        {{ '✓' if row.completed else '…' }} {{ (row.total_seconds / 60) | round(1) }} min
+                    </span>
+                    {% if conf %}
+                    <br><small style="color:var(--text-light);">Confidence: {{ conf.confidence_level }}/5</small>
+                    {% endif %}
+                {% else %}
+                    <span class="pill-badge pill-muted">not opened</span>
+                {% endif %}
+            </td>
+            {% endfor %}
+        </tr>
+        {% else %}
+        <tr><td colspan="{{ assignments|length + 1 }}">No students enrolled yet.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% endblock %}

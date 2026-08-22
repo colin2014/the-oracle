@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ submission.student.name if submission.student else 'Student' }} — live</title>
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script>document.documentElement.dataset.theme = localStorage.getItem('theme') || 'light';</script>
+    <style>
+        /* Its own window, opened from an invigilation panel — so no app chrome, no
+           sidebar, nothing but this one student's paper as they write it. */
+        body { margin: 0; background: var(--bg-light, #f6f6f9); color: var(--text-dark, #1a1a1a); font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .sl-wrap { max-width: 820px; margin: 0 auto; padding: 1.2rem 1.1rem 3rem; }
+
+        .sl-head { position: sticky; top: 0; z-index: 5; background: var(--bg-white, #fff); border: 1px solid var(--border, #e5e7eb); border-radius: 12px; padding: 0.9rem 1.1rem; margin-bottom: 1rem; }
+        .sl-name { font-size: 1.15rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; }
+        .sl-sub { font-size: 0.82rem; color: var(--text-light, #6b7280); margin-top: 0.15rem; }
+        .sl-meta { display: flex; align-items: center; gap: 0.9rem; margin-top: 0.7rem; flex-wrap: wrap; }
+        .sl-status { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; padding: 0.18rem 0.55rem; border-radius: 999px; }
+        .sl-status.in_progress { background: rgba(16,185,129,0.15); color: #047857; }
+        .sl-status.submitted, .sl-status.marked { background: rgba(120,120,130,0.14); color: #6b7280; }
+        .sl-track { flex: 1; min-width: 120px; height: 6px; border-radius: 999px; background: rgba(120,120,130,0.16); overflow: hidden; }
+        .sl-fill { height: 100%; width: 0; border-radius: 999px; background: #8366e8; transition: width 0.4s ease; }
+        .sl-count { font-size: 0.78rem; color: var(--text-light, #6b7280); font-variant-numeric: tabular-nums; }
+        .sl-timer { font-family: ui-monospace, Consolas, monospace; font-size: 0.9rem; color: var(--text-light, #6b7280); }
+        .sl-timer.low { color: #ef4444; font-weight: 700; }
+
+        .sl-q { background: var(--bg-white, #fff); border: 1px solid var(--border, #e5e7eb); border-radius: 10px; padding: 0.85rem 1rem; margin-bottom: 0.7rem; }
+        .sl-q-head { display: flex; justify-content: space-between; gap: 0.8rem; align-items: baseline; margin-bottom: 0.5rem; }
+        .sl-q-text { font-size: 0.92rem; font-weight: 600; }
+        .sl-q-marks { font-size: 0.72rem; color: var(--text-light, #6b7280); white-space: nowrap; }
+        .sl-answer { font-size: 0.9rem; white-space: pre-wrap; border-radius: 5px; padding: 0.35rem 0.45rem; margin: -0.35rem -0.45rem; transition: background 0.5s ease; }
+        .sl-answer.empty { color: var(--text-light, #6b7280); font-style: italic; }
+        .sl-answer.flash { background: rgba(131,102,232,0.18); }
+        .sl-answer-meta { font-size: 0.72rem; color: var(--text-light, #6b7280); margin-top: 0.35rem; }
+        .sl-opt { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 999px; font-size: 0.82rem; background: rgba(120,120,130,0.1); margin: 0 0.25rem 0.25rem 0; }
+        .sl-opt.chosen { background: rgba(131,102,232,0.18); color: #6b52cc; font-weight: 700; }
+    </style>
+</head>
+<body>
+<div class="sl-wrap">
+    <div class="sl-head">
+        <div class="sl-name" id="slName"></div>
+        <div class="sl-sub" id="slSub"></div>
+        <div class="sl-meta">
+            <span class="sl-status" id="slStatus"></span>
+            <span class="sl-track"><span class="sl-fill" id="slFill"></span></span>
+            <span class="sl-count" id="slCount"></span>
+            <span class="sl-timer" id="slTimer"></span>
+        </div>
+    </div>
+    <div id="slQuestions"></div>
+</div>
+
+<script>
+const SUBMISSION_ID = {{ submission.id | tojson }};
+const AVATAR_EMOJI = {{ AVATAR_BY_KEY | tojson }};
+const STATUS_LABEL = { in_progress: 'Working', submitted: 'Submitted', marked: 'Submitted' };
+const previous = {};  // question number -> last-seen answer, for flash-on-change
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s == null ? '' : s;
+    return d.innerHTML;
+}
+
+// Some display names already begin with the student's own emoji ("🐻 Code Bear"),
+// in which case drawing the avatar as well shows the same bear twice.
+function nameStartsWithEmoji(name) {
+    return /^\p{Extended_Pictographic}/u.test((name || '').trim());
+}
+
+function timeAgo(iso) {
+    if (!iso) return null;
+    const seconds = Math.max(0, Math.floor((Date.now() - new Date(iso)) / 1000));
+    if (seconds < 5) return 'just now';
+    if (seconds < 60) return `${seconds}s ago`;
+    return `${Math.floor(seconds / 60)}m ago`;
+}
+
+function timeRemaining(iso) {
+    const msLeft = new Date(iso) - new Date();
+    if (msLeft <= 0) return { text: '00:00', low: true };
+    const total = Math.floor(msLeft / 1000);
+    return { text: `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`, low: msLeft < 5 * 60 * 1000 };
+}
+
+function questionShell(q) {
+    return `
+        <div class="sl-q" data-q="${q.number}">
+            <div class="sl-q-head">
+                <div class="sl-q-text">${q.number}. ${escapeHtml(q.text)}</div>
+                <div class="sl-q-marks">${q.marks} mark${q.marks === 1 ? '' : 's'}</div>
+            </div>
+            <div data-role="body"></div>
+        </div>`;
+}
+
+function bodyHtml(q) {
+    if (q.is_mcq) {
+        return (q.options || []).map((opt, i) =>
+            `<span class="sl-opt ${(q.selected_options || []).includes(i) ? 'chosen' : ''}">${escapeHtml(opt)}</span>`
+        ).join('');
+    }
+    const text = q.response_text || '';
+    const meta = q.last_saved_at
+        ? `${q.word_count} word${q.word_count === 1 ? '' : 's'} · saved ${timeAgo(q.last_saved_at)}`
+        : 'Nothing saved yet';
+    return `
+        <div class="sl-answer ${text ? '' : 'empty'}">${escapeHtml(text) || 'Nothing typed yet…'}</div>
+        <div class="sl-answer-meta">${meta}</div>`;
+}
+
+// Patched in place, never rebuilt: this window is meant to be watched while a
+// student types, so nothing on it may blink or lose a selection on a poll.
+function paint(d) {
+    const avatar = nameStartsWithEmoji(d.student_name) ? null : AVATAR_EMOJI[d.student_avatar];
+    document.getElementById('slName').innerHTML = `${avatar ? avatar.emoji + ' ' : ''}${escapeHtml(d.student_name)}`;
+    document.getElementById('slSub').textContent =
+        d.paper_title + (d.started_at ? ` · started ${d.started_at}` : '');
+    document.title = `${d.student_name} — live`;
+
+    const status = document.getElementById('slStatus');
+    status.className = `sl-status ${d.status}`;
+    status.textContent = STATUS_LABEL[d.status] || d.status;
+
+    document.getElementById('slFill').style.width =
+        d.question_count ? `${Math.round(100 * d.answered_count / d.question_count)}%` : '0%';
+    document.getElementById('slCount').textContent = `${d.answered_count}/${d.question_count} answered`;
+
+    const timerEl = document.getElementById('slTimer');
+    const timer = d.deadline_iso ? timeRemaining(d.deadline_iso) : null;
+    timerEl.textContent = timer ? `${timer.text} left` : '';
+    timerEl.classList.toggle('low', !!(timer && timer.low));
+
+    const list = document.getElementById('slQuestions');
+    d.questions.forEach(q => {
+        let card = list.querySelector(`[data-q="${q.number}"]`);
+        if (!card) {
+            list.insertAdjacentHTML('beforeend', questionShell(q));
+            card = list.querySelector(`[data-q="${q.number}"]`);
+        }
+        const value = q.is_mcq ? (q.selected_options || []).join(',') : (q.response_text || '');
+        const changed = previous[q.number] !== undefined && previous[q.number] !== value;
+        previous[q.number] = value;
+
+        const body = card.querySelector('[data-role="body"]');
+        const html = bodyHtml(q);
+        if (body.innerHTML !== html) body.innerHTML = html;
+        if (changed) body.querySelector('.sl-answer')?.classList.add('flash');
+    });
+
+    setTimeout(() => document.querySelectorAll('.flash').forEach(el => el.classList.remove('flash')), 800);
+}
+
+async function load() {
+    // A failed poll leaves the last good picture up rather than clearing it.
+    try {
+        const res = await fetch(`/admin/api/test-submissions/${SUBMISSION_ID}/live`);
+        if (!res.ok) return;
+        paint(await res.json());
+    } catch (e) { /* keep showing the last poll */ }
+}
+
+load();
+setInterval(load, 3000);
+</script>
+</body>
+</html>

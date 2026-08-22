@@ -1,0 +1,120 @@
+{% extends "admin_base.html" %}
+{% block title %}Quizzes — {{ book_title }}{% endblock %}
+
+{% block content %}
+<style>
+    .qi-container { max-width: 800px; margin: 0 auto; }
+    .qi-header { margin-bottom: 1.5rem; }
+    .qi-header h1 { font-size: 1.5rem; margin: 0 0 0.3rem 0; }
+    .qi-header p { color: var(--text-light); margin: 0; font-size: 0.9rem; }
+
+    .qi-page {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        background: var(--bg-white);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.85rem 1.1rem;
+        margin-bottom: 0.5rem;
+        text-decoration: none;
+        color: var(--text-dark);
+        transition: all 0.15s;
+    }
+    .qi-page:hover { border-color: var(--primary, #8366e8); transform: translateX(2px); }
+    .qi-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+    .qi-count { font-size: 0.8rem; font-weight: 700; padding: 0.25rem 0.7rem; border-radius: 999px; white-space: nowrap; }
+    .qi-count.has { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    .qi-count.none { background: var(--bg-light); color: var(--text-light); font-weight: 400; }
+    .qi-empty { text-align: center; padding: 3rem; color: var(--text-light); }
+    .qi-danger {
+        margin-top: 1.5rem;
+        text-align: right;
+    }
+    .qi-delete-all {
+        background: none;
+        border: 1px solid #ef4444;
+        color: #ef4444;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .qi-delete-all:hover { background: rgba(239, 68, 68, 0.08); }
+    .qi-delete-status { font-size: 0.85rem; color: var(--text-light); margin-right: 0.75rem; }
+</style>
+
+<div class="qi-container">
+    <div class="qi-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+        <div>
+            <h1>📝 Quizzes — {{ book_title }}</h1>
+            <p><a href="/book/{{ book_folder }}/learn">Book home</a> · <a href="{{ url_for('quiz.quiz_review') }}">Review queue</a> · <a href="{{ url_for('admin.analytics_hub') }}#quiz">Analytics</a> · <a href="{{ url_for('quiz.summary_index', book_folder=book_folder) }}">Page summaries</a></p>
+        </div>
+        <div class="qi-danger" id="dangerRow" style="display: none; margin-top: 0;">
+            <span class="qi-delete-status" id="deleteAllStatus"></span>
+            <button class="qi-delete-all" onclick="deleteAllQuestions()">🗑 Delete all questions in this book</button>
+        </div>
+    </div>
+    <div id="pageList"><div class="qi-empty">Loading…</div></div>
+</div>
+
+<script>
+const BOOK_FOLDER = {{ book_folder | tojson }};
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+}
+
+async function loadIndex() {
+    const list = document.getElementById('pageList');
+    try {
+        const [pagesRes, countsRes] = await Promise.all([
+            fetch(`/api/book/${encodeURIComponent(BOOK_FOLDER)}/pages`),
+            fetch(`/api/quiz/${encodeURIComponent(BOOK_FOLDER)}/counts`),
+        ]);
+        const pages = (await pagesRes.json()).pages || [];
+        const counts = (await countsRes.json()).counts || {};
+        if (!pages.length) {
+            list.innerHTML = '<div class="qi-empty">This book has no pages.</div>';
+            return;
+        }
+        list.innerHTML = pages.map(p => {
+            const n = counts[p.id] || 0;
+            return `
+                <a class="qi-page" href="/book/${encodeURIComponent(BOOK_FOLDER)}/quiz/${encodeURIComponent(p.id)}/manage">
+                    <div>
+                        <span class="qi-title">${escapeHtml(p.title)}</span>
+                        ${p.summary ? `<div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.2rem;">📋 ${escapeHtml(p.summary)}</div>` : ''}
+                    </div>
+                    <span class="qi-count ${n ? 'has' : 'none'}">${n ? n + ' Q' + (n === 1 ? '' : 's') : 'no quiz'}</span>
+                </a>`;
+        }).join('');
+        const total = Object.values(counts).reduce((a, b) => a + b, 0);
+        document.getElementById('dangerRow').style.display = total ? 'block' : 'none';
+    } catch (e) {
+        list.innerHTML = '<div class="qi-empty">Could not load pages.</div>';
+    }
+}
+
+async function deleteAllQuestions() {
+    if (!confirm('Delete ALL quiz questions in this book?\n\nThis also deletes every student answer to them and cannot be undone.')) return;
+    const status = document.getElementById('deleteAllStatus');
+    status.textContent = 'Deleting…';
+    try {
+        const res = await fetch(`/api/quiz/${encodeURIComponent(BOOK_FOLDER)}/questions`, { method: 'DELETE' });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Delete failed');
+        status.textContent = `✓ Deleted ${data.deleted} question(s)`;
+        loadIndex();
+    } catch (e) {
+        status.textContent = '✗ ' + e.message;
+    }
+}
+
+loadIndex();
+</script>
+{% endblock %}

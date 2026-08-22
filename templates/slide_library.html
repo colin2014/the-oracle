@@ -1,0 +1,924 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Lesson Library{% endblock %}
+
+{% block content %}
+<div class="admin-card sl-card">
+  <div class="sl-header">
+    <div>
+      <h1 class="sl-title">Lesson Library</h1>
+      <p class="sl-sub">Decks, videos, PDFs and worksheets, filed against the syllabus. Everything stays where it lives — this just links to it.</p>
+    </div>
+  </div>
+
+  <div class="sl-controls">
+    <div class="sl-grade" role="group" aria-label="Year group">
+      {% for g in grades %}
+      <button type="button" class="sl-grade-opt" data-grade="{{ g }}" aria-pressed="false">Grade {{ g }}</button>
+      {% endfor %}
+    </div>
+
+    <label class="sl-toggle">
+      <input type="checkbox" id="onlyFocused">
+      <span>Only show what we've focused on</span>
+    </label>
+
+    <div class="sl-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.7" y2="16.7"></line></svg>
+      <input type="search" id="searchInput" placeholder="Search code or statement…" autocomplete="off">
+    </div>
+
+    <div class="sl-progress" id="progressSummary"></div>
+  </div>
+
+  <div class="sl-split">
+    <nav class="sl-rail" id="rail" aria-label="Syllabus units"></nav>
+    <section class="sl-stage" id="stage" aria-live="polite">
+      <div class="sl-loading">Loading syllabus…</div>
+    </section>
+  </div>
+</div>
+
+<div class="sl-modal" id="resourceModal" hidden>
+  <div class="sl-modal-panel" role="dialog" aria-modal="true" aria-labelledby="resourceModalTitle">
+    <h2 id="resourceModalTitle">Add a resource</h2>
+    <div class="sl-field">
+      <span>Type</span>
+      <div class="sl-kind-picker" id="kindPicker" role="radiogroup" aria-label="Resource type">
+        {% for k in kinds %}
+        <button type="button" class="sl-kind-opt" data-kind="{{ k.value }}" aria-pressed="{{ 'true' if loop.first else 'false' }}">{{ k.label }}</button>
+        {% endfor %}
+      </div>
+    </div>
+    <label class="sl-field">
+      <span>Link or embed code</span>
+      <input type="text" id="resourceUrl" placeholder="https://…  or  &lt;iframe src=…&gt;">
+      <small>Paste the normal “Share” link — it's converted to an embeddable viewer automatically where possible (OneDrive, YouTube, Vimeo).</small>
+    </label>
+    <label class="sl-field">
+      <span id="resourceTitleLabel">Title <em style="font-weight:400; text-transform:none; letter-spacing:0">— optional</em></span>
+      <input type="text" id="resourceTitle" maxlength="200" placeholder="Defaults to the syllabus statement">
+    </label>
+    <p class="sl-modal-error" id="resourceError" hidden></p>
+    <div class="sl-modal-actions">
+      <button type="button" class="admin-btn-ghost" id="resourceCancel">Cancel</button>
+      <button type="button" class="admin-btn" id="resourceSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="sl-modal" id="folderModal" hidden>
+  <div class="sl-modal-panel" role="dialog" aria-modal="true" aria-labelledby="folderModalTitle">
+    <h2 id="folderModalTitle">New folder</h2>
+    <label class="sl-field">
+      <span>Name</span>
+      <input type="text" id="folderName" maxlength="200" placeholder="e.g. Exam revision">
+    </label>
+    <p class="sl-modal-error" id="folderError" hidden></p>
+    <div class="sl-modal-actions">
+      <button type="button" class="admin-btn-ghost" id="folderCancel">Cancel</button>
+      <button type="button" class="admin-btn" id="folderCreate">Create</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .sl-card { padding: 1.25rem 1.5rem 1.75rem; }
+  .sl-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; }
+  .sl-title { font-size: 1.45rem; font-weight: 700; margin: 0 0 0.2rem; }
+  .sl-sub { margin: 0; color: var(--text-light, #6b7280); font-size: 0.88rem; }
+
+  .sl-controls {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 0.75rem 1.25rem;
+    margin: 1.25rem 0 1rem; padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border, #e5e7eb);
+  }
+
+  /* Segmented control: exactly one year group is active at a time, so the
+     filled state is the selection indicator rather than decoration. */
+  .sl-grade { display: flex; gap: 2px; padding: 2px; background: var(--bg-grey, #f8f9fa);
+              border: 1px solid var(--border, #e5e7eb); border-radius: 8px; }
+  .sl-grade-opt {
+    border: none; background: transparent; border-radius: 6px;
+    padding: 0.45rem 0.95rem; font: inherit; font-size: 0.85rem; font-weight: 600;
+    color: var(--text-light, #6b7280); cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .sl-grade-opt:hover { color: var(--text-dark, #1a1a1a); }
+  .sl-grade-opt[aria-pressed="true"] { background: var(--primary, #8366e8); color: #fff; }
+
+  .sl-toggle { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.85rem; cursor: pointer; }
+  .sl-toggle input { width: 15px; height: 15px; accent-color: var(--primary, #8366e8); cursor: pointer; }
+
+  .sl-search { position: relative; display: flex; align-items: center; }
+  .sl-search svg { position: absolute; left: 0.6rem; width: 14px; height: 14px; color: var(--text-light, #6b7280); }
+  .sl-search input {
+    font: inherit; font-size: 0.85rem; padding: 0.45rem 0.6rem 0.45rem 1.9rem;
+    border: 1px solid var(--border, #e5e7eb); border-radius: 6px; min-width: 15rem;
+  }
+  .sl-search input:focus { outline: 2px solid var(--primary, #8366e8); outline-offset: -1px; }
+
+  .sl-progress { margin-left: auto; font-size: 0.82rem; color: var(--text-light, #6b7280); }
+  .sl-progress b { color: var(--text-dark, #1a1a1a); }
+
+  .sl-loading, .sl-empty { padding: 2.5rem 1rem; text-align: center; color: var(--text-light, #6b7280); font-size: 0.9rem; }
+
+  /* ── Split: unit rail + a Drive-style folder/file browser. ── */
+  .sl-split {
+    display: grid; grid-template-columns: minmax(210px, 260px) 1fr;
+    border: 1px solid var(--border, #e5e7eb); border-radius: 10px; overflow: hidden;
+    min-height: 26rem;
+  }
+  .sl-rail {
+    border-right: 1px solid var(--border, #e5e7eb); background: var(--bg-grey, #f8f9fa);
+    padding: 0.5rem; overflow-y: auto; max-height: 78vh;
+  }
+  .sl-rail-group {
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: #6b7280; padding: 0.85rem 0.6rem 0.35rem;
+  }
+  .sl-rail-item {
+    display: flex; align-items: center; gap: 0.5rem; width: 100%;
+    background: transparent; border: none; border-radius: 7px;
+    padding: 0.5rem 0.6rem; margin-bottom: 1px;
+    font: inherit; font-size: 0.85rem; text-align: left; cursor: pointer;
+    color: var(--text-dark, #1a1a1a); transition: background 0.12s ease;
+  }
+  .sl-rail-item:hover { background: rgba(131, 102, 232, 0.08); }
+  .sl-rail-item[aria-current="true"] { background: var(--primary, #8366e8); color: #fff; }
+  .sl-rail-item[aria-current="true"] .sl-rail-meta { color: rgba(255,255,255,0.88); }
+  .sl-rail-item[aria-current="true"] .sl-dot { background: rgba(255,255,255,0.9); }
+  .sl-rail-label { flex: 1; line-height: 1.3; }
+  .sl-rail-code { font-weight: 700; }
+  .sl-rail-meta { font-size: 0.72rem; font-weight: 600; color: #5f6672; white-space: nowrap; }
+  .sl-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary, #8366e8); flex-shrink: 0; }
+  .sl-dot.empty { background: transparent; }
+
+  .sl-stage { padding: 1.1rem 1.25rem 1.5rem; overflow-y: auto; max-height: 78vh; }
+
+  /* Toolbar: breadcrumb path (Drive's path bar) plus contextual New actions. */
+  .sl-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; min-height: 2rem; }
+  .sl-crumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 0.1rem; }
+  .sl-crumb { background: none; border: none; font: inherit; font-size: 1.05rem; font-weight: 700; color: var(--text-dark, #1a1a1a); cursor: pointer; padding: 0.2rem 0.35rem; border-radius: 6px; }
+  .sl-crumb:not(.is-current):hover { background: rgba(131, 102, 232, 0.08); color: var(--primary, #8366e8); }
+  .sl-crumb.is-current { cursor: default; }
+  .sl-crumb-sep { display: inline-flex; width: 15px; height: 15px; color: #9aa0ab; }
+  .sl-crumb-sep svg { width: 15px; height: 15px; }
+  .sl-toolbar-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+  .sl-toolbar-btn { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; white-space: nowrap; }
+  .sl-toolbar-btn svg { width: 13px; height: 13px; }
+
+  /* Folder / subsection tiles — the "My Drive" grid. */
+  .sl-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.6rem; margin-bottom: 1.25rem; }
+  .sl-card {
+    position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 0.45rem;
+    background: var(--bg-grey, #f8f9fa); border: 1px solid var(--border, #e5e7eb); border-radius: 10px;
+    padding: 0.85rem 0.9rem; text-align: left; cursor: pointer; font: inherit;
+    transition: background 0.12s ease, border-color 0.12s ease; width: 100%;
+  }
+  .sl-card:hover { background: rgba(131, 102, 232, 0.07); border-color: rgba(131, 102, 232, 0.35); }
+  .sl-card-icon { color: var(--primary, #8366e8); }
+  .sl-card-icon svg { width: 22px; height: 22px; }
+  .sl-card-name { font-size: 0.86rem; font-weight: 700; color: var(--text-dark, #1a1a1a); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  .sl-card-meta { font-size: 0.72rem; color: var(--text-light, #6b7280); }
+  .sl-card-menu {
+    position: absolute; top: 0.5rem; right: 0.5rem; background: none; border: none; color: var(--text-light, #9ca3af);
+    cursor: pointer; padding: 0.3rem; border-radius: 6px; opacity: 0; transition: opacity 0.12s ease;
+  }
+  .sl-card:hover .sl-card-menu, .sl-card-menu:focus-visible { opacity: 1; }
+  .sl-card-menu:hover { color: var(--danger, #ef4444); background: rgba(239, 68, 68, 0.08); }
+  .sl-card-menu svg { width: 14px; height: 14px; }
+
+  /* File rows — the flat list inside a folder, or under a statement. */
+  .sl-files { margin-bottom: 0.75rem; }
+  .sl-file { display: flex; align-items: center; gap: 0.35rem; border-radius: 8px; }
+  .sl-file-open {
+    display: flex; align-items: center; gap: 0.65rem; flex: 1; min-width: 0;
+    text-decoration: none; color: inherit; padding: 0.4rem 0.5rem; border-radius: 8px; transition: background 0.12s ease;
+  }
+  .sl-file-open:hover { background: rgba(131, 102, 232, 0.07); }
+  .sl-file-icon {
+    flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 7px; background: rgba(131, 102, 232, 0.12); color: var(--primary, #8366e8);
+  }
+  .sl-file-icon svg { width: 16px; height: 16px; }
+  .sl-file-icon--video { background: rgba(220, 38, 38, 0.1); color: #c62828; }
+  .sl-file-icon--pdf { background: rgba(220, 38, 38, 0.1); color: #c62828; }
+  .sl-file-icon--worksheet, .sl-file-icon--exit_ticket { background: rgba(15, 143, 104, 0.12); color: #0f8f68; }
+  /* Answer keys get their own unmistakable treatment (padlock icon, amber
+     tint on the whole row, "Teacher only" text badge) -- a teacher scanning
+     or screen-sharing this list should never be able to mistake this row for
+     the student-safe one next to it. Tint on the row itself, not a
+     border-left accent bar -- DESIGN.md flags that pattern specifically. */
+  .sl-file-icon--exit_ticket_answers { background: rgba(245, 158, 11, 0.18); color: #8a5b08; }
+  .sl-file--restricted { background: rgba(245, 158, 11, 0.07); border-radius: 8px; }
+  .sl-file-restricted-badge {
+    flex-shrink: 0; display: inline-flex; align-items: center; gap: 0.25rem;
+    font-size: 0.62rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+    background: rgba(245, 158, 11, 0.18); color: #8a5b08; border-radius: 999px; padding: 0.18rem 0.55rem 0.18rem 0.4rem;
+  }
+  .sl-file-restricted-badge svg { width: 10px; height: 10px; }
+  .sl-file-name { flex: 1; min-width: 0; font-size: 0.86rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sl-file-name-muted { color: var(--text-light, #6b7280); font-weight: 500; }
+  .sl-file-kind { flex-shrink: 0; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-light, #9aa0ab); }
+  /* Pencil shortcut straight into the PowerPoint Online editor (decks only). */
+  .sl-file-edit-link {
+    flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+    color: var(--text-light, #9ca3af); padding: 0.5rem; border-radius: 6px; text-decoration: none;
+  }
+  .sl-file-edit-link:hover { color: var(--primary, #8366e8); background: rgba(131, 102, 232, 0.08); }
+  .sl-file-edit-link svg { width: 15px; height: 15px; }
+
+  /* Three-dot menu on each file row (Edit details / Delete). */
+  .sl-file-menu { position: relative; flex-shrink: 0; }
+  .sl-file-menu-btn { background: none; border: none; color: var(--text-light, #9ca3af); cursor: pointer; padding: 0.5rem; border-radius: 6px; display: flex; }
+  .sl-file-menu-btn svg { width: 16px; height: 16px; }
+  .sl-file-menu-btn:hover, .sl-file-menu-btn[aria-expanded="true"] { color: var(--text-dark, #1a1a1a); background: rgba(131, 102, 232, 0.1); }
+  .sl-file-menu-dropdown {
+    position: absolute; top: 100%; right: 0; z-index: 20; margin-top: 0.25rem;
+    background: #fff; border: 1px solid var(--border, #e5e7eb); border-radius: 8px;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.16); min-width: 9.5rem; padding: 0.3rem;
+    display: flex; flex-direction: column;
+  }
+  .sl-file-menu-dropdown[hidden] { display: none; }
+  .sl-file-menu-dropdown button {
+    display: flex; align-items: center; gap: 0.55rem; width: 100%; text-align: left;
+    background: none; border: none; font: inherit; font-size: 0.82rem; font-weight: 600;
+    padding: 0.45rem 0.55rem; border-radius: 6px; cursor: pointer; color: var(--text-dark, #1a1a1a);
+  }
+  .sl-file-menu-dropdown button svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .sl-file-menu-dropdown button:hover { background: rgba(131, 102, 232, 0.08); }
+  .sl-file-menu-dropdown button.sl-file-menu-danger { color: var(--danger, #ef4444); }
+  .sl-file-menu-dropdown button.sl-file-menu-danger:hover { background: rgba(239, 68, 68, 0.08); }
+
+  .sl-topic { border-bottom: 1px solid var(--border, #e5e7eb); }
+  .sl-topic:last-child { border-bottom: none; }
+  .sl-topic-header { display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.15rem 0; }
+  .sl-focus-wrap {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 0.9rem; margin: -0.55rem 0 -0.55rem -0.9rem; flex-shrink: 0; cursor: pointer;
+  }
+  .sl-focus { width: 15px; height: 15px; accent-color: var(--primary, #8366e8); cursor: pointer; }
+  .sl-topic-main {
+    flex: 1; display: flex; align-items: flex-start; gap: 0.55rem; flex-wrap: wrap;
+    background: none; border: none; font: inherit; text-align: left; cursor: pointer;
+    padding: 0.55rem 0.25rem; border-radius: 6px;
+  }
+  .sl-topic-main:hover { background: rgba(131, 102, 232, 0.05); }
+  .sl-topic-code { font-weight: 700; font-size: 0.8rem; color: var(--primary, #8366e8); flex-shrink: 0; }
+  .sl-topic-text { flex: 1; min-width: 12rem; font-size: 0.86rem; line-height: 1.45; color: var(--text-dark, #1a1a1a); }
+  .sl-topic.is-focused .sl-topic-text { color: var(--text-light, #6b7280); }
+  .sl-hl { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+           background: rgba(245, 158, 11, 0.15); color: #8a5b08; border-radius: 999px; padding: 0.1rem 0.4rem; }
+  .sl-count { font-size: 0.72rem; font-weight: 700; color: #5f6672;
+              background: var(--bg-grey, #f1f2f4); border-radius: 999px; padding: 0.12rem 0.5rem; }
+  .sl-count.has-resources { background: rgba(131, 102, 232, 0.12); color: #6b52cc; }
+
+  .sl-topic-body { padding: 0 0 1rem 0.4rem; }
+  .sl-topic-body.collapsed { display: none; }
+
+  .sl-empty-msg, .sl-no-resources { font-size: 0.82rem; color: var(--text-light, #6b7280); margin: 0 0 0.5rem; }
+  .sl-add-here {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: none; border: none; color: var(--primary, #8366e8); font: inherit; font-size: 0.8rem;
+    font-weight: 600; cursor: pointer; padding: 0.35rem 0.25rem;
+  }
+  .sl-add-here svg { width: 12px; height: 12px; }
+  .sl-add-here:hover { text-decoration: underline; }
+
+  /* ── Kind picker (Add-resource modal) ── */
+  .sl-kind-picker { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 2px; background: var(--bg-grey, #f8f9fa); border: 1px solid var(--border, #e5e7eb); border-radius: 8px; }
+  .sl-kind-opt { border: none; background: transparent; border-radius: 6px; padding: 0.42rem 0.3rem; font: inherit; font-size: 0.74rem; font-weight: 600; color: var(--text-light, #6b7280); cursor: pointer; text-align: center; line-height: 1.25; }
+  .sl-kind-opt[aria-pressed="true"] { background: var(--primary, #8366e8); color: #fff; }
+
+  /* ── Modal ── */
+  .sl-modal { position: fixed; inset: 0; z-index: 60; background: rgba(15, 16, 20, 0.45);
+              display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+  .sl-modal[hidden] { display: none; }
+  .sl-modal-panel { background: #fff; border-radius: 12px; padding: 1.5rem; width: min(520px, 100%);
+                    box-shadow: 0 12px 40px rgba(0,0,0,0.22); }
+  .sl-modal-panel h2 { font-size: 1.1rem; font-weight: 700; margin: 0 0 1rem; }
+  .sl-field { display: block; margin-bottom: 1rem; }
+  .sl-field > span { display: block; font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+                     letter-spacing: 0.04em; color: var(--text-light, #6b7280); margin-bottom: 0.3rem; }
+  .sl-field input, .sl-field select {
+    width: 100%; font: inherit; font-size: 0.88rem; padding: 0.5rem 0.65rem;
+    border: 1px solid var(--border, #e5e7eb); border-radius: 6px;
+  }
+  .sl-field input:focus, .sl-field select:focus { outline: 2px solid var(--primary, #8366e8); outline-offset: -1px; }
+  .sl-field small { display: block; margin-top: 0.3rem; font-size: 0.75rem; color: var(--text-light, #6b7280); }
+  .sl-modal-error { color: var(--danger, #ef4444); font-size: 0.82rem; margin: 0 0 0.75rem; }
+  .sl-modal-actions { display: flex; justify-content: flex-end; gap: 0.6rem; }
+
+  .sl-rail-item:focus-visible, .sl-topic-main:focus-visible, .sl-crumb:focus-visible,
+  .sl-card:focus-visible, .sl-card-menu:focus-visible,
+  .sl-add-here:focus-visible, .sl-file-edit-link:focus-visible, .sl-file-menu-btn:focus-visible, .sl-file-menu-dropdown button:focus-visible,
+  .sl-grade-opt:focus-visible, .sl-kind-opt:focus-visible {
+    outline: 2px solid var(--primary, #8366e8); outline-offset: -2px; border-radius: 6px;
+  }
+  .sl-focus:focus-visible { outline: 2px solid var(--primary, #8366e8); outline-offset: 2px; }
+
+  /* ── Narrow: the rail becomes a scrolling chip row above the stage. */
+  @media (max-width: 820px) {
+    .sl-card { padding: 1rem 0.9rem 1.25rem; }
+    .sl-header { flex-wrap: wrap; gap: 0.75rem; }
+    .sl-sub { flex-basis: 100%; order: 3; }
+    .sl-search { flex: 1 1 100%; }
+    .sl-search input { min-width: 0; width: 100%; }
+    .sl-progress { margin-left: 0; flex-basis: 100%; }
+
+    .sl-split { grid-template-columns: 1fr; min-height: 0; }
+    .sl-rail {
+      display: flex; gap: 0.4rem; overflow-x: auto; max-height: none;
+      border-right: none; border-bottom: 1px solid var(--border, #e5e7eb);
+      -webkit-overflow-scrolling: touch;
+    }
+    .sl-rail-group { display: none; }
+    .sl-rail-item { width: auto; white-space: nowrap; margin-bottom: 0; }
+    .sl-rail-label { flex: 0 0 auto; }
+    .sl-stage { max-height: none; padding: 1rem 0.35rem 1.25rem; }
+    .sl-topic-text { min-width: 0; flex-basis: 100%; }
+    .sl-cards { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+  }
+</style>
+
+<script>
+(function () {
+  const GRADE_KEY = 'slideLibraryGrade';
+  const UNIT_KEY = 'slideLibraryUnit';
+  const rail = document.getElementById('rail');
+  const stage = document.getElementById('stage');
+  const progressEl = document.getElementById('progressSummary');
+  const onlyFocused = document.getElementById('onlyFocused');
+  const searchInput = document.getElementById('searchInput');
+
+  const ICONS = {
+    folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"></path></svg>',
+    deck: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"></rect><path d="M8 21h8M12 17v4"></path></svg>',
+    video: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>',
+    pdf: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>',
+    worksheet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M9 13h6M9 17h6"></path></svg>',
+    exit_ticket: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="17" rx="2"></rect><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"></path><path d="M8.5 12.5l2 2 4.5-4.5"></path></svg>',
+    exit_ticket_answers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>',
+    chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>',
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6M14 11v6"></path></svg>',
+    kebab: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="12" cy="19" r="1.8"></circle></svg>',
+    edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>',
+  };
+  const KIND_LABEL = {
+    deck: 'Slides', video: 'Video', pdf: 'PDF', worksheet: 'Worksheet',
+    exit_ticket: 'Exit Ticket', exit_ticket_answers: 'Exit Ticket Answers',
+  };
+
+  let data = null;
+  let grade = Number(localStorage.getItem(GRADE_KEY)) || 11;
+  let selected = localStorage.getItem(UNIT_KEY) || 'course-wide';
+  // Where inside the selected unit we're browsing: null (root),
+  // {type:'subsection', code}, or {type:'folder', id}.
+  let loc = null;
+  // scope/folder the toolbar's New buttons act on for the current render.
+  let ctx = { scope: null, folderId: null };
+  const open = new Set();   // expanded statements, keyed by topic id
+
+  const esc = (s) => { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; };
+
+  function setGradeButtons() {
+    document.querySelectorAll('.sl-grade-opt').forEach(b => {
+      b.setAttribute('aria-pressed', String(Number(b.dataset.grade) === grade));
+    });
+  }
+
+  async function load() {
+    stage.innerHTML = '<div class="sl-loading">Loading syllabus…</div>';
+    const res = await fetch(`/api/slides/library?grade=${grade}`);
+    if (!res.ok) { stage.innerHTML = '<div class="sl-empty">Could not load the library.</div>'; return; }
+    data = await res.json();
+    render();
+  }
+
+  // One flat list of destinations: Course-wide plus every unit, each carrying
+  // its theme so the rail can group them without theme costing a click.
+  function units() {
+    const out = [{
+      key: 'course-wide', theme: null, code: '', label: 'Course-wide',
+      resources: data.course_wide.resource_count, focused: 0, total: 0,
+      subsections: null, folders: data.course_wide.folders, rootResources: data.course_wide.resources,
+    }];
+    for (const theme of data.themes) {
+      for (const u of theme.units) {
+        out.push({
+          key: u.code, theme: theme.label, code: u.code, label: u.label,
+          resources: u.resource_count, focused: u.focused_count, total: u.total,
+          subsections: u.subsections, folders: u.folders, rootResources: null,
+        });
+      }
+    }
+    return out;
+  }
+
+  function matches(topic) {
+    const q = searchInput.value.trim().toLowerCase();
+    if (onlyFocused.checked && !topic.focused) return false;
+    if (!q) return true;
+    return topic.code.toLowerCase().includes(q) || topic.statement.toLowerCase().includes(q);
+  }
+
+  function visibleTopics(unit) {
+    if (!unit || !unit.subsections) return [];
+    return unit.subsections.map(s => ({ code: s.code, topics: s.topics.filter(matches) }))
+                           .filter(s => s.topics.length);
+  }
+
+  // "IA"/"Internal Assessment" reads as an abbreviation + its name, but for
+  // Case Study the code *is* the label, so showing both would repeat itself.
+  function unitTitle(unit) {
+    return unit.code && unit.code !== unit.label ? `${unit.code} ${unit.label}` : unit.label;
+  }
+
+  function unitFolders(unit, parentId) {
+    return (unit.folders || []).filter(f => f.parent_id === parentId);
+  }
+
+  function folderPath(folders, id) {
+    const byId = Object.fromEntries((folders || []).map(f => [f.id, f]));
+    const path = [];
+    let cur = byId[id];
+    while (cur) { path.unshift(cur); cur = cur.parent_id ? byId[cur.parent_id] : null; }
+    return path;
+  }
+
+  function render() {
+    if (!data) return;
+    setGradeButtons();
+    const all = units();
+
+    // A filter that empties the selected unit would otherwise leave the stage
+    // blank with the matches hidden one click away — go to where they are.
+    const filtering = !!searchInput.value.trim() || onlyFocused.checked;
+    const hasRows = (u) => u.key === 'course-wide' ? !filtering : visibleTopics(u).length > 0;
+    if (filtering) {
+      const current = all.find(u => u.key === selected);
+      if (!current || !hasRows(current)) {
+        const first = all.find(hasRows);
+        if (first) selected = first.key;
+      }
+    }
+
+    renderRail(all, filtering, hasRows);
+    renderStage(all.find(u => u.key === selected) || all[0]);
+
+    let shown = 0, focused = 0;
+    for (const u of all) for (const s of visibleTopics(u)) {
+      shown += s.topics.length; focused += s.topics.filter(t => t.focused).length;
+    }
+    const resources = all.reduce((n, u) => n + u.resources, 0);
+    progressEl.innerHTML = `<b>${focused}</b> of <b>${shown}</b> focused · <b>${resources}</b> resource${resources === 1 ? '' : 's'} linked`;
+  }
+
+  function renderRail(all, filtering, hasRows) {
+    let html = '';
+    let group;
+    let started = false;
+    for (const u of all) {
+      if (filtering && !hasRows(u)) continue;
+      if (!started || u.theme !== group) {
+        group = u.theme;
+        if (group) html += `<div class="sl-rail-group">${esc(group)}</div>`;
+        started = true;
+      }
+      const count = u.key === 'course-wide'
+        ? `${u.resources} item${u.resources === 1 ? '' : 's'}`
+        : `${u.focused}/${u.total}`;
+      html += `
+        <button type="button" class="sl-rail-item" data-unit="${esc(u.key)}" aria-current="${u.key === selected}">
+          <span class="sl-dot ${u.resources ? '' : 'empty'}" aria-hidden="true"></span>
+          <span class="sl-rail-label">${u.code && u.code !== u.label ? `<span class="sl-rail-code">${esc(u.code)}</span> ` : ''}${esc(u.label)}</span>
+          <span class="sl-rail-meta">${count}</span>
+        </button>`;
+    }
+    rail.innerHTML = html || '<div class="sl-empty">No matches.</div>';
+  }
+
+  function crumbsHtml(crumbs) {
+    return crumbs.map((c, i) => {
+      const isLast = i === crumbs.length - 1;
+      const attrs = c.root ? 'data-crumb-root="1"' : (c.folderId != null ? `data-crumb-folder="${c.folderId}"` : '');
+      const sep = i > 0 ? `<span class="sl-crumb-sep" aria-hidden="true">${ICONS.chevron}</span>` : '';
+      return `${sep}<button type="button" class="sl-crumb ${isLast ? 'is-current' : ''}" ${attrs} ${isLast ? 'aria-current="page"' : 'tabindex="0"'}>${esc(c.label)}</button>`;
+    }).join('');
+  }
+
+  function toolbarButtons({ newFolder, addResource }) {
+    let html = '';
+    if (newFolder) html += `<button type="button" class="admin-btn-ghost sl-toolbar-btn" id="newFolderBtn">${ICONS.plus} New folder</button>`;
+    if (addResource) html += `<button type="button" class="admin-btn sl-toolbar-btn" id="addResourceBtn">${ICONS.plus} Add resource</button>`;
+    return html;
+  }
+
+  function subsectionCardHtml(s) {
+    const total = s.topics.length;
+    const focused = s.topics.filter(t => t.focused).length;
+    const resCount = s.topics.reduce((n, t) => n + t.resources.length, 0);
+    return `
+      <button type="button" class="sl-card" data-open-sub="${esc(s.code)}">
+        <span class="sl-card-icon">${ICONS.folder}</span>
+        <span class="sl-card-name">${esc(s.code)}</span>
+        <span class="sl-card-meta">${focused}/${total} focused${resCount ? ` · ${resCount} file${resCount === 1 ? '' : 's'}` : ''}</span>
+      </button>`;
+  }
+
+  function folderCardHtml(f) {
+    const count = (f.resources || []).length;
+    return `
+      <div class="sl-card" data-open-folder="${f.id}" role="button" tabindex="0">
+        <span class="sl-card-icon">${ICONS.folder}</span>
+        <span class="sl-card-name">${esc(f.name)}</span>
+        <span class="sl-card-meta">${count} item${count === 1 ? '' : 's'}</span>
+        <button type="button" class="sl-card-menu" data-del-folder="${f.id}" title="Delete folder" aria-label="Delete ${esc(f.name)}">${ICONS.trash}</button>
+      </div>`;
+  }
+
+  function cardsHtml(cards) {
+    return cards.length ? `<div class="sl-cards">${cards.join('')}</div>` : '';
+  }
+
+  function fileListHtml(resources) {
+    if (!resources || !resources.length) return '';
+    return `<div class="sl-files">${resources.map(resourceRowHtml).join('')}</div>`;
+  }
+
+  function resourceRowHtml(r) {
+    const showTitle = !r.auto_title;
+    const restricted = r.kind === 'exit_ticket_answers';
+    return `
+      <div class="sl-file${restricted ? ' sl-file--restricted' : ''}">
+        <a class="sl-file-open" href="${esc(r.url)}" target="_blank" rel="noopener" data-kind="${r.kind}">
+          <span class="sl-file-icon sl-file-icon--${r.kind}">${ICONS[r.kind] || ICONS.deck}</span>
+          ${showTitle ? `<span class="sl-file-name">${esc(r.title)}</span>`
+                      : `<span class="sl-file-name sl-file-name-muted">${esc(KIND_LABEL[r.kind] || 'File')}</span>`}
+          ${restricted ? `<span class="sl-file-restricted-badge">${ICONS.exit_ticket_answers} Teacher only</span>` : ''}
+          <span class="sl-file-kind">${esc(KIND_LABEL[r.kind] || r.kind)}</span>
+        </a>
+        ${r.edit_url ? `<a class="sl-file-edit-link" href="${esc(r.edit_url)}" target="_blank" rel="noopener" title="Edit in PowerPoint" aria-label="Edit ${esc(r.title)} in PowerPoint">${ICONS.edit}</a>` : ''}
+        <div class="sl-file-menu">
+          <button type="button" class="sl-file-menu-btn" data-menu-toggle="${r.id}" aria-haspopup="true" aria-expanded="false" title="More actions" aria-label="More actions for ${esc(r.title)}">${ICONS.kebab}</button>
+          <div class="sl-file-menu-dropdown" data-menu-dropdown="${r.id}" hidden>
+            <button type="button" data-edit-resource="${r.id}">${ICONS.edit} Edit details</button>
+            <button type="button" class="sl-file-menu-danger" data-del-resource="${r.id}">${ICONS.trash} Delete</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // Looks up a resource's live entry by id across topics, unit folders and
+  // course-wide, so Edit always opens with current data rather than stale
+  // values baked into the row's markup.
+  function findResource(id) {
+    id = Number(id);
+    const inFolders = (folders) => {
+      for (const f of folders || []) {
+        for (const r of f.resources) if (r.id === id) return r;
+      }
+      return null;
+    };
+    for (const r of data.course_wide.resources) if (r.id === id) return r;
+    let hit = inFolders(data.course_wide.folders);
+    if (hit) return hit;
+    for (const theme of data.themes) for (const u of theme.units) {
+      hit = inFolders(u.folders);
+      if (hit) return hit;
+      for (const s of u.subsections) for (const t of s.topics) {
+        for (const r of t.resources) if (r.id === id) return r;
+      }
+    }
+    return null;
+  }
+
+  function closeAllMenus() {
+    document.querySelectorAll('.sl-file-menu-dropdown').forEach(d => { d.hidden = true; });
+    document.querySelectorAll('[data-menu-toggle]').forEach(b => b.setAttribute('aria-expanded', 'false'));
+  }
+
+  function topicHtml(t) {
+    const id = t.id;
+    return `
+      <div class="sl-topic ${t.focused ? 'is-focused' : ''}">
+        <div class="sl-topic-header">
+          <label class="sl-focus-wrap" title="Mark as focused on for Grade ${grade}">
+            <input type="checkbox" class="sl-focus" data-topic="${esc(id)}" ${t.focused ? 'checked' : ''}
+                   aria-label="Focused on ${esc(t.code)} for Grade ${grade}">
+          </label>
+          <button type="button" class="sl-topic-main" data-node="${esc(id)}" aria-expanded="${open.has(id)}">
+            <span class="sl-topic-code">${esc(t.code)}</span>
+            <span class="sl-topic-text">${esc(t.statement)}${t.hl_only ? ' <span class="sl-hl">HL</span>' : ''}</span>
+            <span class="sl-count ${t.resources.length ? 'has-resources' : ''}">${t.resources.length}</span>
+          </button>
+        </div>
+        <div class="sl-topic-body ${open.has(id) ? '' : 'collapsed'}">
+          ${t.resources.length ? t.resources.map(resourceRowHtml).join('')
+                               : '<p class="sl-no-resources">Nothing linked yet.</p>'}
+          <button type="button" class="sl-add-here" data-add-topic="${esc(id)}">${ICONS.plus} Add resource here</button>
+        </div>
+      </div>`;
+  }
+
+  function renderStage(unit) {
+    if (!unit) { stage.innerHTML = '<div class="sl-empty">Nothing to show.</div>'; return; }
+
+    let crumbs, toolbarHtml, bodyHtml;
+
+    if (unit.key === 'course-wide') {
+      ctx = { scope: 'course-wide', folderId: null };
+      crumbs = [{ label: 'Course-wide', root: true }];
+      toolbarHtml = toolbarButtons({ newFolder: true, addResource: true });
+      bodyHtml = cardsHtml(unitFolders(unit, null).map(folderCardHtml)) + fileListHtml(unit.rootResources);
+      if (!bodyHtml) bodyHtml = '<div class="sl-empty">Nothing here yet. Use “New folder” or “Add resource” above.</div>';
+    } else if (loc && loc.type === 'folder') {
+      const path = folderPath(unit.folders, loc.id);
+      const folder = path[path.length - 1];
+      if (!folder) { loc = null; renderStage(unit); return; }
+      ctx = { scope: unit.key, folderId: folder.id };
+      crumbs = [{ label: unitTitle(unit), root: true }, ...path.map(f => ({ label: f.name, folderId: f.id }))];
+      toolbarHtml = toolbarButtons({ newFolder: true, addResource: true });
+      bodyHtml = cardsHtml(unitFolders(unit, folder.id).map(folderCardHtml)) + fileListHtml(folder.resources);
+      if (!bodyHtml) bodyHtml = '<div class="sl-empty">Empty folder. Use “New folder” or “Add resource” above.</div>';
+    } else if (loc && loc.type === 'subsection') {
+      const subs = visibleTopics(unit);
+      const sub = subs.find(s => s.code === loc.code);
+      if (!sub) { loc = null; renderStage(unit); return; }
+      ctx = { scope: unit.key, folderId: null };
+      crumbs = [{ label: unitTitle(unit), root: true }, { label: sub.code }];
+      toolbarHtml = '';
+      bodyHtml = sub.topics.map(topicHtml).join('');
+    } else {
+      const subs = visibleTopics(unit);
+      const multi = unit.subsections && unit.subsections.length > 1;
+      const folders = unitFolders(unit, null);
+      ctx = { scope: unit.key, folderId: null };
+      crumbs = [{ label: unitTitle(unit), root: true }];
+      toolbarHtml = toolbarButtons({ newFolder: true, addResource: false });
+      if (multi) {
+        bodyHtml = cardsHtml(subs.map(subsectionCardHtml).concat(folders.map(folderCardHtml)));
+        if (!bodyHtml) bodyHtml = '<div class="sl-empty">Nothing in this unit matches those filters.</div>';
+      } else {
+        const topics = subs.flatMap(s => s.topics);
+        bodyHtml = cardsHtml(folders.map(folderCardHtml)) + topics.map(topicHtml).join('');
+        if (!bodyHtml) bodyHtml = '<div class="sl-empty">Nothing in this unit matches those filters.</div>';
+      }
+    }
+
+    stage.innerHTML = `
+      <div class="sl-toolbar">
+        <nav class="sl-crumbs" aria-label="Breadcrumb">${crumbsHtml(crumbs)}</nav>
+        <div class="sl-toolbar-actions">${toolbarHtml}</div>
+      </div>
+      <div class="sl-stage-body">${bodyHtml}</div>`;
+  }
+
+  // ── events ──────────────────────────────────────────────────────────────
+  document.querySelectorAll('.sl-grade-opt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      grade = Number(btn.dataset.grade);
+      localStorage.setItem(GRADE_KEY, String(grade));
+      load();
+    });
+  });
+  onlyFocused.addEventListener('change', () => { loc = null; render(); });
+  let searchTimer;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { loc = null; render(); }, 150);
+  });
+
+  document.addEventListener('click', async (e) => {
+    if (!e.target.closest('.sl-file-menu')) closeAllMenus();
+
+    const menuToggle = e.target.closest('[data-menu-toggle]');
+    if (menuToggle) {
+      const id = menuToggle.dataset.menuToggle;
+      const dropdown = document.querySelector(`[data-menu-dropdown="${id}"]`);
+      const wasOpen = dropdown && !dropdown.hidden;
+      closeAllMenus();
+      if (dropdown && !wasOpen) { dropdown.hidden = false; menuToggle.setAttribute('aria-expanded', 'true'); }
+      return;
+    }
+
+    const editRes = e.target.closest('[data-edit-resource]');
+    if (editRes) {
+      closeAllMenus();
+      const r = findResource(editRes.dataset.editResource);
+      if (r) openResourceModal(null, r);
+      return;
+    }
+
+    const railBtn = e.target.closest('[data-unit]');
+    if (railBtn) {
+      selected = railBtn.dataset.unit;
+      loc = null;
+      localStorage.setItem(UNIT_KEY, selected);
+      render();
+      stage.scrollTop = 0;
+      return;
+    }
+
+    const crumbRoot = e.target.closest('[data-crumb-root]');
+    if (crumbRoot && stage.contains(crumbRoot)) { loc = null; render(); return; }
+
+    const crumbFolder = e.target.closest('[data-crumb-folder]');
+    if (crumbFolder && stage.contains(crumbFolder)) {
+      loc = { type: 'folder', id: Number(crumbFolder.dataset.crumbFolder) };
+      render();
+      return;
+    }
+
+    const openSub = e.target.closest('[data-open-sub]');
+    if (openSub) { loc = { type: 'subsection', code: openSub.dataset.openSub }; render(); stage.scrollTop = 0; return; }
+
+    const delFolder = e.target.closest('[data-del-folder]');
+    if (delFolder) {
+      if (!confirm('Delete this folder and everything in it? The linked files themselves are not deleted, just unlisted here.')) return;
+      await fetch(`/api/slides/folders/${delFolder.dataset.delFolder}`, { method: 'DELETE' });
+      if (loc && loc.type === 'folder' && String(loc.id) === delFolder.dataset.delFolder) loc = null;
+      load();
+      return;
+    }
+
+    const openFolder = e.target.closest('[data-open-folder]');
+    if (openFolder) { loc = { type: 'folder', id: Number(openFolder.dataset.openFolder) }; render(); stage.scrollTop = 0; return; }
+
+    const nodeBtn = e.target.closest('[data-node]');
+    if (nodeBtn && stage.contains(nodeBtn)) {
+      const id = nodeBtn.dataset.node;
+      if (open.has(id)) open.delete(id); else open.add(id);
+      nodeBtn.setAttribute('aria-expanded', String(open.has(id)));
+      const body = nodeBtn.closest('.sl-topic').querySelector('.sl-topic-body');
+      if (body) body.classList.toggle('collapsed');
+      return;
+    }
+
+    // Decks open in their own screen-sized window rather than a tab. A popup has
+    // no tab strip or bookmarks bar, so PowerPoint's viewer gets nearly the whole
+    // screen; its own "Start Slide Show" button then does true fullscreen — a
+    // page cannot force that on a cross-origin window. Other resource kinds just
+    // open normally.
+    const openLink = e.target.closest('.sl-file-open');
+    if (openLink && openLink.dataset.kind === 'deck' && !e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
+      const w = screen.availWidth, h = screen.availHeight;
+      const win = window.open(openLink.href, 'lessonSlidesWindow',
+        `popup=yes,left=0,top=0,width=${w},height=${h}`);
+      if (win) { e.preventDefault(); win.focus(); }
+      return;
+    }
+
+    const delRes = e.target.closest('[data-del-resource]');
+    if (delRes) {
+      if (!confirm('Remove this from the library? The file itself is not deleted.')) return;
+      await fetch(`/api/slides/resources/${delRes.dataset.delResource}`, { method: 'DELETE' });
+      load();
+      return;
+    }
+
+    const addHere = e.target.closest('[data-add-topic]');
+    if (addHere) { openResourceModal({ topic_id: addHere.dataset.addTopic, folder_id: null }); return; }
+
+    if (e.target.closest('#newFolderBtn')) { openFolderModal(ctx.scope, ctx.folderId); return; }
+    if (e.target.closest('#addResourceBtn')) { openResourceModal({ topic_id: null, folder_id: ctx.folderId }); return; }
+  });
+
+  document.addEventListener('change', async (e) => {
+    const box = e.target.closest('.sl-focus');
+    if (!box) return;
+    const topicId = box.dataset.topic;
+    const focused = box.checked;
+    const res = await fetch('/api/slides/focus', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic_id: topicId, grade, focused }),
+    });
+    if (!res.ok) { box.checked = !focused; alert('Could not save that.'); return; }
+    // Patch in place so the expanded statement and scroll position survive.
+    for (const theme of data.themes) for (const u of theme.units) {
+      for (const s of u.subsections) for (const t of s.topics) if (t.id === topicId) t.focused = focused;
+      u.focused_count = u.subsections.flatMap(s => s.topics).filter(t => t.focused).length;
+    }
+    render();
+  });
+
+  // ── resource modal ────────────────────────────────────────────────────────
+  const resourceModal = document.getElementById('resourceModal');
+  const resourceTitle = document.getElementById('resourceTitle');
+  const resourceUrl = document.getElementById('resourceUrl');
+  const resourceError = document.getElementById('resourceError');
+  const resourceTitleLabel = document.getElementById('resourceTitleLabel');
+  const resourceModalTitle = document.getElementById('resourceModalTitle');
+  const resourceSaveBtn = document.getElementById('resourceSave');
+  let resourceCtx = { topic_id: null, folder_id: null };
+  let resourceKind = document.querySelector('.sl-kind-opt').dataset.kind;
+  let editingResourceId = null;
+
+  function setKind(kind) {
+    resourceKind = kind;
+    document.querySelectorAll('.sl-kind-opt').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.kind === kind)));
+  }
+  document.querySelectorAll('.sl-kind-opt').forEach(btn => btn.addEventListener('click', () => setKind(btn.dataset.kind)));
+
+  // c is {topic_id, folder_id} when adding new; pass an existing resource
+  // entry as editResource to edit it in place instead.
+  function openResourceModal(c, editResource) {
+    resourceError.hidden = true;
+    if (editResource) {
+      editingResourceId = editResource.id;
+      resourceCtx = { topic_id: null, folder_id: null };
+      setKind(editResource.kind);
+      resourceUrl.value = editResource.url;
+      resourceTitle.value = editResource.auto_title ? '' : editResource.title;
+      resourceTitleLabel.innerHTML = 'Title <em style="font-weight:400; text-transform:none; letter-spacing:0">— optional</em>';
+      resourceTitle.placeholder = 'Defaults to the syllabus statement';
+      resourceModalTitle.textContent = 'Edit resource';
+      resourceSaveBtn.textContent = 'Save changes';
+    } else {
+      editingResourceId = null;
+      resourceCtx = c;
+      setKind(document.querySelector('.sl-kind-opt').dataset.kind);
+      resourceTitle.value = '';
+      resourceUrl.value = '';
+      if (c.topic_id) {
+        resourceTitleLabel.innerHTML = 'Title <em style="font-weight:400; text-transform:none; letter-spacing:0">— optional</em>';
+        resourceTitle.placeholder = 'Defaults to the syllabus statement';
+      } else {
+        resourceTitleLabel.textContent = 'Title';
+        resourceTitle.placeholder = '';
+      }
+      resourceModalTitle.textContent = 'Add a resource';
+      resourceSaveBtn.textContent = 'Save';
+    }
+    resourceModal.hidden = false;
+    resourceUrl.focus();
+  }
+  function closeResourceModal() { resourceModal.hidden = true; }
+
+  document.getElementById('resourceCancel').addEventListener('click', closeResourceModal);
+  resourceModal.addEventListener('click', (e) => { if (e.target === resourceModal) closeResourceModal(); });
+
+  resourceSaveBtn.addEventListener('click', async () => {
+    resourceError.hidden = true;
+    const res = editingResourceId
+      ? await fetch(`/api/slides/resources/${editingResourceId}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ kind: resourceKind, title: resourceTitle.value, url: resourceUrl.value }),
+        })
+      : await fetch('/api/slides/resources', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            kind: resourceKind, title: resourceTitle.value, url: resourceUrl.value,
+            topic_id: resourceCtx.topic_id || null, folder_id: resourceCtx.folder_id || null,
+          }),
+        });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) { resourceError.textContent = body.error || 'Could not save that.'; resourceError.hidden = false; return; }
+    closeResourceModal();
+    load();
+  });
+
+  // ── folder modal ───────────────────────────────────────────────────────────
+  const folderModal = document.getElementById('folderModal');
+  const folderName = document.getElementById('folderName');
+  const folderError = document.getElementById('folderError');
+  let folderCtx = { scope: null, parent_id: null };
+
+  function openFolderModal(scope, parentId) {
+    folderCtx = { scope, parent_id: parentId };
+    folderName.value = '';
+    folderError.hidden = true;
+    folderModal.hidden = false;
+    folderName.focus();
+  }
+  function closeFolderModal() { folderModal.hidden = true; }
+
+  document.getElementById('folderCancel').addEventListener('click', closeFolderModal);
+  folderModal.addEventListener('click', (e) => { if (e.target === folderModal) closeFolderModal(); });
+
+  document.getElementById('folderCreate').addEventListener('click', async () => {
+    folderError.hidden = true;
+    const res = await fetch('/api/slides/folders', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scope: folderCtx.scope, parent_id: folderCtx.parent_id, name: folderName.value }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) { folderError.textContent = body.error || 'Could not create that folder.'; folderError.hidden = false; return; }
+    closeFolderModal();
+    load();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    closeAllMenus();
+    if (!resourceModal.hidden) closeResourceModal();
+    if (!folderModal.hidden) closeFolderModal();
+  });
+
+  setGradeButtons();
+  load();
+})();
+</script>
+{% endblock %}

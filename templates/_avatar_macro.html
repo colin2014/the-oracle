@@ -1,0 +1,15 @@
+{# Renders one avatar icon by catalog key. avatar_svg(key, size) — size in px, default 40.
+   The glyph is a real Unicode emoji character drawn as SVG <text>, so the artwork
+   itself comes from the visitor's own OS/browser font — nothing is embedded or
+   redistributed here. One shared neutral backdrop (not a per-avatar hue) keeps
+   every option reading as part of the same set, same spirit as Kahoot's own
+   single-background avatar grid. #}
+{% macro avatar_svg(key, size=40) %}
+{% set a = AVATAR_BY_KEY.get(key) %}
+<svg viewBox="0 0 100 100" width="{{ size }}" height="{{ size }}" class="avatar-icon" role="img" aria-label="{{ a.label if a else 'Default' }} avatar">
+    <circle cx="50" cy="50" r="48" fill="rgba(131,102,232,0.14)"></circle>
+    {% if a %}
+    <text x="50" y="67" font-size="54" text-anchor="middle">{{ a.emoji }}</text>
+    {% endif %}
+</svg>
+{% endmacro %}

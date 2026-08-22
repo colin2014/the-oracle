@@ -1,0 +1,363 @@
+{% extends "admin_base.html" %}
+{% block title %}{{ fset.title }} — Flashcards{% endblock %}
+
+{% block content %}
+<style>
+    .fd-container { max-width: 1000px; margin: 0 auto; }
+    .fd-header h1 { font-size: 1.5rem; margin: 0 0 0.3rem 0; }
+    .fd-header p { color: var(--text-light); margin: 0 0 1.5rem 0; font-size: 0.9rem; }
+    .fd-card {
+        background: var(--bg-white); border: 1px solid var(--border);
+        border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem;
+    }
+    .fd-card h2 { font-size: 1.1rem; margin-top: 0; }
+    .fd-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .fd-table th, .fd-table td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .fd-table th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-light); }
+    .fd-table input, .fd-table textarea {
+        width: 100%; padding: 0.4rem 0.5rem; border: 1px solid var(--border);
+        border-radius: 5px; background: var(--bg-white); color: var(--text-dark);
+        font-size: 0.85rem; font-family: inherit;
+    }
+    .fd-table textarea { resize: vertical; min-height: 2.4rem; }
+    .fd-del { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1rem; }
+    .fd-actions { margin-top: 0.9rem; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+    .fd-status { font-size: 0.85rem; color: var(--text-light); }
+    .fd-form-row { display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap; }
+    .fd-form-row label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.25rem; }
+    .fd-form-row select, .fd-form-row input {
+        padding: 0.5rem 0.6rem; border: 1px solid var(--border); border-radius: 6px;
+        background: var(--bg-white); color: var(--text-dark); font-size: 0.9rem;
+    }
+    .fd-type-selector { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .fd-type-btn { padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-white); color: var(--text-dark); cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.2s; }
+    .fd-type-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+    .fd-pill { font-size: 0.78rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 999px; }
+    .fd-pill.class { background: rgba(157, 132, 255, 0.15); color: var(--primary); }
+    .fd-pill.student { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+    .fd-empty { color: var(--text-light); padding: 1rem 0; font-size: 0.9rem; }
+    .fd-danger { border: 1px solid #ef4444; color: #ef4444; background: none; border-radius: 8px;
+                 padding: 0.45rem 0.9rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+    .fd-danger:hover { background: rgba(239, 68, 68, 0.08); }
+    .fd-bar { height: 6px; border-radius: 3px; background: var(--bg-light); overflow: hidden; min-width: 90px; }
+    .fd-bar > div { height: 100%; background: #10b981; }
+    .struggling { font-size: 0.8rem; color: #ef4444; }
+</style>
+
+<div class="fd-container">
+    <div class="fd-header" style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap;">
+        <div>
+            <h1>🃏 <input id="setTitle" value="{{ fset.title }}" style="font-size:1.2rem; font-weight:700; border:1px solid transparent; border-radius:6px; padding:0.2rem 0.4rem; background:transparent; color:inherit; min-width:320px;" onfocus="this.style.borderColor='var(--border)'" onblur="this.style.borderColor='transparent'"></h1>
+            <p>{{ book_title }} · <a href="{{ url_for('flashcards.flashcards_home') }}">All flashcard sets</a> · <a href="{{ url_for('flashcards.study_page', set_id=fset.id) }}">Preview as student</a></p>
+            <div style="margin-top:0.75rem;">
+                <label style="font-size:0.85rem; color:var(--text-light); display:block; margin-bottom:0.4rem;">Study mode</label>
+                <div class="fd-type-selector">
+                    <button class="fd-type-btn {% if fset.card_type == 'flashcard' %}active{% endif %}" onclick="setCardType('flashcard')">🃏 Flashcard</button>
+                    <button class="fd-type-btn {% if fset.card_type == 'matching' %}active{% endif %}" onclick="setCardType('matching')">🎯 Matching</button>
+                    <button class="fd-type-btn {% if fset.card_type == 'learn' %}active{% endif %}" onclick="setCardType('learn')">📚 Learn</button>
+                </div>
+            </div>
+        </div>
+        <button class="fd-danger" onclick="deleteSet()">🗑 Delete set</button>
+    </div>
+
+    <!-- Assign -->
+    <div class="fd-card">
+        <h2>Assign this set</h2>
+        <div class="fd-form-row">
+            <div>
+                <label for="assignClass">To a class</label>
+                <select id="assignClass">
+                    <option value="">— none —</option>
+                    {% for c in classes %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="assignStudent">…or one student</label>
+                <select id="assignStudent">
+                    <option value="">— none —</option>
+                    {% for s in students %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="assignDue">Due date (optional)</label>
+                <input type="datetime-local" id="assignDue">
+            </div>
+            <button class="btn btn-primary" onclick="assignSet()">Assign</button>
+            <span class="fd-status" id="assignStatus"></span>
+        </div>
+        <div id="assignmentsList" style="margin-top:1rem;"><div class="fd-empty">Loading assignments…</div></div>
+    </div>
+
+    <!-- Performance -->
+    <div class="fd-card">
+        <h2>Student performance</h2>
+        <div id="performance"><div class="fd-empty">Loading…</div></div>
+    </div>
+
+    <!-- Cards -->
+    <div class="fd-card">
+        <h2>Cards <span id="cardCount" style="font-weight:400; color:var(--text-light); font-size:0.9rem;"></span></h2>
+        <table class="fd-table">
+            <thead><tr><th style="width:26%;">Term</th><th>Definition</th><th style="width:9%;">Page</th><th style="width:36px;"></th></tr></thead>
+            <tbody id="cardsBody"></tbody>
+        </table>
+        <div class="fd-actions">
+            <button class="btn" onclick="addCardRow()">＋ Add card</button>
+            <button class="btn btn-primary" onclick="saveCards()">Save changes</button>
+            <span class="fd-status" id="saveStatus"></span>
+        </div>
+        <div class="fd-actions" style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); flex-wrap: wrap;">
+            <select id="aiPage" style="max-width: 280px;"><option value="">Loading pages…</option></select>
+            <input id="aiCount" type="number" value="10" min="1" max="30" style="width: 64px;" title="Number of cards">
+            <button class="btn" id="aiGenBtn" onclick="aiGenerateCards()">✨ Generate cards with AI</button>
+            <span class="fd-status" id="aiStatus"></span>
+        </div>
+        <div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.4rem;">
+            Generated cards are added to the table above for you to review and edit — nothing is saved until you click "Save changes".
+        </div>
+    </div>
+</div>
+
+<script>
+const SET_ID = {{ fset.id }};
+let currentCardType = '{{ fset.card_type }}';
+
+function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+}
+
+function setCardType(type) {
+    currentCardType = type;
+    document.querySelectorAll('.fd-type-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+}
+
+// ---------- cards editor ----------
+async function loadCards() {
+    const res = await fetch(`/api/flashcards/${SET_ID}/cards`);
+    const data = await res.json();
+    const body = document.getElementById('cardsBody');
+    body.innerHTML = '';
+    (data.cards || []).forEach(c => addCardRow(c));
+    updateCount();
+}
+
+function addCardRow(card) {
+    const body = document.getElementById('cardsBody');
+    const tr = document.createElement('tr');
+    if (card && card.id) tr.dataset.cardId = card.id;
+    tr.innerHTML = `
+        <td><textarea class="c-term" rows="1">${escapeHtml(card ? card.term : '')}</textarea></td>
+        <td><textarea class="c-def" rows="1">${escapeHtml(card ? card.definition : '')}</textarea></td>
+        <td><input class="c-page" value="${escapeHtml(card ? (card.page_id || '') : '')}" placeholder="—"></td>
+        <td><button class="fd-del" title="Remove card" onclick="this.closest('tr').remove(); updateCount();">✕</button></td>`;
+    body.appendChild(tr);
+    updateCount();
+}
+
+function updateCount() {
+    const n = document.querySelectorAll('#cardsBody tr').length;
+    document.getElementById('cardCount').textContent = `(${n})`;
+}
+
+async function saveCards() {
+    const status = document.getElementById('saveStatus');
+    const cards = [...document.querySelectorAll('#cardsBody tr')].map(tr => ({
+        id: tr.dataset.cardId ? parseInt(tr.dataset.cardId) : null,
+        term: tr.querySelector('.c-term').value.trim(),
+        definition: tr.querySelector('.c-def').value.trim(),
+        page_id: tr.querySelector('.c-page').value.trim(),
+    })).filter(c => c.term || c.definition);
+    status.textContent = 'Saving…';
+    try {
+        const res = await fetch(`/admin/api/flashcards/${SET_ID}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: document.getElementById('setTitle').value.trim(),
+                card_type: currentCardType,
+                cards
+            }),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Save failed');
+        status.textContent = '✓ Saved';
+        loadCards();
+        loadPerformance();
+    } catch (e) { status.textContent = '✗ ' + e.message; }
+}
+
+// ---------- AI generation ----------
+const BOOK_FOLDER = {{ fset.book_folder | tojson }};
+
+async function loadAiPages() {
+    const sel = document.getElementById('aiPage');
+    try {
+        const res = await fetch(`/admin/api/flashcards/pages/${encodeURIComponent(BOOK_FOLDER)}`);
+        const data = await res.json();
+        sel.innerHTML = '<option value="">Choose a page…</option>' +
+            (data.pages || []).map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.title)}</option>`).join('');
+    } catch (e) {
+        sel.innerHTML = '<option value="">Could not load pages</option>';
+    }
+}
+
+async function aiGenerateCards() {
+    const status = document.getElementById('aiStatus');
+    const btn = document.getElementById('aiGenBtn');
+    const pageId = document.getElementById('aiPage').value;
+    if (!pageId) { status.textContent = 'Choose a page first'; return; }
+
+    const existingTerms = [...document.querySelectorAll('#cardsBody .c-term')]
+        .map(t => t.value.trim()).filter(Boolean);
+
+    btn.disabled = true;
+    status.textContent = '✨ Generating… (10–20s)';
+    try {
+        const res = await fetch('/admin/api/flashcards/ai-generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                book_folder: BOOK_FOLDER,
+                page_id: pageId,
+                count: parseInt(document.getElementById('aiCount').value) || 10,
+                existing_terms: existingTerms,
+            }),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Generation failed');
+        (data.cards || []).forEach(c => addCardRow(c));
+        status.textContent = `✓ Added ${data.cards.length} card(s) — review, then Save changes`;
+    } catch (e) {
+        status.textContent = '✗ ' + e.message;
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function deleteSet() {
+    if (!confirm('Delete this flashcard set?\n\nThis removes its assignments and all student progress, and cannot be undone.')) return;
+    const res = await fetch(`/admin/api/flashcards/${SET_ID}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.ok) window.location.href = '/admin/flashcards';
+    else alert(data.error || 'Delete failed');
+}
+
+// ---------- assignments ----------
+async function loadAssignments() {
+    const box = document.getElementById('assignmentsList');
+    const res = await fetch(`/admin/api/flashcards/${SET_ID}/assignments`);
+    const rows = (await res.json()).assignments || [];
+    if (!rows.length) { box.innerHTML = '<div class="fd-empty">Not assigned to anyone yet.</div>'; return; }
+    box.innerHTML = `<table class="fd-table"><thead><tr><th>Assigned to</th><th>Due</th><th>Created</th><th style="width:36px;"></th></tr></thead><tbody>` +
+        rows.map(a => `
+            <tr>
+                <td><span class="fd-pill ${a.target_type}">${a.target_type === 'class' ? 'Class' : 'Student'}</span> ${escapeHtml(a.target)}</td>
+                <td>${a.due_date ? escapeHtml(a.due_date) : '—'}</td>
+                <td>${escapeHtml(a.created_at)}</td>
+                <td><button class="fd-del" title="Remove assignment" onclick="removeAssignment(${a.id})">✕</button></td>
+            </tr>`).join('') + '</tbody></table>';
+}
+
+async function assignSet() {
+    const status = document.getElementById('assignStatus');
+    const classId = document.getElementById('assignClass').value;
+    const studentId = document.getElementById('assignStudent').value;
+    const due = document.getElementById('assignDue').value;
+    if (!classId && !studentId) { status.textContent = 'Pick a class or a student.'; return; }
+    if (classId && studentId) { status.textContent = 'Pick only one target.'; return; }
+    status.textContent = 'Assigning…';
+    try {
+        const res = await fetch(`/admin/api/flashcards/${SET_ID}/assign`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                class_id: classId ? parseInt(classId) : null,
+                student_id: studentId ? parseInt(studentId) : null,
+                due_date: due || null,
+            }),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Assign failed');
+        status.textContent = '✓ Assigned';
+        document.getElementById('assignClass').value = '';
+        document.getElementById('assignStudent').value = '';
+        loadAssignments();
+        loadPerformance();
+    } catch (e) { status.textContent = '✗ ' + e.message; }
+}
+
+async function removeAssignment(id) {
+    if (!confirm('Remove this assignment? Student progress on the cards is kept.')) return;
+    await fetch(`/admin/api/flashcards/assignment/${id}`, { method: 'DELETE' });
+    loadAssignments();
+    loadPerformance();
+}
+
+// ---------- performance ----------
+async function loadPerformance() {
+    const box = document.getElementById('performance');
+    const res = await fetch(`/admin/api/flashcards/${SET_ID}/performance`);
+    const data = await res.json();
+    const students = data.students || [];
+    if (!students.length) {
+        box.innerHTML = '<div class="fd-empty">No students yet — assign the set to a class or student to start tracking.</div>';
+        return;
+    }
+    box.innerHTML = `<table class="fd-table"><thead><tr>
+            <th>Student</th><th>Progress</th><th>Mastered</th><th>Accuracy</th>
+            <th>Tries</th><th>Time spent</th><th>Best time</th><th>Improvement</th>
+            <th>Last studied</th><th>Struggling with</th>
+        </tr></thead><tbody>` +
+        students.map(s => {
+            const pct = s.cards_total ? Math.round(s.cards_seen * 100 / s.cards_total) : 0;
+            const sess = s.sessions || {};
+            return `
+            <tr>
+                <td><a href="/admin/analytics/student/${s.student_id}" style="color:var(--primary); text-decoration:none;">${escapeHtml(s.name)}</a></td>
+                <td>
+                    <div class="fd-bar"><div style="width:${pct}%;"></div></div>
+                    <span style="font-size:0.78rem; color:var(--text-light);">${s.cards_seen}/${s.cards_total} cards seen</span>
+                </td>
+                <td>${s.cards_mastered}/${s.cards_total}</td>
+                <td>${s.accuracy === null ? '—' : s.accuracy + '%'}</td>
+                <td>${sess.attempts || 0} <span style="color:var(--text-light); font-size:0.78rem;">(${sess.completions || 0} done)</span></td>
+                <td>${fmtDuration(sess.total_seconds)}</td>
+                <td>${fmtDuration(sess.best_seconds)}</td>
+                <td>${improvementLabel(sess)}</td>
+                <td>${s.last_studied ? escapeHtml(s.last_studied) : '<span style="color:var(--text-light);">not started</span>'}</td>
+                <td class="struggling">${s.struggling_terms.length ? escapeHtml(s.struggling_terms.join(', ')) : '—'}</td>
+            </tr>`;
+        }).join('') + '</tbody></table>';
+}
+
+function fmtDuration(seconds) {
+    if (seconds === null || seconds === undefined) return '—';
+    if (!seconds) return seconds === 0 ? '0s' : '—';
+    if (seconds < 60) return Math.round(seconds) + 's';
+    const m = Math.floor(seconds / 60), s = Math.round(seconds % 60);
+    return `${m}m ${s}s`;
+}
+
+function improvementLabel(sess) {
+    const parts = [];
+    if (sess.time_improvement) {
+        const faster = sess.time_improvement > 0;
+        parts.push(`<span style="color:${faster ? '#10b981' : '#ef4444'}; font-weight:600;">${faster ? '▲' : '▼'} ${Math.abs(sess.time_improvement).toFixed(0)}s ${faster ? 'faster' : 'slower'}</span>`);
+    }
+    if (sess.accuracy_improvement) {
+        const up = sess.accuracy_improvement > 0;
+        parts.push(`<span style="color:${up ? '#10b981' : '#ef4444'}; font-weight:600;">${up ? '▲' : '▼'} ${Math.abs(sess.accuracy_improvement)}%</span>`);
+    }
+    return parts.length ? parts.join('<br>') : '<span style="color:var(--text-light);">—</span>';
+}
+
+loadCards();
+loadAssignments();
+loadPerformance();
+loadAiPages();
+</script>
+{% endblock %}

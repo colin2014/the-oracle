@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Books Catalogue</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .books-body {
+            background: var(--bg-light);
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        .books-nav {
+            background: var(--bg-white);
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+
+        .books-nav a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .books-nav a:hover {
+            text-decoration: underline;
+        }
+
+        .books-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        .books-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .books-header h1 {
+            font-size: 2rem;
+            margin: 0 0 0.5rem 0;
+            color: var(--text-dark);
+        }
+
+        .books-header p {
+            font-size: 1.1rem;
+            color: var(--text-light);
+        }
+
+        .books-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 2rem;
+        }
+
+        .book-item {
+            background: var(--bg-white);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
+        }
+
+        .book-item:hover {
+            box-shadow: 0 4px 16px rgba(74, 144, 226, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .book-header {
+            background: linear-gradient(135deg, #8366e8 0%, #6b52cc 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .book-header h2 {
+            font-size: 1.5rem;
+            margin: 0 0 0.5rem 0;
+        }
+
+
+        .book-body {
+            padding: 1.5rem;
+        }
+
+        .book-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .book-meta-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .book-meta-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-light);
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .book-meta-value {
+            font-size: 1.1rem;
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+
+        .book-actions {
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .book-btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            flex: 1;
+        }
+
+        .book-btn.primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .book-btn.primary:hover {
+            background: #3a7bc8;
+        }
+
+        .book-btn.secondary {
+            background: var(--bg-light);
+            color: var(--text-dark);
+            border: 1px solid var(--border);
+        }
+
+        .book-btn.secondary:hover {
+            background: #e8f0fe;
+            border-color: var(--primary);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-light);
+        }
+
+        .empty-state h3 {
+            margin-top: 0;
+        }
+
+        .theme-toggle {
+            background: rgba(0, 0, 0, 0.1);
+            border: none;
+            border-radius: 6px;
+            padding: 0.4rem 0.75rem;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: background 0.2s;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .book-header {
+            position: relative;
+        }
+
+        .edit-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 0.9rem;
+            padding: 0.25rem 0.35rem;
+            border-radius: 4px;
+            transition: background 0.2s;
+            line-height: 1;
+        }
+
+        .edit-btn:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-dark);
+        }
+
+        .form-group input,
+        .form-group input[type="color"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        .color-preview {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: border-color 0.2s;
+        }
+
+        .color-option.selected {
+            border-color: #333;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .modal-actions button {
+            flex: 1;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-save {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-save:hover {
+            background: #6b52cc;
+        }
+
+        .btn-cancel {
+            background: var(--border);
+            color: var(--text-dark);
+        }
+
+        .btn-cancel:hover {
+            background: #ddd;
+        }
+    </style>
+</head>
+<body class="books-body">
+    <nav class="app-nav">
+        <div class="nav-brand">📚 The Oracle</div>
+        <div class="nav-links">
+            <a href="/dashboard" class="nav-link">🎓 Dashboard</a>
+            <a href="/resources" class="nav-link active">🗂 Resources</a>
+        </div>
+        <div class="nav-right">
+            {% if current_user.is_authenticated %}
+            <div class="user-info">
+                <span class="user-name">👤 {{ current_user.name }}</span>
+            </div>
+            {% endif %}
+            <button id="themeToggle" class="theme-toggle-btn" title="Toggle dark mode">🌙</button>
+            {% if current_user.is_authenticated %}
+            <a href="{{ url_for('auth.logout') }}" class="logout-btn" title="Logout">🚪</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <div class="books-container">
+        <div class="books-header">
+            <h1>📚 Books Catalogue</h1>
+            <p>Select a book to start learning</p>
+        </div>
+
+        <div class="books-grid" id="booksGrid">
+            <div class="empty-state">
+                <h3>No books available</h3>
+                <p>Import your first book from the homepage</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <h3>Edit Book</h3>
+            <div class="form-group">
+                <label>Book Name</label>
+                <input type="text" id="editTitle" placeholder="Book title">
+            </div>
+            <div class="form-group">
+                <label>Card Color</label>
+                <div class="color-preview" id="colorOptions"></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-save" onclick="saveBookEdit()">Save</button>
+                <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize theme
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.dataset.theme = savedTheme;
+            updateThemeToggle();
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.dataset.theme || 'light';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.dataset.theme = newTheme;
+            localStorage.setItem('theme', newTheme);
+            updateThemeToggle();
+        }
+
+        function updateThemeToggle() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const isDark = document.documentElement.dataset.theme === 'dark';
+            toggleBtn.textContent = isDark ? '☀️' : '🌙';
+        }
+
+        document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+        async function loadBooks() {
+            try {
+                console.log('Loading books...');
+                const response = await fetch('/api/books');
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Books data:', data);
+                renderBooks(data.books || []);
+            } catch (error) {
+                console.error('Failed to load books:', error);
+                document.getElementById('booksGrid').innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <h3>Error loading books</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderBooks(books) {
+            const grid = document.getElementById('booksGrid');
+            if (!books || books.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <h3>No books available</h3>
+                        <p>Import your first book from the homepage</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = books.map((book, index) => {
+                const defaultColors = [
+                    { from: '#5b9bd5', to: '#2b5aa0' },
+                    { from: '#e84c3d', to: '#c03a2e' },
+                    { from: '#43a574', to: '#2d7a52' }
+                ];
+                // Use stored colors if available, otherwise use default
+                const color = book.color_from && book.color_to
+                    ? { from: book.color_from, to: book.color_to }
+                    : defaultColors[index % defaultColors.length];
+                return `
+                <div class="book-item" data-book-id="${book.id}">
+                    <div class="book-header" style="background: linear-gradient(135deg, ${color.from} 0%, ${color.to} 100%);">
+                        <h2>${book.title}</h2>
+                        <button class="edit-btn" onclick="openEditModal('${book.id}', '${book.title}', '${color.from}', '${color.to}')">✏️</button>
+                    </div>
+                    <div class="book-body">
+                        <div class="book-meta">
+                            <div class="book-meta-item">
+                                <span class="book-meta-label">Pages</span>
+                                <span class="book-meta-value">${book.pages_count}</span>
+                            </div>
+                            <div class="book-meta-item">
+                                <span class="book-meta-label">Status</span>
+                                <span class="book-meta-value">✓ Ready</span>
+                            </div>
+                        </div>
+                        <div class="book-actions">
+                            <button class="book-btn primary" onclick="window.location.href='/book/${book.folder}/learn'">
+                                📖 View
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            }).join('');
+        }
+
+        let editingBook = null;
+        const colorPalette = [
+            { from: '#5b9bd5', to: '#2b5aa0' },
+            { from: '#e84c3d', to: '#c03a2e' },
+            { from: '#43a574', to: '#2d7a52' },
+            { from: '#f39c12', to: '#d68910' },
+            { from: '#9b59b6', to: '#7d3c98' },
+            { from: '#1abc9c', to: '#16a085' }
+        ];
+
+        function openEditModal(bookId, title, colorFrom, colorTo) {
+            editingBook = { id: bookId, title, colorFrom, colorTo };
+            document.getElementById('editTitle').value = title;
+
+            const colorOptions = document.getElementById('colorOptions');
+            colorOptions.innerHTML = colorPalette.map((color, idx) => `
+                <div class="color-option ${color.from === colorFrom ? 'selected' : ''}"
+                     style="background: linear-gradient(135deg, ${color.from} 0%, ${color.to} 100%);"
+                     onclick="selectColor(${idx})"
+                     data-from="${color.from}"
+                     data-to="${color.to}"></div>
+            `).join('');
+
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+            editingBook = null;
+        }
+
+        function selectColor(index) {
+            const color = colorPalette[index];
+            editingBook.colorFrom = color.from;
+            editingBook.colorTo = color.to;
+
+            document.querySelectorAll('.color-option').forEach((el, idx) => {
+                el.classList.toggle('selected', idx === index);
+            });
+        }
+
+        async function saveBookEdit() {
+            if (!editingBook) return;
+
+            const newTitle = document.getElementById('editTitle').value.trim();
+            if (!newTitle) {
+                alert('Book name is required');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/books/edit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: editingBook.id,
+                        title: newTitle,
+                        colorFrom: editingBook.colorFrom,
+                        colorTo: editingBook.colorTo
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    closeEditModal();
+                    loadBooks();
+                } else {
+                    alert('Error saving book: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+                alert('Error saving book: ' + error.message);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            loadBooks();
+        });
+
+        document.addEventListener('click', (e) => {
+            const modal = document.getElementById('editModal');
+            if (e.target === modal) {
+                closeEditModal();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pages | Syllabus Manager</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        :root {
+            --pm-bg: #f7f8fa;
+            --pm-panel: #ffffff;
+            --pm-border: #e4e7ec;
+            --pm-text: #1f2937;
+            --pm-text-dim: #8a94a6;
+            --pm-accent: #2563eb;
+            --pm-accent-soft: #eff4ff;
+            --pm-hover: #f2f4f7;
+            --pm-danger: #dc2626;
+            --pm-shadow: 0 8px 24px rgba(16, 24, 40, 0.12);
+        }
+        [data-theme="dark"] {
+            --pm-bg: #0f1014;
+            --pm-panel: #17181f;
+            --pm-border: #262833;
+            --pm-text: #ececf1;
+            --pm-text-dim: #8b8fa3;
+            --pm-accent: #6ea2ff;
+            --pm-accent-soft: rgba(110, 162, 255, 0.12);
+            --pm-hover: #1d1f28;
+            --pm-danger: #f87171;
+            --pm-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.55);
+            color-scheme: dark;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--pm-bg);
+            color: var(--pm-text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        .pm-shell {
+            max-width: 860px;
+            margin: 2rem auto;
+            padding: 0 1rem 4rem;
+        }
+
+        .pm-panel {
+            background: var(--pm-panel);
+            border: 1px solid var(--pm-border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        /* Toolbar */
+        .pm-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--pm-border);
+        }
+        .pm-toolbar h1 {
+            font-size: 1.1rem;
+            margin: 0 auto 0 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .pm-chip {
+            font-size: 0.78rem;
+            color: var(--pm-text-dim);
+            padding: 0.25rem 0.6rem;
+            border: 1px solid var(--pm-border);
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+        .pm-chip.saving { color: var(--pm-accent); border-color: var(--pm-accent); }
+        .pm-chip.error { color: var(--pm-danger); border-color: var(--pm-danger); }
+
+        .pm-btn {
+            border: 1px solid var(--pm-border);
+            background: var(--pm-panel);
+            color: var(--pm-text);
+            border-radius: 8px;
+            padding: 0.45rem 0.8rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .pm-btn:hover { background: var(--pm-hover); }
+        .pm-btn.primary {
+            background: var(--pm-accent);
+            border-color: var(--pm-accent);
+            color: #fff;
+        }
+        .pm-btn.primary:hover { filter: brightness(1.08); }
+
+        .pm-sub-toolbar {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            padding: 0.6rem 1.25rem;
+            border-bottom: 1px solid var(--pm-border);
+        }
+        .pm-filter {
+            flex: 1;
+            border: 1px solid var(--pm-border);
+            background: var(--pm-bg);
+            color: var(--pm-text);
+            border-radius: 8px;
+            padding: 0.45rem 0.75rem;
+            font-size: 0.85rem;
+            outline: none;
+        }
+        .pm-filter:focus { border-color: var(--pm-accent); }
+        .pm-link-btn {
+            background: none;
+            border: none;
+            color: var(--pm-text-dim);
+            font-size: 0.78rem;
+            cursor: pointer;
+            padding: 0.25rem 0.4rem;
+        }
+        .pm-link-btn:hover { color: var(--pm-accent); }
+
+        /* Tree */
+        .pm-tree { padding: 0.5rem 0.5rem 1.5rem; min-height: 300px; }
+
+        .row {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.5rem 0.35rem calc(0.5rem + var(--d, 0) * 22px);
+            border-radius: 8px;
+            cursor: grab;
+            user-select: none;
+        }
+        .row:hover { background: var(--pm-hover); }
+        .row.dragging { opacity: 0.4; }
+
+        .row.drop-inside {
+            background: var(--pm-accent-soft);
+            box-shadow: inset 0 0 0 2px var(--pm-accent);
+        }
+        .row.drop-before::before,
+        .row.drop-after::after {
+            content: "";
+            position: absolute;
+            left: calc(0.5rem + var(--d, 0) * 22px);
+            right: 0.5rem;
+            height: 3px;
+            border-radius: 2px;
+            background: var(--pm-accent);
+        }
+        .row.drop-before::before { top: -2px; }
+        .row.drop-after::after { bottom: -2px; }
+
+        .chevron {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 5px;
+            color: var(--pm-text-dim);
+            font-size: 0.7rem;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .chevron:hover { background: var(--pm-border); color: var(--pm-text); }
+        .chevron.leaf { visibility: hidden; cursor: default; }
+
+        .row-icon { flex-shrink: 0; font-size: 0.95rem; }
+
+        .row-title {
+            flex: 1;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0.1rem 0.2rem;
+        }
+        .row[data-folder] .row-title { cursor: pointer; }
+        .row[data-folder] .row-title:hover { color: var(--pm-accent); }
+
+        .rename-input {
+            flex: 1;
+            font-size: 0.9rem;
+            border: 1px solid var(--pm-accent);
+            border-radius: 6px;
+            padding: 0.15rem 0.4rem;
+            background: var(--pm-panel);
+            color: var(--pm-text);
+            outline: none;
+        }
+
+        .row-count {
+            font-size: 0.72rem;
+            color: var(--pm-text-dim);
+            background: var(--pm-bg);
+            border: 1px solid var(--pm-border);
+            border-radius: 999px;
+            padding: 0.05rem 0.5rem;
+            flex-shrink: 0;
+        }
+
+        .more-btn {
+            opacity: 0;
+            border: none;
+            background: none;
+            color: var(--pm-text-dim);
+            font-size: 1rem;
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            cursor: pointer;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+        .row:hover .more-btn { opacity: 1; }
+        .more-btn:hover { background: var(--pm-border); color: var(--pm-text); }
+
+        .pm-tree.drop-root-end { box-shadow: inset 0 -3px 0 var(--pm-accent); }
+
+        .empty-state {
+            text-align: center;
+            color: var(--pm-text-dim);
+            padding: 3rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        /* Context menu */
+        .ctx-menu {
+            position: fixed;
+            z-index: 300;
+            min-width: 190px;
+            background: var(--pm-panel);
+            border: 1px solid var(--pm-border);
+            border-radius: 10px;
+            box-shadow: var(--pm-shadow);
+            padding: 0.3rem;
+            display: none;
+        }
+        .ctx-menu button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+            border: none;
+            background: none;
+            color: var(--pm-text);
+            text-align: left;
+            font-size: 0.85rem;
+            padding: 0.5rem 0.6rem;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .ctx-menu button:hover { background: var(--pm-hover); }
+        .ctx-menu button.danger { color: var(--pm-danger); }
+        .ctx-menu hr {
+            border: none;
+            border-top: 1px solid var(--pm-border);
+            margin: 0.3rem 0.2rem;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 400;
+            background: rgba(16, 24, 40, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: var(--pm-panel);
+            border: 1px solid var(--pm-border);
+            border-radius: 12px;
+            box-shadow: var(--pm-shadow);
+            width: 100%;
+            max-width: 420px;
+            padding: 1.25rem;
+        }
+        .modal h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+        .modal p { margin: 0 0 1rem; font-size: 0.87rem; color: var(--pm-text-dim); line-height: 1.5; }
+        .modal input {
+            width: 100%;
+            border: 1px solid var(--pm-border);
+            background: var(--pm-bg);
+            color: var(--pm-text);
+            border-radius: 8px;
+            padding: 0.55rem 0.7rem;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            outline: none;
+        }
+        .modal input:focus { border-color: var(--pm-accent); }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+        .pm-btn.danger { background: var(--pm-danger); border-color: var(--pm-danger); color: #fff; }
+
+        /* Toasts */
+        .toasts {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            z-index: 500;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .toast {
+            background: var(--pm-panel);
+            border: 1px solid var(--pm-border);
+            border-left: 4px solid var(--pm-accent);
+            border-radius: 8px;
+            box-shadow: var(--pm-shadow);
+            padding: 0.65rem 0.9rem;
+            font-size: 0.85rem;
+            max-width: 320px;
+            animation: toast-in 0.18s ease;
+        }
+        .toast.success { border-left-color: #16a34a; }
+        .toast.error { border-left-color: var(--pm-danger); }
+        @keyframes toast-in {
+            from { transform: translateY(8px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+{% include "_sidebar.html" %}
+
+    <nav class="app-nav">
+        <div class="nav-brand">📚 The Oracle</div>
+        <div class="nav-links">
+            <a href="/dashboard" class="nav-link">🎓 Dashboard</a>
+            <a href="/resources" class="nav-link">🗂 Resources</a>
+        </div>
+    </nav>
+
+    <div class="pm-shell">
+        <div class="pm-panel">
+            <div class="pm-toolbar">
+                <h1>📑 Pages</h1>
+                <span class="pm-chip" id="saveChip">All changes saved</span>
+                <button class="pm-btn" id="autoOrganizeBtn" title="Nest topics automatically by their numbering (A1.1.1 goes inside A1.1)">🪄 Auto-organize</button>
+                <button class="pm-btn" id="newSectionBtn">+ Section</button>
+                <button class="pm-btn primary" id="newPageBtn">+ New Page</button>
+            </div>
+            <div class="pm-sub-toolbar">
+                <input type="search" class="pm-filter" id="filterInput" placeholder="Filter pages…">
+                <button class="pm-link-btn" id="expandAllBtn">Expand all</button>
+                <button class="pm-link-btn" id="collapseAllBtn">Collapse all</button>
+            </div>
+            <div class="pm-tree" id="tree">
+                <div class="empty-state">Loading…</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ctx-menu" id="ctxMenu"></div>
+    <div class="modal-overlay" id="modalOverlay"></div>
+    <div class="toasts" id="toasts"></div>
+
+    <script>
+        // ------- State -------
+        let tree = [];
+        let expanded = new Set();
+        let lastSaved = '[]';      // JSON snapshot of last successful save (for rollback)
+        let dirty = false;
+        let saveTimer = null;
+        let filterQ = '';
+        let dragId = null;
+        let renamingId = null;
+        let menuNodeId = null;
+
+        const $ = (id) => document.getElementById(id);
+        const uid = () => (crypto.randomUUID ? crypto.randomUUID().slice(0, 8) : Math.random().toString(16).slice(2, 10));
+        const escapeHtml = (s) => (s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+        // ------- Tree helpers -------
+        function findLoc(id, list = tree, parent = null) {
+            for (let i = 0; i < list.length; i++) {
+                const n = list[i];
+                if (n.id === id) return { list, index: i, node: n, parent };
+                if (n.children && n.children.length) {
+                    const r = findLoc(id, n.children, n);
+                    if (r) return r;
+                }
+            }
+            return null;
+        }
+
+        function isDescendant(ancestor, id) {
+            return (ancestor.children || []).some(c => c.id === id || isDescendant(c, id));
+        }
+
+        function collectFolders(node, out = []) {
+            if (node.folder) out.push(node.folder);
+            (node.children || []).forEach(c => collectFolders(c, out));
+            return out;
+        }
+
+        function nodeMatches(n, q) { return (n.title || '').toLowerCase().includes(q); }
+        function nodeVisible(n, q) {
+            if (!q) return true;
+            return nodeMatches(n, q) || (n.children || []).some(c => nodeVisible(c, q));
+        }
+
+        // ------- Load / save -------
+        async function loadTree() {
+            try {
+                const res = await fetch('/api/syllabus');
+                const data = await res.json();
+                tree = data.items || [];
+                lastSaved = JSON.stringify(tree);
+                dirty = false;
+                // Expand top-level sections by default
+                tree.forEach(n => { if (n.children && n.children.length) expanded.add(n.id); });
+                render();
+            } catch (err) {
+                $('tree').innerHTML = '<div class="empty-state">❌ Failed to load syllabus</div>';
+                toast('Failed to load syllabus: ' + err.message, 'error');
+            }
+        }
+
+        function markDirty() {
+            dirty = true;
+            setChip('Saving…', 'saving');
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(saveNow, 800);
+        }
+
+        async function saveNow() {
+            clearTimeout(saveTimer);
+            if (!dirty) return true;
+            try {
+                const body = JSON.stringify({ items: tree });
+                const res = await fetch('/api/syllabus', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body
+                });
+                const result = await res.json();
+                if (!result.success) throw new Error(result.error || 'Save rejected');
+                lastSaved = JSON.stringify(tree);
+                dirty = false;
+                setChip('All changes saved', '');
+                return true;
+            } catch (err) {
+                // Optimistic rollback to last known-good structure
+                tree = JSON.parse(lastSaved);
+                dirty = false;
+                render();
+                setChip('Save failed — rolled back', 'error');
+                toast('Could not save changes — your last change was undone. ' + err.message, 'error');
+                return false;
+            }
+        }
+
+        function setChip(text, cls) {
+            const chip = $('saveChip');
+            chip.textContent = text;
+            chip.className = 'pm-chip' + (cls ? ' ' + cls : '');
+        }
+
+        window.addEventListener('beforeunload', (e) => {
+            if (dirty) { e.preventDefault(); e.returnValue = ''; }
+        });
+
+        // ------- Render -------
+        function render() {
+            const container = $('tree');
+            if (!tree.length) {
+                container.innerHTML = '<div class="empty-state">No pages yet. Click <strong>+ New Page</strong> to create one.</div>';
+                return;
+            }
+            const q = filterQ.toLowerCase();
+            let html = '';
+            const walk = (nodes, depth) => {
+                for (const n of nodes) {
+                    if (!nodeVisible(n, q)) continue;
+                    const kids = n.children || [];
+                    const hasKids = kids.length > 0;
+                    const isOpen = q ? true : expanded.has(n.id);
+                    const icon = n.folder ? '📄' : (isOpen && hasKids ? '📂' : '📁');
+                    const chev = hasKids
+                        ? `<span class="chevron" data-act="toggle">${isOpen ? '▾' : '▸'}</span>`
+                        : `<span class="chevron leaf">•</span>`;
+                    const titleHtml = renamingId === n.id
+                        ? `<input class="rename-input" id="renameInput" value="${escapeHtml(n.title)}">`
+                        : `<span class="row-title" data-act="open">${escapeHtml(n.title) || 'Untitled'}</span>`;
+                    html += `
+                        <div class="row" style="--d:${depth}" data-id="${n.id}" ${n.folder ? `data-folder="${escapeHtml(n.folder)}"` : ''} draggable="${renamingId === n.id ? 'false' : 'true'}">
+                            ${chev}
+                            <span class="row-icon">${icon}</span>
+                            ${titleHtml}
+                            ${hasKids && !isOpen ? `<span class="row-count">${kids.length}</span>` : ''}
+                            <button class="more-btn" data-act="menu" title="More actions">⋯</button>
+                        </div>`;
+                    if (hasKids && isOpen) walk(kids, depth + 1);
+                }
+            };
+            walk(tree, 0);
+            container.innerHTML = html || '<div class="empty-state">No pages match your filter.</div>';
+
+            if (renamingId) {
+                const input = $('renameInput');
+                if (input) { input.focus(); input.select(); }
+            }
+        }
+
+        // ------- Row interactions (event delegation) -------
+        $('tree').addEventListener('click', (e) => {
+            const row = e.target.closest('.row');
+            if (!row) return;
+            const id = row.dataset.id;
+            const act = e.target.dataset.act;
+
+            if (act === 'toggle') {
+                expanded.has(id) ? expanded.delete(id) : expanded.add(id);
+                render();
+            } else if (act === 'menu') {
+                openMenu(id, e.target.getBoundingClientRect());
+            } else if (act === 'open') {
+                const loc = findLoc(id);
+                if (loc.node.folder) {
+                    window.location.href = '/editor/' + encodeURIComponent(loc.node.folder);
+                } else if ((loc.node.children || []).length) {
+                    expanded.has(id) ? expanded.delete(id) : expanded.add(id);
+                    render();
+                }
+            }
+        });
+
+        // Inline rename commit/cancel
+        $('tree').addEventListener('keydown', (e) => {
+            if (e.target.id !== 'renameInput') return;
+            if (e.key === 'Enter') { e.preventDefault(); commitRename(e.target.value); }
+            if (e.key === 'Escape') { renamingId = null; render(); }
+        });
+        $('tree').addEventListener('focusout', (e) => {
+            if (e.target.id === 'renameInput' && renamingId) commitRename(e.target.value);
+        });
+
+        async function commitRename(value) {
+            const id = renamingId;
+            renamingId = null;
+            const loc = findLoc(id);
+            if (!loc) { render(); return; }
+            const newTitle = value.trim();
+            if (!newTitle || newTitle === loc.node.title) { render(); return; }
+            loc.node.title = newTitle;
+            render();
+            markDirty();
+            // Keep the page's own content.json title in sync (top-level folders only)
+            if (loc.node.folder && !loc.node.folder.includes('/')) {
+                await saveNow();
+                fetch(`/api/pages/${encodeURIComponent(loc.node.folder)}/rename`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: newTitle })
+                }).catch(() => toast('Renamed in syllabus, but page content could not be updated', 'error'));
+            }
+        }
+
+        // ------- Drag & drop -------
+        const treeEl = $('tree');
+
+        treeEl.addEventListener('dragstart', (e) => {
+            const row = e.target.closest('.row');
+            if (!row) return;
+            dragId = row.dataset.id;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', dragId);
+            requestAnimationFrame(() => row.classList.add('dragging'));
+        });
+
+        treeEl.addEventListener('dragover', (e) => {
+            if (!dragId) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            clearDropClasses();
+            const row = e.target.closest('.row');
+            if (!row) { treeEl.classList.add('drop-root-end'); return; }
+            if (row.dataset.id === dragId) return;
+            const rect = row.getBoundingClientRect();
+            const y = (e.clientY - rect.top) / rect.height;
+            row.classList.add(y < 0.3 ? 'drop-before' : y > 0.7 ? 'drop-after' : 'drop-inside');
+        });
+
+        treeEl.addEventListener('dragleave', (e) => {
+            if (e.target === treeEl) treeEl.classList.remove('drop-root-end');
+        });
+
+        treeEl.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (!dragId) return;
+            const row = e.target.closest('.row');
+            if (!row) {
+                moveToRootEnd(dragId);
+            } else {
+                const rect = row.getBoundingClientRect();
+                const y = (e.clientY - rect.top) / rect.height;
+                const zone = y < 0.3 ? 'before' : y > 0.7 ? 'after' : 'inside';
+                performDrop(dragId, row.dataset.id, zone);
+            }
+            endDrag();
+        });
+
+        treeEl.addEventListener('dragend', endDrag);
+
+        function clearDropClasses() {
+            treeEl.classList.remove('drop-root-end');
+            treeEl.querySelectorAll('.drop-before, .drop-after, .drop-inside').forEach(el =>
+                el.classList.remove('drop-before', 'drop-after', 'drop-inside'));
+        }
+
+        function endDrag() {
+            clearDropClasses();
+            treeEl.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+            dragId = null;
+        }
+
+        function performDrop(srcId, targetId, zone) {
+            if (srcId === targetId) return;
+            const src = findLoc(srcId);
+            const tgt0 = findLoc(targetId);
+            if (!src || !tgt0) return;
+            if (isDescendant(src.node, targetId)) {
+                toast('You can’t move an item into its own sub-item', 'error');
+                return;
+            }
+            src.list.splice(src.index, 1);
+            const tgt = findLoc(targetId); // re-locate after removal (indices shift)
+            if (zone === 'inside') {
+                (tgt.node.children = tgt.node.children || []).push(src.node);
+                expanded.add(tgt.node.id);
+            } else {
+                tgt.list.splice(zone === 'before' ? tgt.index : tgt.index + 1, 0, src.node);
+            }
+            render();
+            markDirty();
+        }
+
+        function moveToRootEnd(srcId) {
+            const src = findLoc(srcId);
+            if (!src) return;
+            src.list.splice(src.index, 1);
+            tree.push(src.node);
+            render();
+            markDirty();
+        }
+
+        // ------- Context menu -------
+        function openMenu(id, anchorRect) {
+            menuNodeId = id;
+            const loc = findLoc(id);
+            const menu = $('ctxMenu');
+            const isPage = !!loc.node.folder;
+            menu.innerHTML = `
+                ${isPage ? `<button data-menu="openPage">📝 Open in editor</button>` : ''}
+                <button data-menu="rename">✏️ Rename</button>
+                <button data-menu="addChildPage">➕ Add sub-page</button>
+                <button data-menu="addChildSection">📁 Add sub-section</button>
+                <button data-menu="duplicate">⧉ Duplicate</button>
+                <hr>
+                <button data-menu="delete" class="danger">🗑 Delete</button>
+            `;
+            menu.style.display = 'block';
+            const mw = menu.offsetWidth, mh = menu.offsetHeight;
+            let x = Math.min(anchorRect.left, window.innerWidth - mw - 8);
+            let y = anchorRect.bottom + 4;
+            if (y + mh > window.innerHeight - 8) y = anchorRect.top - mh - 4;
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+        }
+
+        function closeMenu() {
+            $('ctxMenu').style.display = 'none';
+            menuNodeId = null;
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#ctxMenu') && !e.target.closest('.more-btn')) closeMenu();
+        });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+
+        $('ctxMenu').addEventListener('click', async (e) => {
+            const action = e.target.dataset.menu;
+            if (!action || !menuNodeId) return;
+            const id = menuNodeId;
+            closeMenu();
+            const loc = findLoc(id);
+            if (!loc) return;
+
+            if (action === 'openPage') {
+                window.location.href = '/editor/' + encodeURIComponent(loc.node.folder);
+            } else if (action === 'rename') {
+                renamingId = id;
+                render();
+            } else if (action === 'addChildPage') {
+                await createPage(id);
+            } else if (action === 'addChildSection') {
+                const title = await showModal({ title: 'New sub-section', input: true, placeholder: 'Section title', confirmText: 'Create' });
+                if (!title) return;
+                (loc.node.children = loc.node.children || []).push({ id: uid(), title, folder: null, children: [] });
+                expanded.add(id);
+                render();
+                markDirty();
+            } else if (action === 'duplicate') {
+                await duplicateNode(id);
+            } else if (action === 'delete') {
+                await deleteNode(id);
+            }
+        });
+
+        // ------- Actions -------
+        async function createPage(parentId) {
+            const title = await showModal({ title: 'New page', input: true, placeholder: 'Page title', confirmText: 'Create' });
+            if (!title) return;
+            // Persist current tree first: the server inserts the new entry into syllabus.json
+            if (dirty && !(await saveNow())) return;
+            try {
+                const res = await fetch('/api/pages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, parent_id: parentId })
+                });
+                const result = await res.json();
+                if (!result.success) throw new Error(result.error || 'Unknown error');
+                if (parentId) expanded.add(parentId);
+                await loadTree();
+                toast(`Page "${title}" created`, 'success');
+            } catch (err) {
+                toast('Could not create page: ' + err.message, 'error');
+            }
+        }
+
+        async function duplicateNode(id) {
+            const loc = findLoc(id);
+            if (!loc) return;
+            const node = loc.node;
+
+            if (!node.folder) {
+                // Section: deep-clone client-side with fresh ids
+                const clone = JSON.parse(JSON.stringify(node));
+                (function reId(n) { n.id = uid(); (n.children || []).forEach(reId); })(clone);
+                clone.title = node.title + ' (Copy)';
+                loc.list.splice(loc.index + 1, 0, clone);
+                render();
+                markDirty();
+                return;
+            }
+
+            // Page: deep-copy the content folder on the server
+            if (dirty && !(await saveNow())) return;
+            try {
+                const res = await fetch(`/api/pages/${encodeURIComponent(node.folder)}/duplicate`, { method: 'POST' });
+                const result = await res.json();
+                if (!result.success) throw new Error(result.error || 'Unknown error');
+                loc.list.splice(loc.index + 1, 0, {
+                    id: uid(),
+                    title: result.title,
+                    folder: result.folder,
+                    children: []
+                });
+                render();
+                markDirty();
+                toast(`Duplicated as "${result.title}"`, 'success');
+            } catch (err) {
+                toast('Could not duplicate page: ' + err.message, 'error');
+            }
+        }
+
+        async function deleteNode(id) {
+            const loc = findLoc(id);
+            if (!loc) return;
+            const node = loc.node;
+            const kidCount = (node.children || []).length;
+            const folders = collectFolders(node);
+
+            const parts = [];
+            if (kidCount) parts.push(`It contains <strong>${kidCount}</strong> nested item(s), which will also be removed.`);
+            if (folders.length) parts.push(`The content of <strong>${folders.length}</strong> page(s) will be permanently deleted from disk.`);
+
+            const ok = await showModal({
+                title: `Delete "${escapeHtml(node.title)}"?`,
+                message: parts.join('<br>') || 'This cannot be undone.',
+                confirmText: 'Delete',
+                danger: true
+            });
+            if (!ok) return;
+
+            loc.list.splice(loc.index, 1);
+            render();
+            markDirty();
+            if (!(await saveNow())) return; // rolled back — don't touch disk
+
+            // Remove page content folders from disk
+            let failed = 0;
+            for (const f of folders) {
+                try {
+                    const res = await fetch(`/api/content-browser?path=${encodeURIComponent(f)}`, { method: 'DELETE' });
+                    const r = await res.json();
+                    if (!r.success) failed++;
+                } catch { failed++; }
+            }
+            if (failed) toast(`Removed from syllabus, but ${failed} content folder(s) could not be deleted`, 'error');
+            else toast('Deleted', 'success');
+        }
+
+        // ------- Toolbar -------
+        $('newPageBtn').addEventListener('click', () => createPage(null));
+        $('newSectionBtn').addEventListener('click', async () => {
+            const title = await showModal({ title: 'New section', input: true, placeholder: 'Section title', confirmText: 'Create' });
+            if (!title) return;
+            tree.push({ id: uid(), title, folder: null, children: [] });
+            render();
+            markDirty();
+        });
+        $('expandAllBtn').addEventListener('click', () => {
+            (function walk(nodes) { nodes.forEach(n => { if ((n.children || []).length) { expanded.add(n.id); walk(n.children); } }); })(tree);
+            render();
+        });
+        $('collapseAllBtn').addEventListener('click', () => { expanded.clear(); render(); });
+        $('filterInput').addEventListener('input', (e) => { filterQ = e.target.value.trim(); render(); });
+
+        // ------- Auto-organize by topic numbering -------
+        function parseTopicCode(title) {
+            const themeMatch = (title || '').match(/^Theme\s+([A-Z])\b/i);
+            if (themeMatch) return themeMatch[1].toUpperCase();
+            const m = (title || '').match(/^([A-Za-z])\s*\.?\s*(\d+(?:\.\d+)*)/);
+            if (m) return m[1].toUpperCase() + m[2];
+            return null;
+        }
+        function parentCode(code) {
+            if (code.includes('.')) return code.substring(0, code.lastIndexOf('.'));
+            if (code.length > 1) return code[0];
+            return null;
+        }
+        function codeSegments(code) {
+            const segs = [code[0]];
+            const nums = code.substring(1);
+            if (nums) nums.split('.').forEach(n => segs.push(parseInt(n, 10)));
+            return segs;
+        }
+        function compareCodes(a, b) {
+            const sa = codeSegments(a), sb = codeSegments(b);
+            for (let i = 0; i < Math.max(sa.length, sb.length); i++) {
+                if (sa[i] === undefined) return -1;
+                if (sb[i] === undefined) return 1;
+                if (sa[i] < sb[i]) return -1;
+                if (sa[i] > sb[i]) return 1;
+            }
+            return 0;
+        }
+        function sortTreeByCode(items) {
+            items.sort((x, y) => {
+                const cx = parseTopicCode(x.title), cy = parseTopicCode(y.title);
+                if (cx && cy) return compareCodes(cx, cy);
+                if (cx) return -1;
+                if (cy) return 1;
+                return (x.title || '').localeCompare(y.title || '');
+            });
+            items.forEach(i => i.children && i.children.length && sortTreeByCode(i.children));
+        }
+
+        $('autoOrganizeBtn').addEventListener('click', async () => {
+            const ok = await showModal({
+                title: 'Auto-organize topics?',
+                message: 'Topics will be nested by their numbering (e.g. A1.1.1 moves inside A1.1, which moves inside Theme A). Missing parent levels are created automatically.',
+                confirmText: 'Organize'
+            });
+            if (!ok) return;
+
+            const flat = [];
+            (function walk(items) {
+                for (const item of items) {
+                    const kids = item.children || [];
+                    item.children = [];
+                    flat.push(item);
+                    walk(kids);
+                }
+            })(tree);
+
+            const byCode = {};
+            for (const item of flat) {
+                const code = parseTopicCode(item.title);
+                if (code && !byCode[code]) byCode[code] = item;
+            }
+
+            const roots = [];
+            function attach(node, code) {
+                const p = parentCode(code);
+                if (p) getOrCreateGroup(p).children.push(node);
+                else roots.push(node);
+            }
+            function getOrCreateGroup(code) {
+                if (byCode[code]) return byCode[code];
+                const node = { id: uid(), title: code.length === 1 ? 'Theme ' + code : code, folder: null, children: [] };
+                byCode[code] = node;
+                attach(node, code);
+                return node;
+            }
+            for (const item of flat) {
+                const code = parseTopicCode(item.title);
+                if (!code) roots.push(item);
+                else if (byCode[code] === item) attach(item, code);
+                else byCode[code].children.push(item);
+            }
+
+            tree = roots;
+            sortTreeByCode(tree);
+            expanded = new Set(tree.filter(r => (r.children || []).length).map(r => r.id));
+            render();
+            markDirty();
+        });
+
+        // ------- Modal -------
+        function showModal({ title, message = '', input = false, value = '', placeholder = '', confirmText = 'OK', danger = false }) {
+            return new Promise(resolve => {
+                const overlay = $('modalOverlay');
+                overlay.innerHTML = `
+                    <div class="modal">
+                        <h3>${title}</h3>
+                        ${message ? `<p>${message}</p>` : ''}
+                        ${input ? `<input id="modalInput" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}">` : ''}
+                        <div class="modal-actions">
+                            <button class="pm-btn" id="modalCancel">Cancel</button>
+                            <button class="pm-btn ${danger ? 'danger' : 'primary'}" id="modalConfirm">${confirmText}</button>
+                        </div>
+                    </div>`;
+                overlay.classList.add('open');
+
+                const done = (result) => {
+                    overlay.classList.remove('open');
+                    overlay.innerHTML = '';
+                    document.removeEventListener('keydown', onKey);
+                    resolve(result);
+                };
+                const confirm = () => {
+                    if (input) {
+                        const v = $('modalInput').value.trim();
+                        if (!v) { $('modalInput').focus(); return; }
+                        done(v);
+                    } else done(true);
+                };
+                const onKey = (e) => {
+                    if (e.key === 'Escape') done(null);
+                    if (e.key === 'Enter' && input && document.activeElement === $('modalInput')) confirm();
+                };
+
+                $('modalConfirm').addEventListener('click', confirm);
+                $('modalCancel').addEventListener('click', () => done(null));
+                overlay.addEventListener('click', (e) => { if (e.target === overlay) done(null); }, { once: true });
+                document.addEventListener('keydown', onKey);
+                if (input) $('modalInput').focus();
+            });
+        }
+
+        // ------- Toasts -------
+        function toast(message, type = 'info') {
+            const el = document.createElement('div');
+            el.className = 'toast ' + type;
+            el.textContent = message;
+            $('toasts').appendChild(el);
+            setTimeout(() => el.remove(), 4500);
+        }
+
+        // ------- Theme -------
+        function initTheme() {
+            document.documentElement.dataset.theme = localStorage.getItem('theme') || 'light';
+        }
+
+        initTheme();
+        loadTree();
+    </script>
+</body>
+</html>

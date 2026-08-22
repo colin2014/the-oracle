@@ -1,0 +1,239 @@
+{% extends "admin_base.html" %}
+{% block title %}{{ class_obj.name }}{% endblock %}
+{% block content %}
+<h1>{{ class_obj.name }}</h1>
+
+<div class="admin-card">
+    <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
+        <button type="button" class="admin-btn-ghost active" id="tab-roster" onclick="switchTab('roster')">👥 Roster</button>
+        <button type="button" class="admin-btn-ghost" id="tab-assignments" onclick="switchTab('assignments')">📚 Assignments</button>
+    </div>
+
+    <!-- Roster Tab -->
+    <div id="roster-panel">
+        <h3 style="margin-top:0;">Enroll Students</h3>
+        <form method="POST" action="{{ url_for('admin.enroll_student', class_id=class_obj.id) }}" class="admin-inline-form" style="margin-bottom:1rem;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <select name="student_id" required>
+                <option value="">Select a student…</option>
+                {% for s in unenrolled_students %}
+                <option value="{{ s.id }}">{{ s.name }} ({{ s.email }})</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="admin-btn">Enroll</button>
+        </form>
+        {% if not unenrolled_students %}
+        <p style="color:var(--text-light); font-size:0.85rem; margin-top:-0.5rem;">No unenrolled students available — everyone who has signed up is already in this class.</p>
+        {% endif %}
+
+        <h3>Enrolled Students</h3>
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th style="width: 8%; text-align: center;">Level</th>
+                    <th>Pages Opened</th>
+                    <th>Completed</th>
+                    <th>Total Time</th>
+                    <th>Last Active</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in class_obj.enrollments %}
+                <tr>
+                    <td>{{ e.student.name }}</td>
+                    <td>{{ e.student.email }}</td>
+                    <td style="text-align: center;">
+                        <select name="level" onchange="setStudentLevel({{ e.student.id }}, {{ class_obj.id }}, this.value)" style="padding: 0.3rem 0.4rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-light); color: var(--text-dark); font-size: 0.85rem; cursor: pointer;">
+                            <option value="">—</option>
+                            <option value="HL" {% if e.level == 'HL' %}selected{% endif %}>HL</option>
+                            <option value="SL" {% if e.level == 'SL' %}selected{% endif %}>SL</option>
+                        </select>
+                    </td>
+                    <td>{{ student_analytics.get(e.student.id, {}).get('pages_opened', 0) }}</td>
+                    <td>{{ student_analytics.get(e.student.id, {}).get('pages_completed', 0) }}</td>
+                    <td>
+                        {%- set seconds = student_analytics.get(e.student.id, {}).get('total_seconds', 0) -%}
+                        {%- if seconds -%}
+                            {%- set hours = seconds // 3600 -%}
+                            {%- set minutes = (seconds % 3600) // 60 -%}
+                            {%- if hours > 0 -%}{{ hours }}h {{ minutes }}m{%- else -%}{{ minutes }}m{%- endif -%}
+                        {%- else -%}—{%- endif -%}
+                    </td>
+                    <td>{{ student_analytics.get(e.student.id, {}).get('last_active').strftime('%b %d, %I:%M %p') if student_analytics.get(e.student.id, {}).get('last_active') else '—' }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('admin.unenroll_student', class_id=class_obj.id, student_id=e.student.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="admin-btn admin-btn-danger">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8">No students enrolled yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Assignments Tab -->
+    <div id="assignments-panel" style="display:none;">
+        <h3 style="margin-top:0;">Manage Assignments</h3>
+        {% set now = get_now() %}
+        {% set overdue_count = class_obj.assignments | selectattr('due_date') | selectattr('due_date', 'lt', now) | list | length %}
+        {% if overdue_count > 0 %}
+        <div style="background: rgba(253, 114, 125, 0.1); border: 1px solid rgba(253, 114, 125, 0.3); border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem; color: #ff6b6b; font-size: 0.9rem;">
+            <strong>⚠ {{ overdue_count }} overdue assignment{{ 's' if overdue_count != 1 else '' }}</strong> — Students should have already submitted these
+        </div>
+        {% endif %}
+        <a href="{{ url_for('admin.assign_reading', class_id=class_obj.id) }}" class="admin-btn">Assign a Resource</a>
+        <table class="admin-table" style="margin-top:1rem;">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Type</th>
+                    <th>Due</th>
+                    <th>Emailed</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in class_obj.assignments %}
+                <tr>
+                    <td><a href="{{ a.resource_url() }}">{{ a.title }}</a></td>
+                    <td>{{ a.resource_label() }}</td>
+                    <td>{{ a.due_date.strftime('%b %d, %Y %I:%M %p') if a.due_date else '—' }}</td>
+                    <td>{{ a.email_sent_at.strftime('%b %d, %Y') if a.email_sent_at else 'Not sent' }}</td>
+                    <td style="display:flex; gap:0.5rem;">
+                        <button class="admin-btn-ghost" onclick="showEmailModal({{ a.id }}, '{{ a.title }}')">Show Email</button>
+                        <form method="POST" action="{{ url_for('admin.mark_assignment_sent', assignment_id=a.id) }}" style="flex:0;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="admin-btn-ghost" title="Mark as manually sent">✓ Sent</button>
+                        </form>
+                        <form method="POST" action="{{ url_for('admin.delete_assignment', assignment_id=a.id) }}" style="flex:0;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="admin-btn admin-btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5">No resources assigned yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Email Modal -->
+    <div id="emailModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; overflow-y:auto;">
+        <div style="background:white; max-width:600px; margin:2rem auto; border-radius:8px; box-shadow:0 4px 6px rgba(0,0,0,0.1); padding:2rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h2 style="margin:0;">Email Template</h2>
+                <button onclick="closeEmailModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">×</button>
+            </div>
+            <div id="emailContent" style="margin-bottom:1.5rem;">
+                <div id="emailLoading">Loading...</div>
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+                <button onclick="copyEmailContent()" class="admin-btn" style="flex:1;">📋 Copy to Clipboard</button>
+                <button onclick="closeEmailModal()" class="admin-btn-ghost" style="flex:0;">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    let currentEmailData = null;
+
+    async function showEmailModal(assignmentId, title) {
+        const modal = document.getElementById('emailModal');
+        const content = document.getElementById('emailContent');
+
+        modal.style.display = 'block';
+        content.innerHTML = '<div id="emailLoading">Loading...</div>';
+
+        try {
+            const response = await fetch(`/admin/assignments/${assignmentId}/email-preview`);
+            const data = await response.json();
+            currentEmailData = data;
+
+            let html = '';
+            for (const email of data.students) {
+                html += `
+                    <div style="margin-bottom:2rem; padding-bottom:2rem; border-bottom:1px solid #e5e7eb;">
+                        <div style="font-size:0.85rem; color:#666; margin-bottom:0.5rem;">
+                            To: <strong>${email.student_email}</strong> (${email.student_name})
+                        </div>
+                        <div style="background:#f3f4f6; padding:1rem; border-radius:6px; font-family:monospace; font-size:0.85rem; white-space:pre-wrap; word-break:break-word;">
+Subject: ${email.subject}
+
+${email.body}</div>
+                    </div>
+                `;
+            }
+            content.innerHTML = html;
+        } catch (error) {
+            content.innerHTML = '<div style="color:red;">Error loading email template</div>';
+        }
+    }
+
+    function closeEmailModal() {
+        document.getElementById('emailModal').style.display = 'none';
+    }
+
+    function copyEmailContent() {
+        if (!currentEmailData) return;
+
+        let text = '';
+        for (const email of currentEmailData.students) {
+            text += `To: ${email.student_email} (${email.student_name})\n\n`;
+            text += `Subject: ${email.subject}\n\n`;
+            text += `${email.body}\n\n`;
+            text += '---\n\n';
+        }
+
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Email template copied to clipboard!');
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+        });
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('emailModal').addEventListener('click', function(event) {
+        if (event.target === this) {
+            closeEmailModal();
+        }
+    });
+    </script>
+</div>
+
+<a href="{{ url_for('admin.analytics_class', class_id=class_obj.id) }}">View detailed analytics for this class →</a>
+
+<script>
+function switchTab(tab) {
+    document.getElementById('roster-panel').style.display = tab === 'roster' ? 'block' : 'none';
+    document.getElementById('assignments-panel').style.display = tab === 'assignments' ? 'block' : 'none';
+
+    document.getElementById('tab-roster').classList.toggle('active', tab === 'roster');
+    document.getElementById('tab-assignments').classList.toggle('active', tab === 'assignments');
+}
+
+function setStudentLevel(studentId, classId, level) {
+    fetch(`/admin/students/${studentId}/class/${classId}/set-level`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': document.querySelector('input[name="csrf_token"]')?.value || ''
+        },
+        body: `level=${encodeURIComponent(level)}`
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (!data.success) {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(err => console.error('Error:', err));
+}
+</script>
+{% endblock %}

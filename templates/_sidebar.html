@@ -1,0 +1,402 @@
+{# Shared side navigation — include right after <body> on any page except reading mode. #}
+{# Self-contained (styles + markup + script), role-aware, and safe on pages without style.css. #}
+{% if current_user.is_authenticated %}
+{% from '_avatar_macro.html' import avatar_svg with context %}
+<style>
+    body { margin-left: 80px !important; }
+    html.osb-pinned body { margin-left: 240px !important; }
+
+    .osb-sidebar {
+        position: fixed; left: 0; top: 0; bottom: 0; height: 100vh; z-index: 1200;
+        width: 80px; box-sizing: border-box;
+        background: var(--bg-white, #ffffff);
+        border-right: 1px solid var(--border, #e5e7eb);
+        padding: 1.25rem 0.6rem;
+        display: flex; flex-direction: column;
+        overflow-y: auto; overflow-x: hidden;
+        /* Width (not transform) is deliberate here: the icon column re-centers and label
+           text reveals as the rail widens, so the box itself has to occupy new space —
+           there's no equivalent transform-only version of this exact interaction. Kept
+           short and reduced-motion-aware since it's the highest-frequency hover in the app. */
+        transition: width 200ms var(--osb-ease-out, cubic-bezier(0.23, 1, 0.32, 1)), box-shadow 200ms var(--osb-ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    .osb-sidebar:hover, .osb-sidebar.osb-open {
+        width: 240px; padding: 1.25rem 1rem;
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .osb-sidebar { transition: none; }
+    }
+
+    .osb-pin {
+        display: flex; align-items: center; justify-content: center;
+        width: 40px; height: 40px; margin: 0 auto 0.5rem;
+        background: none; border: none; border-radius: 6px; cursor: pointer;
+        color: var(--text-light, #6b7280); transition: background 0.2s ease, color 0.2s ease, margin 0.2s ease; flex-shrink: 0;
+    }
+    .osb-sidebar:hover .osb-pin, .osb-sidebar.osb-open .osb-pin { margin: 0 0 0.5rem; }
+    .osb-pin:hover { background: rgba(157, 132, 255, 0.12); color: var(--primary, #8366e8); }
+    .osb-pin[aria-pressed="true"] { background: rgba(157, 132, 255, 0.2); color: var(--primary, #8366e8); }
+    .osb-pin svg { width: 20px; height: 20px; stroke: currentColor; }
+
+    .osb-brand {
+        display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+        color: var(--primary, #8366e8); text-decoration: none;
+        font-weight: 700; font-size: 1.05rem; margin-bottom: 1.5rem; padding: 0.4rem;
+        white-space: nowrap;
+    }
+    .osb-brand svg { width: 26px; height: 26px; flex-shrink: 0; stroke: currentColor; }
+    .osb-brand span { display: none; }
+    .osb-sidebar:hover .osb-brand, .osb-sidebar.osb-open .osb-brand { justify-content: flex-start; }
+    .osb-sidebar:hover .osb-brand span, .osb-sidebar.osb-open .osb-brand span { display: inline; }
+
+    .osb-section { display: flex; flex-direction: column; margin-bottom: 1.25rem; }
+    .osb-section h3 {
+        font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.5px;
+        color: var(--text-light, #6b7280); font-weight: 700;
+        margin: 0 0 0.5rem 0; padding: 0 0.8rem; display: none;
+    }
+    .osb-sidebar:hover .osb-section h3, .osb-sidebar.osb-open .osb-section h3 { display: block; }
+
+    .osb-item {
+        display: flex; align-items: center; justify-content: center; gap: 1rem;
+        padding: 0.7rem 0.8rem; border-radius: 6px; margin-bottom: 0.15rem;
+        color: var(--text-dark, #1a1a1a); text-decoration: none; font-size: 0.9rem;
+        transition: background 0.2s ease, color 0.2s ease; white-space: nowrap;
+    }
+    .osb-sidebar:hover .osb-item, .osb-sidebar.osb-open .osb-item { justify-content: flex-start; }
+    .osb-item svg { width: 22px; height: 22px; flex-shrink: 0; stroke: currentColor; }
+    .osb-item span { display: none; white-space: nowrap; }
+    .osb-sidebar:hover .osb-item span, .osb-sidebar.osb-open .osb-item span { display: inline; }
+    .osb-item:hover { background: rgba(157, 132, 255, 0.12); color: var(--primary, #8366e8); }
+    .osb-item.active { background: rgba(157, 132, 255, 0.2); color: var(--primary, #8366e8); font-weight: 600; }
+
+    /* Footer: user card with the menu opening ABOVE the username, inside the sidebar */
+    .osb-footer {
+        border-top: 1px solid var(--border, #e5e7eb);
+        padding-top: 0.75rem; margin-top: auto; position: relative;
+    }
+    .osb-user-btn {
+        display: flex; align-items: center; justify-content: center; gap: 0.75rem;
+        width: 100%; padding: 0.5rem 0.6rem; background: none; border: none;
+        border-radius: 6px; cursor: pointer; font-family: inherit;
+        color: var(--text-dark, #1a1a1a); transition: background 0.2s ease;
+    }
+    .osb-sidebar:hover .osb-user-btn, .osb-sidebar.osb-open .osb-user-btn { justify-content: flex-start; }
+    .osb-user-btn:hover { background: rgba(157, 132, 255, 0.12); }
+    .osb-avatar {
+        width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+        background: linear-gradient(135deg, #8366e8 0%, #6b52cc 100%);
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-weight: 700; font-size: 0.9rem; overflow: hidden;
+    }
+    .osb-avatar .avatar-icon { width: 100%; height: 100%; }
+    .osb-user-info { display: none; flex-direction: column; min-width: 0; flex: 1; text-align: left; }
+    .osb-sidebar:hover .osb-user-info, .osb-sidebar.osb-open .osb-user-info { display: flex; }
+    .osb-user-name {
+        font-weight: 600; font-size: 0.85rem; color: var(--text-dark, #1a1a1a);
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .osb-user-role {
+        font-size: 0.7rem; color: var(--text-light, #6b7280);
+        text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .osb-chevron { width: 14px; height: 14px; flex-shrink: 0; transition: transform 0.2s; display: none; stroke: currentColor; }
+    .osb-sidebar:hover .osb-chevron, .osb-sidebar.osb-open .osb-chevron { display: block; }
+    .osb-user-btn[aria-expanded="true"] .osb-chevron { transform: rotate(180deg); }
+
+    .osb-dropdown {
+        position: absolute; left: 0; right: 0; bottom: calc(100% + 0.5rem);
+        background: var(--bg-white, #ffffff);
+        border: 1px solid var(--border, #e5e7eb);
+        border-radius: 8px; box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
+        display: none; flex-direction: column; overflow: hidden; z-index: 10;
+    }
+    .osb-dropdown.open { display: flex; }
+    .osb-menu-item {
+        display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem;
+        background: none; border: none; width: 100%; text-align: left;
+        color: var(--text-dark, #1a1a1a); text-decoration: none; cursor: pointer;
+        font-size: 0.9rem; font-weight: 500; font-family: inherit;
+        transition: background 0.2s ease; white-space: nowrap;
+    }
+    .osb-menu-item:hover { background: var(--bg-light, #f3f4f6); }
+    .osb-menu-item svg { width: 18px; height: 18px; flex-shrink: 0; stroke: currentColor; }
+    .osb-divider { height: 1px; background: var(--border, #e5e7eb); margin: 0; }
+    .osb-logout { color: #dc3545; }
+    .osb-logout svg { stroke: #dc3545; }
+    .osb-logout:hover { background: rgba(220, 53, 69, 0.1); }
+
+    /* ── Mobile app shell: bottom tab bar replaces the desktop rail ── */
+    .osb-tabbar {
+        display: none;
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 1200;
+        background: var(--bg-white, #ffffff);
+        border-top: 1px solid var(--border, #e5e7eb);
+        padding: 0.3rem 0.25rem calc(0.3rem + env(safe-area-inset-bottom, 0px));
+        justify-content: space-around;
+        box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    .osb-tab {
+        flex: 1; max-width: 110px;
+        display: flex; flex-direction: column; align-items: center; gap: 2px;
+        padding: 0.35rem 0.2rem; border-radius: 10px;
+        color: var(--text-light, #6b7280); text-decoration: none;
+        font-size: 0.65rem; font-weight: 600;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .osb-tab svg { width: 24px; height: 24px; stroke: currentColor; }
+    .osb-tab.active { color: var(--primary, #8366e8); }
+    .osb-tab:active { background: rgba(157, 132, 255, 0.12); }
+
+    @media (max-width: 768px) {
+        body { margin-left: 0 !important; padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px)); }
+        html.osb-pinned body { margin-left: 0 !important; }
+        .osb-sidebar { display: none; }
+        .osb-tabbar { display: flex; }
+    }
+</style>
+
+<aside class="osb-sidebar" id="osbSidebar">
+    <button class="osb-pin" id="osbPin" title="Pin sidebar open" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </button>
+    <a href="{{ url_for('admin.admin_home') if current_user.is_admin() else url_for('dashboard') }}" class="osb-brand" title="The Oracle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        </svg>
+        <span>The Oracle</span>
+    </a>
+
+    {% if current_user.is_admin() %}
+    <div class="osb-section">
+        <h3>Teaching</h3>
+        <a href="{{ url_for('admin.admin_home') }}" class="osb-item {% if request.endpoint == 'admin.admin_home' %}active{% endif %}" title="Classes">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            <span>Classes</span>
+        </a>
+        <a href="{{ url_for('admin.students') }}" class="osb-item {% if request.endpoint == 'admin.students' %}active{% endif %}" title="Students">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            <span>Students</span>
+        </a>
+        <a href="{{ url_for('admin.assign') }}" class="osb-item {% if request.endpoint == 'admin.assign' %}active{% endif %}" title="Assign">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+            <span>Assign</span>
+        </a>
+        <a href="{{ url_for('admin.view_assignments') }}" class="osb-item {% if request.endpoint == 'admin.view_assignments' %}active{% endif %}" title="Manage Assignments">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+            <span>Manage Assignments</span>
+        </a>
+        <a href="{{ url_for('assessment.assessment_hub') }}" class="osb-item {% if request.endpoint and (request.endpoint.startswith('assessment.') or request.endpoint.startswith('flashcards.') or request.endpoint.startswith('test_builder.') or request.endpoint == 'quiz.quiz_review') %}active{% endif %}" title="Assessment">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+            <span>Assessment</span>
+        </a>
+        <a href="{{ url_for('admin.analytics_hub') }}" class="osb-item {% if request.endpoint and 'analytics' in request.endpoint %}active{% endif %}" title="Analytics">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"></path><path d="M18 17V9"></path><path d="M13 17V5"></path><path d="M8 17v-3"></path></svg>
+            <span>Analytics</span>
+        </a>
+        <a href="{{ url_for('games.hub') }}" class="osb-item {% if request.endpoint and request.endpoint.startswith('games.') %}active{% endif %}" title="Class Games">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="3"></rect><path d="M7 10v4M5 12h4M15.5 11h.01M18 13h.01"></path></svg>
+            <span>Class Games</span>
+        </a>
+        <a href="{{ url_for('report_card.report_card') }}" class="osb-item {% if request.endpoint == 'report_card.report_card' %}active{% endif %}" title="Report Cards">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="9" y1="13" x2="15" y2="13"></line><line x1="9" y1="17" x2="15" y2="17"></line></svg>
+            <span>Report Cards</span>
+        </a>
+        <a href="{{ url_for('unit_plan.index') }}" class="osb-item {% if request.endpoint and request.endpoint.startswith('unit_plan.') %}active{% endif %}" title="Unit Plan">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            <span>Unit Plan</span>
+        </a>
+    </div>
+    <div class="osb-section">
+        <h3>Content</h3>
+        <a href="{{ url_for('resources_hub') }}" class="osb-item {% if request.endpoint == 'resources_hub' or (request.endpoint and request.endpoint.startswith('slides.')) %}active{% endif %}" title="Resources">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
+            <span>Resources</span>
+        </a>
+    </div>
+    {% else %}
+    <div class="osb-section">
+        <h3>Learning</h3>
+        <a href="{{ url_for('dashboard') }}" class="osb-item {% if request.endpoint == 'dashboard' %}active{% endif %}" title="Overview">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <span>Overview</span>
+        </a>
+        <a href="{{ url_for('student_reading') }}" class="osb-item {% if request.endpoint == 'student_reading' %}active{% endif %}" title="Reading">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            <span>Reading</span>
+        </a>
+        <a href="{{ url_for('concept_chains.games_hub') }}" class="osb-item {% if request.endpoint == 'concept_chains.games_hub' or request.endpoint == 'student_flashcards' or (request.endpoint and (request.endpoint.startswith('flashcards.') or request.endpoint.startswith('concept_chains.'))) %}active{% endif %}" title="Games">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v10H6z"></path><path d="M4 14h16v4H4z"></path><circle cx="9" cy="9" r="1.5"></circle><circle cx="15" cy="9" r="1.5"></circle></svg>
+            <span>Games</span>
+        </a>
+        <a href="{{ url_for('unit_plan.index') }}" class="osb-item {% if request.endpoint and request.endpoint.startswith('unit_plan.') %}active{% endif %}" title="Unit Plan">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            <span>Unit Plan</span>
+        </a>
+    </div>
+    <div class="osb-section">
+        <h3>Resources</h3>
+        <a href="{{ url_for('my_resources') }}" class="osb-item {% if request.endpoint == 'my_resources' %}active{% endif %}" title="My Resources">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"></path><path d="M3 9h18"></path><path d="M9 3v18"></path></svg>
+            <span>My Resources</span>
+        </a>
+    </div>
+    <div class="osb-section">
+        <h3>Analytics</h3>
+        <a href="{{ url_for('reading_analytics') }}" class="osb-item {% if request.endpoint == 'reading_analytics' %}active{% endif %}" title="Analytics">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"></path><path d="M18 17V9"></path><path d="M13 17V5"></path><path d="M8 17v-3"></path></svg>
+            <span>Analytics</span>
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="osb-footer">
+        <!-- The menu opens ABOVE the username, inside the sidebar, so it never
+             disappears while moving the cursor towards it -->
+        <div id="osbDropdown" class="osb-dropdown">
+            <button id="osbThemeToggle" class="osb-menu-item" title="Toggle dark mode">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                <span id="osbThemeLabel">Dark mode</span>
+            </button>
+            <a href="{{ url_for('profile') }}" class="osb-menu-item" title="Profile">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span>Profile</span>
+            </a>
+            {% if current_user.is_admin() %}
+            <a href="{{ url_for('admin.view_as_student') }}" class="osb-menu-item" title="View as Student">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                <span>View as Student</span>
+            </a>
+            {% endif %}
+            <div class="osb-divider"></div>
+            <a href="{{ url_for('auth.logout') }}" class="osb-menu-item osb-logout" title="Logout">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                <span>Logout</span>
+            </a>
+        </div>
+
+        <button id="osbUserBtn" class="osb-user-btn" aria-expanded="false" title="User menu">
+            <div class="osb-avatar">{% if current_user.avatar %}{{ avatar_svg(current_user.avatar, 36) }}{% else %}{{ current_user.name[0].upper() if current_user.name else 'U' }}{% endif %}</div>
+            <div class="osb-user-info">
+                <div class="osb-user-name">{{ current_user.name }}</div>
+                <div class="osb-user-role">{{ 'Teacher' if current_user.is_admin() else 'Student' }}</div>
+            </div>
+            <svg class="osb-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+        </button>
+    </div>
+</aside>
+
+<!-- Mobile bottom tab bar (app-style navigation, ≤768px only) -->
+<nav class="osb-tabbar" aria-label="Main navigation">
+    {% if current_user.is_admin() %}
+    <a href="{{ url_for('admin.admin_home') }}" class="osb-tab {% if request.endpoint == 'admin.admin_home' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        <span>Classes</span>
+    </a>
+    <a href="{{ url_for('admin.students') }}" class="osb-tab {% if request.endpoint == 'admin.students' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        <span>Students</span>
+    </a>
+    <a href="{{ url_for('admin.analytics_hub') }}" class="osb-tab {% if request.endpoint and 'analytics' in request.endpoint %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"></path><path d="M18 17V9"></path><path d="M13 17V5"></path><path d="M8 17v-3"></path></svg>
+        <span>Analytics</span>
+    </a>
+    <a href="{{ url_for('assessment.assessment_hub') }}" class="osb-tab {% if request.endpoint and (request.endpoint.startswith('assessment.') or request.endpoint.startswith('flashcards.') or request.endpoint.startswith('test_builder.') or request.endpoint == 'quiz.quiz_review') %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        <span>Assessment</span>
+    </a>
+    {% else %}
+    <a href="{{ url_for('dashboard') }}" class="osb-tab {% if request.endpoint == 'dashboard' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9.5L12 3l9 6.5V21a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1z"></path></svg>
+        <span>Home</span>
+    </a>
+    <a href="{{ url_for('student_reading') }}" class="osb-tab {% if request.endpoint == 'student_reading' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        <span>Reading</span>
+    </a>
+    <a href="{{ url_for('quiz.student_quizzes') }}" class="osb-tab {% if request.endpoint == 'quiz.student_quizzes' or request.endpoint == 'quiz.quiz_page' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        <span>Quizzes</span>
+    </a>
+    <a href="{{ url_for('concept_chains.games_hub') }}" class="osb-tab {% if request.endpoint == 'concept_chains.games_hub' or request.endpoint == 'student_flashcards' or (request.endpoint and (request.endpoint.startswith('flashcards.') or request.endpoint.startswith('concept_chains.'))) %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v10H6z"></path><path d="M4 14h16v4H4z"></path><circle cx="9" cy="9" r="1.5"></circle><circle cx="15" cy="9" r="1.5"></circle></svg>
+        <span>Games</span>
+    </a>
+    <a href="{{ url_for('reading_analytics') }}" class="osb-tab {% if request.endpoint == 'reading_analytics' %}active{% endif %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"></path><path d="M18 17V9"></path><path d="M13 17V5"></path><path d="M8 17v-3"></path></svg>
+        <span>Progress</span>
+    </a>
+    {% endif %}
+</nav>
+
+<script>
+(function () {
+    const sidebar = document.getElementById('osbSidebar');
+    const userBtn = document.getElementById('osbUserBtn');
+    const dropdown = document.getElementById('osbDropdown');
+    const themeToggle = document.getElementById('osbThemeToggle');
+    const themeLabel = document.getElementById('osbThemeLabel');
+
+    function applyTheme(theme) {
+        document.documentElement.dataset.theme = theme;
+        localStorage.setItem('theme', theme);
+        if (themeLabel) themeLabel.textContent = theme === 'dark' ? 'Light mode' : 'Dark mode';
+    }
+    applyTheme(localStorage.getItem('theme') || 'light');
+
+    // Pin: keeps the sidebar expanded without hover (essential on touch devices)
+    const pinBtn = document.getElementById('osbPin');
+    let pinned = localStorage.getItem('osb_pinned') === '1';
+
+    function applyPin() {
+        pinBtn.setAttribute('aria-pressed', pinned);
+        pinBtn.title = pinned ? 'Unpin sidebar' : 'Pin sidebar open';
+        sidebar.classList.toggle('osb-open', pinned || dropdown.classList.contains('open'));
+        document.documentElement.classList.toggle('osb-pinned', pinned);
+    }
+    applyPin();
+
+    pinBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        pinned = !pinned;
+        localStorage.setItem('osb_pinned', pinned ? '1' : '0');
+        applyPin();
+    });
+
+    function closeMenu() {
+        dropdown.classList.remove('open');
+        userBtn.setAttribute('aria-expanded', 'false');
+        if (!pinned) sidebar.classList.remove('osb-open');
+    }
+
+    userBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = dropdown.classList.toggle('open');
+        userBtn.setAttribute('aria-expanded', isOpen);
+        // Keep the sidebar expanded while the menu is open, even if the cursor drifts off it
+        sidebar.classList.toggle('osb-open', isOpen || pinned);
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!sidebar.contains(e.target)) closeMenu();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeMenu();
+    });
+
+    themeToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        const current = document.documentElement.dataset.theme || 'light';
+        applyTheme(current === 'light' ? 'dark' : 'light');
+    });
+})();
+</script>
+{% endif %}

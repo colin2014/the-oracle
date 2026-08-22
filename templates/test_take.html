@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ paper.title }} — Test</title>
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.svg') }}" type="image/svg+xml">
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon-32.png') }}" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/apple-touch-icon.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Every bank question carries a Bootstrap Icons name, so the glyph itself is
+         drawn rather than linked out to the icon library mid-exam. -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <script>document.documentElement.dataset.theme = localStorage.getItem('theme') || 'light';</script>
+    <style>
+        :root {
+            /* Inter for both roles, inherited from style.css's @import — this surface
+               used to load Space Grotesk and Plus Jakarta Sans on top of it, giving the
+               test paper a typographic voice found nowhere else in the app and costing a
+               second font request. Display and body separate by weight and size, not family. */
+            --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            /* Exam mode is a different room, but it is the same building. What makes this
+               surface feel unlike the rest of the app is structural — the sticky exam bar,
+               the live countdown, the question navigator, the 760px single-question column,
+               and the total absence of app chrome. It is not a second palette. Every colour
+               below now resolves to the system's own tokens (DESIGN.md → Colors); the only
+               deliberate difference is the ground, a violet-tinted paper derived from Study
+               Violet itself rather than the forked #7c3aed this surface used to carry. */
+            --bg: #f7f5fd; --bg-wash: rgba(131, 102, 232, 0.07);
+            --bg-elevated: #ffffff; --text: #1a1a1a; --text-light: #6b7280; --border: #e5e7eb;
+            --primary: #8366e8; --primary-dark: #6b52cc; --primary-soft: rgba(131,102,232,0.10);
+            --teal: #10b981; --teal-soft: rgba(16,185,129,0.12);
+            --amber: #f59e0b; --amber-soft: rgba(245,158,11,0.12);
+            --red: #ef4444;
+            /* Semantic hues at full saturation are fills and borders, not small text: on white
+               they land at 2.5:1 (emerald), 2.2:1 (amber) and 3.8:1 (red), all under the 4.5:1
+               floor. These darker steps carry the same meaning at 5.5:1, 5.0:1 and 6.5:1 and are
+               what every sub-1rem label on this surface uses. The timer is exempt — at 2.1rem it
+               is large text, where --red already clears the 3:1 requirement. */
+            --teal-ink: #047857; --amber-ink: #b45309; --red-ink: #b91c1c;
+            --radius: 12px; --radius-sm: 8px; --radius-control: 6px;
+        }
+        [data-theme="dark"] {
+            --bg: #121319; --bg-wash: rgba(157, 132, 255, 0.08);
+            --bg-elevated: #17181f; --text: #ececf1; --text-light: #9a9aa8; --border: #262833;
+            --primary: #9d84ff; --primary-dark: #8366e8; --primary-soft: rgba(157,132,255,0.14);
+            --teal: #34d399; --teal-soft: rgba(52,211,153,0.14);
+            --amber: #fbbf24; --amber-soft: rgba(251,191,36,0.14);
+            --red: #f87171;
+            /* On a dark ground the bright semantic values are already the high-contrast
+               choice, so ink and fill converge. */
+            --teal-ink: #34d399; --amber-ink: #fbbf24; --red-ink: #f87171;
+            color-scheme: dark;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: var(--font-body);
+            /* One wash, not two. A single accent-derived glow at the top of the page reads
+               as a lit room; the old pair (violet left, pink right) read as a gradient hero. */
+            background:
+                radial-gradient(ellipse 1100px 520px at 50% -12%, var(--bg-wash), transparent),
+                var(--bg);
+            background-attachment: fixed;
+            color: var(--text); line-height: 1.55; margin: 0; padding: 0;
+        }
+
+        .tt-exam-bar {
+            position: sticky; top: 0; z-index: 20; background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border); padding: 0.9rem 1.5rem;
+            display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+            box-shadow: 0 1px 0 var(--primary-soft);
+        }
+        .tt-exam-badge {
+            display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-display);
+            /* "Live" is a state, so it takes a semantic colour, not a decorative one. Alert
+               Red matches the pulsing dot it contains and the app's own state vocabulary. */
+            font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--red-ink);
+            background: color-mix(in srgb, var(--red) 12%, transparent); padding: 0.25rem 0.65rem; border-radius: 999px; margin-bottom: 0.3rem;
+        }
+        .tt-exam-badge .dot {
+            width: 6px; height: 6px; border-radius: 50%; background: var(--red); animation: ttPulse 1.4s ease-in-out infinite;
+        }
+        @keyframes ttPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .tt-paper-title { font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; }
+        .tt-progress { font-size: 0.85rem; color: var(--text-light); font-variant-numeric: tabular-nums; }
+        /* The timer is the loudest element on the page and it earns that by size, weight and
+           tabular alignment — not by gradient text, which washed the low-time state's meaning
+           out and made the most important number on screen the hardest to read. Solid ink at
+           rest; the switch to Alert Red under two minutes is then a real, sudden signal. */
+        .tt-timer {
+            font-family: var(--font-display); font-size: 2.1rem; font-weight: 800;
+            font-variant-numeric: tabular-nums; letter-spacing: -0.02em; color: var(--text);
+            transition: color 200ms ease;
+        }
+        .tt-timer.tt-timer-low { color: var(--red); }
+
+        .tt-container { max-width: 760px; margin: 0 auto; padding: 1.5rem 1rem 6rem; }
+
+        .tt-navigator {
+            position: sticky; top: 68px; z-index: 19; background: transparent;
+            backdrop-filter: blur(6px); padding: 0.7rem 1.5rem 0.85rem;
+            display: flex; gap: 0.45rem; flex-wrap: wrap; justify-content: center;
+        }
+        .tt-nav-dot {
+            width: 2.1rem; height: 2.1rem; border-radius: 50%; border: 1.5px solid var(--border);
+            background: var(--bg-elevated); color: var(--text-light); font-family: var(--font-display);
+            font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; flex-shrink: 0;
+            transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+        }
+        .tt-nav-dot:hover { border-color: var(--primary); color: var(--primary); }
+        .tt-nav-dot.answered { background: var(--teal-soft); border-color: var(--teal); color: var(--teal-ink); }
+        /* Current question: solid accent plus a small scale step. The dot is already the
+           only filled element in the row — a gradient on top of that was emphasis on emphasis. */
+        .tt-nav-dot.current {
+            border-color: transparent; color: #fff; background: var(--primary);
+            box-shadow: 0 3px 12px var(--primary-soft); transform: scale(1.08);
+        }
+        .tt-nav-dot.current:hover { color: #fff; border-color: transparent; }
+
+        @keyframes ttCardIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .tt-q-card {
+            background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius);
+            padding: 1.6rem 1.6rem 1.35rem; animation: ttCardIn 0.28s ease;
+            box-shadow: 0 8px 24px rgba(26, 26, 26, 0.06);
+        }
+        .tt-q-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; margin-bottom: 0.7rem; }
+        .tt-q-meta { font-size: 0.82rem; color: var(--text-light); font-weight: 500; }
+        .tt-q-marks {
+            font-family: var(--font-display); font-size: 0.78rem; font-weight: 700; color: var(--primary);
+            background: var(--primary-soft); padding: 0.2rem 0.65rem; border-radius: 999px; white-space: nowrap;
+        }
+        /* The icon sits beside the question text, not above it: it is a visual anchor
+           for what the question is about, not a separate piece of content to read. */
+        .tt-q-body { display: flex; align-items: flex-start; gap: 0.9rem; margin-bottom: 1.2rem; }
+        .tt-q-icon {
+            flex: none; width: 2.6rem; height: 2.6rem; border-radius: 50%;
+            display: grid; place-items: center; font-size: 1.3rem;
+            background: var(--primary-soft); color: var(--primary-dark);
+        }
+        .tt-q-text { font-size: 1.2rem; font-weight: 600; white-space: pre-wrap; letter-spacing: -0.01em; }
+        .tt-option {
+            display: flex; align-items: center; gap: 0.65rem; padding: 0.75rem 0.9rem;
+            border: 1.5px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 0.55rem; cursor: pointer;
+            transition: border-color 0.15s ease, background 0.15s ease;
+        }
+        .tt-option:hover { border-color: var(--primary); background: var(--primary-soft); }
+        .tt-option:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); font-weight: 600; }
+        .tt-option input { accent-color: var(--primary); width: 1.05rem; height: 1.05rem; }
+        .tt-written-input {
+            width: 100%; min-height: 180px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+            padding: 0.85rem 1rem; font-family: var(--font-body); font-size: 1.02rem; resize: vertical; box-sizing: border-box;
+            background: var(--bg-elevated); color: var(--text);
+        }
+        .tt-written-input:focus { outline: none; border-color: var(--primary); }
+        .tt-save-hint { font-size: 0.72rem; color: var(--teal-ink); margin-top: 0.55rem; height: 1em; font-weight: 600; }
+        .tt-submit-bar {
+            position: sticky; bottom: 0; background: var(--bg-elevated); border-top: 1px solid var(--border);
+            padding: 1rem 1.5rem; margin: 1.5rem calc(-1 * max(1rem, (100% - 760px) / 2 + 1rem)) 0;
+            display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+        }
+        .tt-nav-btn {
+            font-family: var(--font-display); padding: 0.65rem 1.3rem; font-size: 0.9rem; font-weight: 700;
+            border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-elevated);
+            color: var(--text); cursor: pointer; transition: border-color 0.15s ease, color 0.15s ease;
+        }
+        .tt-nav-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+        .tt-nav-btn:disabled { opacity: 0.35; cursor: default; }
+        /* The one filled action on the surface — same treatment as .admin-btn everywhere else,
+           at exam scale. One primary per screen is the point; a gradient made it a second brand. */
+        .tt-submit-bar #submitBtn {
+            font-family: var(--font-display); padding: 0.7rem 1.7rem; font-size: 0.95rem; font-weight: 700;
+            border: none; border-radius: var(--radius-sm); color: #fff; cursor: pointer;
+            background: var(--primary);
+            box-shadow: 0 4px 14px var(--primary-soft);
+            transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .tt-submit-bar #submitBtn:hover {
+            background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 6px 18px var(--primary-soft);
+        }
+
+        .tt-nav-dot.tt-nav-dot-review { font-size: 1rem; }
+        .tt-review-title { font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; margin-bottom: 0.4rem; }
+        .tt-review-sub { color: var(--text-light); font-size: 0.9rem; margin-bottom: 1.25rem; }
+        .tt-review-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.6rem; margin-bottom: 1rem; }
+        .tt-review-item {
+            display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
+            border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 0.65rem 0.5rem; cursor: pointer;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        /* Tint and border before movement — these tiles carry answered/unanswered state in
+           their fill, so lifting them fought the very signal the review screen exists for. */
+        .tt-review-item:hover { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+        .tt-review-item.answered { border-color: var(--teal); background: var(--teal-soft); }
+        .tt-review-item.unanswered { border-color: var(--amber); background: var(--amber-soft); }
+        .tt-review-num { font-family: var(--font-display); font-weight: 700; font-size: 1rem; }
+        .tt-review-status { font-size: 0.68rem; color: var(--text-light); font-weight: 600; }
+        .tt-review-warning {
+            font-size: 0.85rem; color: var(--amber-ink); background: var(--amber-soft);
+            border-radius: var(--radius-sm); padding: 0.65rem 0.9rem; margin-bottom: 0.5rem;
+        }
+
+        .tt-shell { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+        .tt-submitted {
+            text-align: center; padding: 3.5rem 2rem; background: var(--bg-elevated);
+            border: 1px solid var(--border); border-radius: var(--radius); max-width: 480px;
+            box-shadow: 0 12px 32px rgba(26, 26, 26, 0.08);
+        }
+        .tt-submitted h2 { font-family: var(--font-display); }
+        .tt-submitted a.tt-return { color: var(--primary); text-decoration: none; font-weight: 700; font-size: 0.9rem; }
+        .tt-score-pill {
+            display: inline-block; font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; color: #fff;
+            background: var(--primary); font-variant-numeric: tabular-nums;
+            padding: 0.45rem 1.2rem; border-radius: 999px; margin-top: 0.5rem;
+        }
+        .tt-prelim-note {
+            font-size: 0.82rem; color: var(--amber-ink); background: var(--amber-soft);
+            border-radius: var(--radius-sm); padding: 0.6rem 0.85rem; margin: 0.75rem 0 1.25rem;
+        }
+
+        /* The one surface in the app with a permanently animating element. A dot pulsing
+           every 1.4s for the length of a timed paper is exactly what this media query exists
+           for; the "Test in progress" wording and Alert Red carry the meaning without it. */
+        @media (prefers-reduced-motion: reduce) {
+            .tt-exam-badge .dot { animation: none; }
+            .tt-q-card { animation: none; }
+            .tt-nav-dot, .tt-review-item, .tt-submit-bar #submitBtn, .tt-option, .tt-timer {
+                transition: none;
+            }
+            .tt-submit-bar #submitBtn:hover { transform: none; }
+        }
+    </style>
+</head>
+<body>
+{% if is_in_progress %}
+    <div class="tt-exam-bar">
+        <div>
+            <div class="tt-exam-badge"><span class="dot"></span>Test in progress</div>
+            <div class="tt-paper-title">{{ paper.title }}</div>
+            <div class="tt-progress" id="answeredCount">0 / {{ questions_json|length }} answered</div>
+        </div>
+        <div class="tt-timer" id="timerDisplay">--:--</div>
+    </div>
+
+    <div class="tt-navigator" id="navigator"></div>
+
+    <div class="tt-container">
+        <div id="questionCard"></div>
+        <div class="tt-submit-bar">
+            <button class="tt-nav-btn" id="prevBtn">← Previous</button>
+            <button id="submitBtn" style="display:none;">Submit test</button>
+            <button class="tt-nav-btn" id="nextBtn">Next →</button>
+        </div>
+    </div>
+{% else %}
+    <div class="tt-shell">
+        <div class="tt-submitted">
+            <div style="font-size:2.5rem; margin-bottom:0.75rem;">✅</div>
+            <h2 style="margin:0 0 0.5rem;">Test submitted</h2>
+            {% if submission.total_marks_awarded is not none %}
+            <div class="tt-score-pill">{{ format_marks(submission.total_marks_awarded) }}/{{ format_marks(submission.total_marks_possible) }} marks</div>
+            {% if submission.status == 'marked' %}
+            <p style="color:var(--text-light); margin:0.75rem 0 1.25rem;">Your answers for "{{ paper.title }}" have been marked.</p>
+            {% else %}
+            <p class="tt-prelim-note">⏳ Provisional — awaiting teacher approval ({{ pending_count }} answer{{ 's' if pending_count != 1 }} still to review). This score may change.</p>
+            {% endif %}
+            <p><a href="/assessment/test-submissions/{{ submission.id }}/report" style="color:var(--primary); font-weight:700; text-decoration:none;" target="_blank">View your report →</a></p>
+            {% else %}
+            <p style="color:var(--text-light); margin-bottom:1.25rem;">Your answers for "{{ paper.title }}" have been recorded. Your teacher will release your results once marking is complete.</p>
+            {% endif %}
+            <p style="margin-top:1.5rem;"><a href="{{ url_for('dashboard') }}" class="tt-return">← Return to The Oracle</a></p>
+        </div>
+    </div>
+{% endif %}
+
+{% if is_in_progress %}
+<script>
+const SUBMISSION_ID = {{ submission.id | tojson }};
+const QUESTIONS = {{ questions_json | tojson }};
+const DEADLINE = new Date({{ deadline_iso | tojson }});
+let submitted = false;
+
+const answers = {};
+QUESTIONS.forEach(q => {
+    answers[q.id] = q.question_type === 'mcq' ? (q.selected_options || []) : (q.response_text || '');
+});
+
+let currentIndex = 0;
+
+function isAnswered(q) {
+    const a = answers[q.id];
+    return Array.isArray(a) ? a.length > 0 : (a || '').trim().length > 0;
+}
+
+const REVIEW_STEP = QUESTIONS.length; // one past the last question index
+
+function renderNavigator() {
+    const nav = document.getElementById('navigator');
+    const dots = QUESTIONS.map((q, i) => `
+        <div class="tt-nav-dot ${isAnswered(q) ? 'answered' : ''} ${i === currentIndex ? 'current' : ''}"
+             onclick="goToQuestion(${i})">${i + 1}</div>
+    `).join('');
+    const reviewDot = `
+        <div class="tt-nav-dot tt-nav-dot-review ${currentIndex === REVIEW_STEP ? 'current' : ''}"
+             onclick="goToQuestion(${REVIEW_STEP})" title="Review & submit">🏁</div>
+    `;
+    nav.innerHTML = dots + reviewDot;
+    updateAnsweredCount();
+}
+
+function updateAnsweredCount() {
+    const answered = QUESTIONS.filter(isAnswered).length;
+    document.getElementById('answeredCount').textContent = `${answered} / ${QUESTIONS.length} answered`;
+}
+
+function goToQuestion(i) {
+    if (i < 0 || i > REVIEW_STEP) return;
+    currentIndex = i;
+    renderCurrentQuestion();
+    renderNavigator();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderCurrentQuestion() {
+    const card = document.getElementById('questionCard');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    prevBtn.disabled = currentIndex === 0;
+
+    if (currentIndex === REVIEW_STEP) {
+        const unanswered = QUESTIONS.filter(q => !isAnswered(q)).length;
+        card.innerHTML = `
+            <div class="tt-q-card">
+                <div class="tt-review-title">🏁 Ready to submit?</div>
+                <p class="tt-review-sub">You've reached the end. Click any question below to go back and change it.</p>
+                <div class="tt-review-grid">
+                    ${QUESTIONS.map((q, i) => `
+                        <div class="tt-review-item ${isAnswered(q) ? 'answered' : 'unanswered'}" onclick="goToQuestion(${i})">
+                            <span class="tt-review-num">${i + 1}</span>
+                            <span class="tt-review-status">${isAnswered(q) ? '✓ Answered' : '— Skipped'}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                ${unanswered > 0 ? `<div class="tt-review-warning">⚠ ${unanswered} question${unanswered === 1 ? '' : 's'} not answered yet.</div>` : ''}
+            </div>
+        `;
+        nextBtn.style.display = 'none';
+        submitBtn.style.display = 'inline-block';
+        return;
+    }
+
+    nextBtn.style.display = 'inline-block';
+    submitBtn.style.display = 'none';
+    nextBtn.textContent = currentIndex === QUESTIONS.length - 1 ? 'Review & Submit →' : 'Next →';
+
+    const q = QUESTIONS[currentIndex];
+    const hlBadge = q.is_hl_only ? ' <span class="tt-q-marks" style="background:rgba(245,158,11,0.15); color:#b45309;">HL only</span>' : '';
+    // Whitelisted rather than interpolated as-is: the name comes from a spreadsheet
+    // and lands in a class attribute.
+    const iconName = /^[a-z0-9-]+$/.test(q.icon_name || '') ? q.icon_name : '';
+    const iconHtml = iconName
+        ? `<div class="tt-q-icon" aria-hidden="true"><i class="bi bi-${iconName}"></i></div>`
+        : '';
+    let body;
+    if (q.question_type === 'mcq') {
+        body = q.options.map((opt, idx) => `
+            <label class="tt-option">
+                <input type="radio" name="q${q.id}" value="${idx}" ${answers[q.id].includes(idx) ? 'checked' : ''}
+                    onchange="onMcqChange(${q.id}, ${idx})">
+                <span>${opt}</span>
+            </label>
+        `).join('');
+    } else {
+        body = `<textarea class="tt-written-input" id="written-${q.id}" oninput="onWrittenChange(${q.id}, this.value)">${answers[q.id] || ''}</textarea>`;
+    }
+    card.innerHTML = `
+        <div class="tt-q-card">
+            <div class="tt-q-head">
+                <div class="tt-q-meta">Question ${currentIndex + 1} of ${QUESTIONS.length} · ${q.subtopic_title}${hlBadge}</div>
+                <div class="tt-q-marks">${q.marks} mark${q.marks === 1 ? '' : 's'}</div>
+            </div>
+            <div class="tt-q-body">
+                ${iconHtml}
+                <div class="tt-q-text">${q.text}</div>
+            </div>
+            ${body}
+            <div class="tt-save-hint" id="hint-${q.id}"></div>
+        </div>
+    `;
+}
+
+let saveTimers = {};
+function scheduleSave(questionId) {
+    clearTimeout(saveTimers[questionId]);
+    saveTimers[questionId] = setTimeout(() => saveAnswer(questionId), 500);
+}
+
+async function saveAnswer(questionId) {
+    const q = QUESTIONS.find(q => q.id === questionId);
+    const hint = document.getElementById(`hint-${questionId}`);
+    const payload = { question_id: questionId };
+    if (q.question_type === 'mcq') {
+        payload.selected_options = answers[questionId];
+    } else {
+        payload.response_text = answers[questionId];
+    }
+    try {
+        const res = await fetch(`/api/assessment/test/${SUBMISSION_ID}/answer`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            if (hint) hint.textContent = data.error || 'Could not save';
+            if (res.status === 409) { submitted = true; window.location.reload(); }
+            return;
+        }
+        if (hint) { hint.textContent = 'Saved'; setTimeout(() => { if (hint.textContent === 'Saved') hint.textContent = ''; }, 1500); }
+    } catch (e) {
+        if (hint) hint.textContent = 'Connection issue — will retry on next change';
+    }
+}
+
+function onMcqChange(questionId, idx) {
+    answers[questionId] = [idx];
+    renderNavigator();
+    scheduleSave(questionId);
+}
+
+function onWrittenChange(questionId, value) {
+    answers[questionId] = value;
+    renderNavigator();
+    scheduleSave(questionId);
+}
+
+function updateTimer() {
+    const msLeft = DEADLINE - new Date();
+    const display = document.getElementById('timerDisplay');
+    if (msLeft <= 0) {
+        display.textContent = '00:00';
+        doSubmit(true);
+        return;
+    }
+    const totalSeconds = Math.floor(msLeft / 1000);
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    display.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    if (msLeft < 5 * 60 * 1000) display.classList.add('tt-timer-low');
+}
+
+let submitting = false;
+async function doSubmit(auto) {
+    if (submitting) return;
+    submitting = true;
+    if (!auto && !confirm('Submit this test now? You cannot make further changes afterwards.')) {
+        submitting = false;
+        return;
+    }
+    try {
+        const res = await fetch(`/api/assessment/test/${SUBMISSION_ID}/submit`, { method: 'POST' });
+        const data = await res.json();
+        if (data.ok) {
+            submitted = true;
+            window.location.reload();
+        } else {
+            submitting = false;
+        }
+    } catch (e) {
+        submitting = false;
+    }
+}
+
+document.getElementById('submitBtn').addEventListener('click', () => doSubmit(false));
+document.getElementById('prevBtn').addEventListener('click', () => goToQuestion(currentIndex - 1));
+document.getElementById('nextBtn').addEventListener('click', () => goToQuestion(currentIndex + 1));
+
+// A real exam shouldn't lose work to an accidental refresh/back/close.
+window.addEventListener('beforeunload', (e) => {
+    if (submitted) return;
+    e.preventDefault();
+    e.returnValue = '';
+});
+
+renderCurrentQuestion();
+renderNavigator();
+updateTimer();
+setInterval(updateTimer, 1000);
+</script>
+{% endif %}
+</body>
+</html>
