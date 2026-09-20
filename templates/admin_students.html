@@ -540,22 +540,69 @@ function setStudentLevel(studentId, classId, level) {
     .catch(err => console.error('Error:', err));
 }
 
-// Dropdown menu toggle
-document.querySelectorAll('.action-menu-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const menu = btn.nextElementSibling;
-        const isOpen = menu.style.display === 'block';
-        document.querySelectorAll('.action-menu-content').forEach(m => m.style.display = 'none');
-        if (!isOpen) {
-            menu.style.display = 'block';
-        }
-    });
-});
+// Row action menus (the ⋮ buttons).
+// The table has overflow:hidden, which clips an absolutely positioned menu, so an open
+// menu is moved to <body> and pinned to the window instead. That puts it above the table,
+// the sticky sidebar and neighbouring rows, and lets it flip upward near the bottom edge.
+(function () {
+    const Z_TOP = 2147483000;
+    let open = null;   // { dd, btn, menu, homeStyle }
 
-document.addEventListener('click', () => {
-    document.querySelectorAll('.action-menu-content').forEach(m => m.style.display = 'none');
-});
+    function closeMenus() {
+        if (!open) return;
+        const { dd, btn, menu, homeStyle } = open;
+        menu.style.cssText = homeStyle;        // back to its original hidden, in-cell state
+        dd.appendChild(menu);
+        btn.setAttribute('aria-expanded', 'false');
+        open = null;
+    }
+    window.closeActionMenus = closeMenus;
+
+    function place(btn, menu) {
+        const gap = 4, edge = 8;
+        const r = btn.getBoundingClientRect();
+        const w = menu.offsetWidth, h = menu.offsetHeight;
+        let left = Math.min(Math.max(edge, r.right - w), window.innerWidth - w - edge);
+        let top = r.bottom + gap;
+        if (top + h > window.innerHeight - edge) {                // not enough room below: open upward
+            top = Math.max(edge, r.top - h - gap);
+        }
+        menu.style.left = left + 'px';
+        menu.style.top = top + 'px';
+    }
+
+    document.querySelectorAll('.action-dropdown').forEach(dd => {
+        const btn = dd.querySelector('.action-menu-btn');
+        const menu = dd.querySelector('.action-menu-content');
+        const homeStyle = menu.style.cssText;
+        btn.setAttribute('aria-haspopup', 'menu');
+        btn.setAttribute('aria-expanded', 'false');
+
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const wasOpen = open && open.menu === menu;
+            closeMenus();
+            if (wasOpen) return;
+
+            document.body.appendChild(menu);
+            menu.style.cssText = homeStyle;
+            menu.style.position = 'fixed';
+            menu.style.right = 'auto';
+            menu.style.zIndex = String(Z_TOP);
+            menu.style.display = 'block';
+            menu.style.visibility = 'hidden';      // measure before showing, so it never flashes in the wrong place
+            place(btn, menu);
+            menu.style.visibility = 'visible';
+            btn.setAttribute('aria-expanded', 'true');
+            open = { dd, btn, menu, homeStyle };
+        });
+    });
+
+    document.addEventListener('click', closeMenus);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenus(); });
+    window.addEventListener('resize', closeMenus);
+    window.addEventListener('scroll', closeMenus, true);   // capture: also catches scrolling inside containers
+})();
 
 // Name mapping management
 let studentNameMappings = {};
@@ -734,7 +781,7 @@ loadNameMappings();
     document.querySelectorAll('.reset-password-btn').forEach(function (btn) {
         btn.addEventListener('click', function (e) {
             e.stopPropagation();
-            document.querySelectorAll('.action-menu-content').forEach(function (m) { m.style.display = 'none'; });
+            if (window.closeActionMenus) { window.closeActionMenus(); }
             current = { id: btn.dataset.studentId, name: btn.dataset.studentName, username: btn.dataset.studentUsername };
             el('pwWho').textContent = current.name + ' (login: ' + current.username + ')';
             el('pwError').textContent = '';
