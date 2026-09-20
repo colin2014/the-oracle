@@ -38,19 +38,81 @@ A web-based tool to scrape, organize, and search educational content with embedd
 
 ## Installation
 
-### 1. Install Dependencies
+Requires Python 3.11+.
+
+### 1. Clone and install dependencies
 
 ```bash
+git clone https://github.com/colin2014/the-oracle.git
+cd the-oracle
+python -m venv .venv
+# Windows:  .venv/Scripts/activate
+# macOS/Linux:  source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Run the Application
+On Windows, `weasyprint` (PDF export) also needs the GTK runtime. If
+`import weasyprint` fails, install GTK or skip it — the rest of the app runs
+without it.
+
+### 2. Configure the environment
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env`. `SECRET_KEY` is **required** — the app refuses to start
+without it. Generate one with:
+
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+Use a *different* `SECRET_KEY` on each machine and never commit `.env`.
+
+### 3. Create the database
+
+The database lives in `data/` and is not in version control.
+
+```bash
+mkdir -p data
+flask --app app db upgrade
+```
+
+This builds the full schema from the migrations. To carry over existing
+content instead, copy `data/` across from the other machine (see
+"Moving between machines" below).
+
+### 4. Create an admin account
+
+```bash
+# set TEST_ADMIN_PASSWORD and TEST_USER_PASSWORD in .env first
+python create_test_users.py
+```
+
+### 5. Run the application
 
 ```bash
 python app.py
 ```
 
 The app will be available at `http://localhost:5000`
+
+## Moving Between Machines
+
+The code is in git; your **content and database are not**. To move them:
+
+- `data/app.db` — the database (~8 MB). Copy this to keep accounts and
+  progress. Omit it to start fresh with `flask --app app db upgrade`.
+- `data/` — scraped books and resources (~780 MB of live content).
+- `teacher_names/` — real student names, stored only on the teacher's
+  machine by design. Copy it **only** over a private channel, never git.
+
+Files matching `*.bak`, `*.preconsolidate`, `*.preimages` and `*.vocabbak`
+inside `data/` are regenerable backups (~2.7 GB) and do not need copying.
+
+Do not copy `.env` between machines — create a fresh one with its own
+`SECRET_KEY`.
 
 ## Usage
 
