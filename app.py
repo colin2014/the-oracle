@@ -29,7 +29,30 @@ Path("static").mkdir(exist_ok=True)
 Path("static/css").mkdir(exist_ok=True)
 Path("static/js").mkdir(exist_ok=True)
 
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-insecure-change-me")
+def _is_dev_environment():
+    """True only when FLASK_DEBUG is explicitly switched on."""
+    return os.environ.get("FLASK_DEBUG", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _load_secret_key():
+    """Fail closed: outside dev a missing SECRET_KEY is an auth bypass, not a warning.
+
+    The old fallback was a fixed public string, so anyone could forge a session
+    cookie for any user if the variable was ever left unset.
+    """
+    key = os.environ.get("SECRET_KEY", "").strip()
+    if key:
+        return key
+    if _is_dev_environment():
+        return "dev-insecure-change-me"
+    raise RuntimeError(
+        "SECRET_KEY is not set. Generate one with "
+        "`python -c \"import secrets; print(secrets.token_hex(32))\"` and set it in the "
+        "environment. Refusing to start with a known fallback key."
+    )
+
+
+app.config["SECRET_KEY"] = _load_secret_key()
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + str(Path("data/app.db").resolve())
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0  # don't let browsers cache stale static JS/CSS

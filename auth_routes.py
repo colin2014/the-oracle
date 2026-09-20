@@ -9,10 +9,12 @@ from models import User
 
 auth_bp = Blueprint("auth", __name__)
 
+# No password fallbacks: the previous defaults lived in public source, so anyone
+# could read them. Unset means the test-login panel simply has nothing to show.
 TEST_ADMIN_USERNAME = os.environ.get("TEST_ADMIN_USERNAME", "admin")
-TEST_ADMIN_PASSWORD = os.environ.get("TEST_ADMIN_PASSWORD", "adminpass123")
+TEST_ADMIN_PASSWORD = os.environ.get("TEST_ADMIN_PASSWORD", "")
 TEST_USER_USERNAME = os.environ.get("TEST_USER_USERNAME", "user")
-TEST_USER_PASSWORD = os.environ.get("TEST_USER_PASSWORD", "userpass123")
+TEST_USER_PASSWORD = os.environ.get("TEST_USER_PASSWORD", "")
 
 USERNAME_RE = re.compile(r"^[a-z0-9._-]{3,80}$")
 
@@ -22,12 +24,14 @@ def normalize_username(raw):
 
 
 def _show_test_login():
-    # Check environment variable, default to True for development
+    """Opt-in only. This panel prints working admin credentials onto the login
+    page, so it must never appear because a variable was forgotten. It shows
+    only when ENABLE_TEST_LOGIN is explicitly on AND the passwords are set.
+    """
     env_value = os.environ.get("ENABLE_TEST_LOGIN", "").strip().lower()
-    if env_value == "false":
+    if env_value not in {"1", "true", "yes", "on"}:
         return False
-    # Default to True (show test login)
-    return True
+    return bool(TEST_ADMIN_PASSWORD and TEST_USER_PASSWORD)
 
 
 @auth_bp.route("/signup", methods=["GET", "POST"])

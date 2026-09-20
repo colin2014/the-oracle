@@ -5,11 +5,22 @@ import os
 from app import app, db
 from models import User, Class, ClassEnrollment
 
+def _require_password(var_name):
+    """Refuse to seed an account with a password baked into public source."""
+    value = os.environ.get(var_name, "").strip()
+    if not value:
+        raise SystemExit(
+            f"{var_name} is not set. Choose a password and set it in the environment "
+            "before creating test accounts."
+        )
+    return value
+
+
 def create_test_users():
     with app.app_context():
         # Test Admin User
         admin_username = os.environ.get("TEST_ADMIN_USERNAME", "admin")
-        admin_password = os.environ.get("TEST_ADMIN_PASSWORD", "adminpass123")
+        admin_password = _require_password("TEST_ADMIN_PASSWORD")
 
         admin_user = User.query.filter_by(username=admin_username).first()
         if not admin_user:
@@ -27,7 +38,7 @@ def create_test_users():
 
         # Test Student User
         user_username = os.environ.get("TEST_USER_USERNAME", "user")
-        user_password = os.environ.get("TEST_USER_PASSWORD", "userpass123")
+        user_password = _require_password("TEST_USER_PASSWORD")
 
         test_user = User.query.filter_by(username=user_username).first()
         if not test_user:
