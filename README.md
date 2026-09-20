@@ -98,6 +98,14 @@ python app.py
 
 The app will be available at `http://localhost:5000`
 
+By default this runs under waitress on `127.0.0.1` only, with Secure cookies, so
+it is meant to sit behind an HTTPS tunnel or proxy (Tailscale Serve/Funnel or
+Cloudflare Tunnel). For local development over plain http, set `FLASK_DEBUG=true`
+in `.env` to get the Flask debug server and non-Secure cookies.
+
+New accounts need the `SIGNUP_CODE` from `.env` and only ever store a username;
+no name or email is collected. Login and signup are rate limited per client IP.
+
 ## Moving Between Machines
 
 The code is in git; your **content and database are not**. To move them:

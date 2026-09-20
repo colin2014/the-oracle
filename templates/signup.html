@@ -51,17 +51,14 @@
         <form method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="auth-field">
-                <label>Full Name</label>
-                <input type="text" name="name" value="{{ name or '' }}" required autofocus>
-            </div>
-            <div class="auth-field">
                 <label>Username</label>
                 <input type="text" name="username" value="{{ username or '' }}" autocomplete="username"
-                       pattern="[A-Za-z0-9._\-]{3,80}" title="3–80 characters: letters, numbers, dots, dashes or underscores" required>
+                       pattern="[A-Za-z0-9._\-]{3,80}" title="3–80 characters: letters, numbers, dots, dashes or underscores" required autofocus>
+                <small style="color:var(--text-light);">Please don't use your real name.</small>
             </div>
             <div class="auth-field">
-                <label>Email <span style="font-weight:400; color:var(--text-light);">(optional)</span></label>
-                <input type="email" name="email" value="{{ email or '' }}">
+                <label>Signup code</label>
+                <input type="text" name="signup_code" autocomplete="off" required>
             </div>
             <div class="auth-field">
                 <label>Password</label>

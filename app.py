@@ -17,7 +17,7 @@ from flask_migrate import Migrate
 from flask_wtf import CSRFProtect
 from datetime import timedelta
 
-from extensions import db, login_manager, mail
+from extensions import db, login_manager, mail, limiter
 from auth import admin_required
 
 app = Flask(__name__)
@@ -58,6 +58,10 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0  # don't let browsers cache stale static JS/CSS
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+# Secure cookies by default; only relaxed in dev mode, where plain-http is normal.
+app.config["SESSION_COOKIE_SECURE"] = not _is_dev_environment()
+app.config["REMEMBER_COOKIE_SECURE"] = not _is_dev_environment()
+app.config["REMEMBER_COOKIE_HTTPONLY"] = True
 
 app.config["MAIL_SERVER"] = os.environ.get("MAIL_SERVER")
 app.config["MAIL_PORT"] = int(os.environ.get("MAIL_PORT", 587))
@@ -71,6 +75,7 @@ migrate = Migrate(app, db)
 login_manager.init_app(app)
 login_manager.login_view = "auth.login"
 mail.init_app(app)
+limiter.init_app(app)
 csrf = CSRFProtect(app)
 
 import models  # noqa: E402  (register models with SQLAlchemy metadata)
@@ -2939,4 +2944,19 @@ def health():
     return jsonify({'status': 'ok'})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True, port=int(os.environ.get('PORT', 5000)))
+    port = int(os.environ.get('PORT', 5000))
+    if _is_dev_environment():
+        # Werkzeug debugger allows remote code execution: dev only, loopback only.
+        app.run(host='127.0.0.1', debug=True, port=port)
+    else:
+        from waitress import serve
+        # Listens on loopback only, so the sole client is the local tunnel/proxy
+        # (Tailscale Serve/Funnel or Cloudflare Tunnel). Trusting it lets waitress
+        # apply X-Forwarded-For/Proto, so the rate limiter sees each visitor's real
+        # IP and Flask knows the request was https (needed for Secure cookies).
+        serve(
+            app, host='127.0.0.1', port=port, threads=8,
+            trusted_proxy='127.0.0.1',
+            trusted_proxy_headers={'x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-host'},
+            clear_untrusted_proxy_headers=True,
+        )
