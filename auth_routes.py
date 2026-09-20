@@ -46,6 +46,28 @@ def _show_test_login():
     return bool(TEST_ADMIN_PASSWORD and TEST_USER_PASSWORD)
 
 
+# Year groups a student can join at signup. Only these class names are offered,
+# so other classes a teacher creates never appear on the public form.
+SIGNUP_CLASSES = ("Class of 2027", "Class of 2028")
+
+
+def _signup_page(**chosen):
+    """Render the signup form with its fixed choices (classes, words, avatars)."""
+    from avatars import AVATAR_CATALOG
+    from models import Class
+    from playful_names import ANIMALS, HAPPY_WORDS
+
+    classes = (
+        Class.query.filter(Class.name.in_(SIGNUP_CLASSES), Class.is_archived.is_(False))
+        .order_by(Class.name).all()
+    )
+    taken = {row[0] for row in db.session.query(User.avatar).filter(User.avatar.isnot(None)).all()}
+    return render_template(
+        "signup.html", classes=classes, happy_words=HAPPY_WORDS, animals=ANIMALS,
+        avatars=AVATAR_CATALOG, taken_avatars=taken, chosen=chosen,
+    )
+
+
 @auth_bp.route("/signup", methods=["GET", "POST"])
 @limiter.limit("5 per hour", methods=["POST"])
 def signup():
@@ -53,44 +75,73 @@ def signup():
         return redirect(url_for("dashboard"))
 
     if request.method == "POST":
-        username = normalize_username(request.form.get("username", ""))
-        password = request.form.get("password", "")
-        confirm = request.form.get("confirm_password", "")
-        code = request.form.get("signup_code", "").strip()
+        from avatars import AVATAR_KEYS
+        from models import Class, ClassEnrollment
+        from playful_names import display_name, is_valid_pair, username_for
+        from sqlalchemy.exc import IntegrityError
+
+        form = request.form
+        happy = form.get("happy_word", "")
+        animal = form.get("animal", "")
+        avatar = form.get("avatar", "")
+        class_id = form.get("class_id", type=int)
+        password = form.get("password", "")
+        confirm = form.get("confirm_password", "")
+        code = form.get("signup_code", "").strip()
+        chosen = {"happy_word": happy, "animal": animal, "avatar": avatar, "class_id": class_id}
+
+        chosen_class = None
+        if class_id:
+            chosen_class = Class.query.filter(
+                Class.id == class_id, Class.name.in_(SIGNUP_CLASSES), Class.is_archived.is_(False)
+            ).first()
 
         error = None
         if not SIGNUP_CODE:
             error = "Signup is currently closed."
         elif not hmac.compare_digest(code.encode(), SIGNUP_CODE.encode()):
             error = "Invalid signup code."
-        elif not username or not password:
-            error = "Username and password are required."
-        elif not USERNAME_RE.match(username):
-            error = "Username must be 3–80 characters: letters, numbers, dots, dashes or underscores."
+        elif not chosen_class:
+            error = "Pick your class."
+        elif not is_valid_pair(happy, animal):
+            error = "Pick one happy word and one animal for your name."
+        elif avatar not in AVATAR_KEYS:
+            error = "Pick an icon."
+        elif not password:
+            error = "Choose a password."
         elif password != confirm:
             error = "Passwords do not match."
         elif len(password) < 8:
             error = "Password must be at least 8 characters."
-        elif User.query.filter_by(username=username).first():
-            error = "That username is already taken."
+
+        username = username_for(happy, animal) if is_valid_pair(happy, animal) else None
+        if not error and User.query.filter_by(username=username).first():
+            error = f"Someone is already {display_name(happy, animal)}. Pick a different word or animal."
+        if not error and User.query.filter_by(avatar=avatar).first():
+            error = "That icon was just taken. Pick another one."
 
         if error:
             flash(error, "error")
-            return render_template("signup.html", username=username)
+            return _signup_page(**chosen)
 
-        # users.name is NOT NULL and read all over the templates; the username
-        # stands in so no real name or email is ever collected.
-        user = User(name=username, username=username, email=None, role="student")
+        # users.name is NOT NULL and shown throughout; the playful name stands in,
+        # so no real name or email is ever collected.
+        user = User(name=display_name(happy, animal), username=username, email=None,
+                    role="student", avatar=avatar)
         user.set_password(password)
-        db.session.add(user)
-        db.session.flush()  # assigns user.id, needed to pick a default avatar
-        from avatars import default_avatar_for
-        user.avatar = default_avatar_for(user.id)
-        db.session.commit()
+        try:
+            db.session.add(user)
+            db.session.flush()
+            db.session.add(ClassEnrollment(class_id=chosen_class.id, student_id=user.id))
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()   # two students picked the same name at once
+            flash(f"Someone is already {display_name(happy, animal)}. Pick a different word or animal.", "error")
+            return _signup_page(**chosen)
         login_user(user)
         return redirect(url_for("dashboard"))
 
-    return render_template("signup.html")
+    return _signup_page()
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])

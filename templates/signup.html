@@ -6,70 +6,124 @@
     <title>Sign Up</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
-        .auth-body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg-light); }
-        .auth-card { background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 2rem; width: 100%; max-width: 420px; }
-        .auth-card h1 { font-size: 1.4rem; margin: 0 0 1.25rem; text-align: center; background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .auth-body { display: flex; align-items: flex-start; justify-content: center; min-height: 100vh; background: var(--bg-light); padding: 2rem 1rem; box-sizing: border-box; }
+        .auth-card { background: var(--bg-white); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 2rem; width: 100%; max-width: 680px; }
+        .auth-card h1 { font-size: 1.4rem; margin: 0 0 0.25rem; text-align: center; background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .auth-sub { text-align: center; color: var(--text-light); font-size: 0.9rem; margin: 0 0 1.5rem; }
         .auth-field { margin-bottom: 1rem; }
-        .auth-field label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; }
-        .auth-field input { width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem; box-sizing: border-box; background: var(--bg-light); color: var(--text-dark); transition: all 0.2s; }
+        .auth-field label, .su-legend { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; }
+        .auth-field input[type=text], .auth-field input[type=password] { width: 100%; padding: 0.65rem 0.85rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.95rem; box-sizing: border-box; background: var(--bg-light); color: var(--text-dark); transition: all 0.2s; }
         .auth-field input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(131, 102, 232, 0.15); background: var(--bg-white); }
-        .auth-submit { width: 100%; padding: 0.65rem; border: none; border-radius: 6px; background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%); color: #fff; font-weight: 600; cursor: pointer; margin-top: 0.5rem; transition: all 0.2s; }
+        .auth-submit { width: 100%; padding: 0.75rem; border: none; border-radius: 6px; background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%); color: #fff; font-weight: 600; cursor: pointer; margin-top: 0.5rem; transition: all 0.2s; }
         .auth-submit:hover { box-shadow: 0 6px 20px rgba(131, 102, 232, 0.4); transform: translateY(-2px); }
         .auth-flash { background: #fee2e2; color: #991b1b; padding: 0.6rem 0.8rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem; border-left: 4px solid #d92916; }
         .auth-footer { text-align: center; margin-top: 1rem; font-size: 0.85rem; }
         .auth-footer a { color: var(--primary); text-decoration: none; font-weight: 600; }
         .auth-footer a:hover { text-decoration: underline; }
-        .auth-theme-toggle {
-            position: absolute;
-            top: 1.5rem;
-            right: 1.5rem;
-            background: transparent;
-            border: 1px solid var(--border);
-            cursor: pointer;
-            padding: 0.5rem 0.65rem;
-            border-radius: 6px;
-            transition: all 0.2s ease;
-            font-size: 1rem;
-            color: var(--text-dark);
-        }
-        .auth-theme-toggle:hover {
-            background: rgba(131, 102, 232, 0.15);
-            border-color: var(--primary);
-            color: var(--primary);
-        }
+        .auth-theme-toggle { position: absolute; top: 1.5rem; right: 1.5rem; background: transparent; border: 1px solid var(--border); cursor: pointer; padding: 0.5rem 0.65rem; border-radius: 6px; transition: all 0.2s ease; font-size: 1rem; color: var(--text-dark); }
+        .auth-theme-toggle:hover { background: rgba(131, 102, 232, 0.15); border-color: var(--primary); color: var(--primary); }
+
+        fieldset.su-group { border: 0; padding: 0; margin: 0 0 1.5rem; min-width: 0; }
+        .su-hint { font-size: 0.8rem; color: var(--text-light); margin: 0 0 0.5rem; font-weight: 400; }
+        .su-grid { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+        .su-chip { position: relative; }
+        .su-chip input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+        .su-chip span { display: block; padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 999px; font-size: 0.88rem; background: var(--bg-light); color: var(--text-dark); transition: all 0.15s; }
+        .su-chip:hover span { border-color: var(--primary); }
+        .su-chip input:checked + span { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+        .su-chip input:focus-visible + span { outline: 2px solid var(--primary); outline-offset: 2px; }
+        .su-class { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.6rem; }
+        .su-class .su-chip span { border-radius: 8px; padding: 0.9rem; text-align: center; font-size: 1rem; }
+        .su-avatars { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 0.4rem; max-height: 250px; overflow-y: auto; padding: 0.25rem; border: 1px solid var(--border); border-radius: 8px; }
+        .su-avatars .su-chip span { border-radius: 10px; padding: 0.3rem 0; text-align: center; font-size: 1.6rem; line-height: 1.5; }
+        .su-avatars .su-chip input:disabled { cursor: not-allowed; }
+        .su-avatars .su-chip input:disabled + span { opacity: 0.25; filter: grayscale(1); }
+        .su-preview { display: flex; align-items: center; justify-content: center; gap: 0.75rem; padding: 1rem; margin-bottom: 1.5rem; border-radius: 10px; background: rgba(131, 102, 232, 0.10); border: 1px dashed var(--primary); min-height: 3.5rem; }
+        .su-preview .su-emoji { font-size: 2.2rem; line-height: 1; }
+        .su-preview .su-name { font-size: 1.25rem; font-weight: 700; }
+        .su-preview .su-empty { color: var(--text-light); font-size: 0.9rem; }
+        .su-closed { text-align: center; padding: 1rem; color: var(--text-light); }
+        @media (max-width: 480px) { .auth-card { padding: 1.25rem; } }
     </style>
 </head>
 <body class="auth-body">
     <button id="themeToggle" class="auth-theme-toggle" title="Toggle dark mode">🌙</button>
     <div class="auth-card">
         <h1>Create Your Account</h1>
+        <p class="auth-sub">Pick a fun name and an icon. Please don't use your real name.</p>
         {% with messages = get_flashed_messages() %}
             {% if messages %}
-                {% for m in messages %}<div class="auth-flash">{{ m }}</div>{% endfor %}
+                {% for m in messages %}<div class="auth-flash" role="alert">{{ m }}</div>{% endfor %}
             {% endif %}
         {% endwith %}
-        <form method="POST">
+
+        {% if not classes %}
+            <div class="su-closed">Sign-up isn't open yet. Ask your teacher.</div>
+        {% else %}
+        <form method="POST" id="signupForm">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <fieldset class="su-group">
+                <legend class="su-legend">1. Which class are you in?</legend>
+                <div class="su-class">
+                    {% for c in classes %}
+                    <label class="su-chip"><input type="radio" name="class_id" value="{{ c.id }}" required {% if chosen.class_id == c.id %}checked{% endif %}><span>{{ c.name }}</span></label>
+                    {% endfor %}
+                </div>
+            </fieldset>
+
+            <fieldset class="su-group">
+                <legend class="su-legend">2. Pick a happy word</legend>
+                <div class="su-grid">
+                    {% for w in happy_words %}
+                    <label class="su-chip"><input type="radio" name="happy_word" value="{{ w }}" required {% if chosen.happy_word == w %}checked{% endif %}><span>{{ w }}</span></label>
+                    {% endfor %}
+                </div>
+            </fieldset>
+
+            <fieldset class="su-group">
+                <legend class="su-legend">3. Pick an animal</legend>
+                <div class="su-grid">
+                    {% for a in animals %}
+                    <label class="su-chip"><input type="radio" name="animal" value="{{ a }}" required {% if chosen.animal == a %}checked{% endif %}><span>{{ a }}</span></label>
+                    {% endfor %}
+                </div>
+            </fieldset>
+
+            <fieldset class="su-group">
+                <legend class="su-legend">4. Pick your icon</legend>
+                <p class="su-hint">Greyed-out icons already belong to someone else.</p>
+                <div class="su-avatars">
+                    {% for a in avatars %}
+                    <label class="su-chip" title="{{ a.label }}{% if a.key in taken_avatars %} (taken){% endif %}">
+                        <input type="radio" name="avatar" value="{{ a.key }}" data-emoji="{{ a.emoji }}" required
+                               {% if a.key in taken_avatars %}disabled{% endif %}
+                               {% if chosen.avatar == a.key and a.key not in taken_avatars %}checked{% endif %}>
+                        <span aria-label="{{ a.label }}">{{ a.emoji }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </fieldset>
+
+            <div class="su-preview" aria-live="polite" id="preview">
+                <span class="su-empty">Your name will show up here</span>
+            </div>
+
             <div class="auth-field">
-                <label>Username</label>
-                <input type="text" name="username" value="{{ username or '' }}" autocomplete="username"
-                       pattern="[A-Za-z0-9._\-]{3,80}" title="3–80 characters: letters, numbers, dots, dashes or underscores" required autofocus>
-                <small style="color:var(--text-light);">Please don't use your real name.</small>
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" minlength="8" autocomplete="new-password" required>
             </div>
             <div class="auth-field">
-                <label>Signup code</label>
-                <input type="text" name="signup_code" autocomplete="off" required>
+                <label for="confirm_password">Confirm password</label>
+                <input type="password" id="confirm_password" name="confirm_password" minlength="8" autocomplete="new-password" required>
             </div>
             <div class="auth-field">
-                <label>Password</label>
-                <input type="password" name="password" minlength="8" required>
-            </div>
-            <div class="auth-field">
-                <label>Confirm Password</label>
-                <input type="password" name="confirm_password" minlength="8" required>
+                <label for="signup_code">Signup code <span style="font-weight:400; color:var(--text-light);">(from your teacher)</span></label>
+                <input type="text" id="signup_code" name="signup_code" autocomplete="off" required>
             </div>
             <button type="submit" class="auth-submit">Sign Up</button>
         </form>
+        {% endif %}
         <div class="auth-footer">Already have an account? <a href="{{ url_for('auth.login') }}">Log in</a></div>
     </div>
     <script>
@@ -78,7 +132,6 @@
             document.documentElement.dataset.theme = savedTheme;
             updateThemeToggle();
         }
-
         function toggleTheme() {
             const currentTheme = document.documentElement.dataset.theme || 'light';
             const newTheme = currentTheme === 'light' ? 'dark' : 'light';
@@ -86,16 +139,40 @@
             localStorage.setItem('theme', newTheme);
             updateThemeToggle();
         }
-
         function updateThemeToggle() {
             const toggleBtn = document.getElementById('themeToggle');
             const isDark = document.documentElement.dataset.theme === 'dark';
             toggleBtn.textContent = isDark ? '☀️' : '🌙';
         }
-
         document.getElementById('themeToggle').addEventListener('click', toggleTheme);
         document.addEventListener('DOMContentLoaded', initTheme);
         initTheme();
+
+        // Live preview of the chosen name and icon.
+        (function () {
+            var form = document.getElementById('signupForm');
+            if (!form) return;
+            var box = document.getElementById('preview');
+            function val(name) { var el = form.querySelector('input[name="' + name + '"]:checked'); return el ? el : null; }
+            function render() {
+                var h = val('happy_word'), a = val('animal'), av = val('avatar');
+                box.textContent = '';
+                if (!h && !a && !av) {
+                    var empty = document.createElement('span');
+                    empty.className = 'su-empty';
+                    empty.textContent = 'Your name will show up here';
+                    box.appendChild(empty);
+                    return;
+                }
+                if (av) { var e = document.createElement('span'); e.className = 'su-emoji'; e.textContent = av.dataset.emoji; box.appendChild(e); }
+                var n = document.createElement('span');
+                n.className = 'su-name';
+                n.textContent = (h ? h.value : '…') + ' ' + (a ? a.value : '…');
+                box.appendChild(n);
+            }
+            form.addEventListener('change', render);
+            render();
+        })();
     </script>
 </body>
 </html>
