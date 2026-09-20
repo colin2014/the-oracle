@@ -16,6 +16,45 @@
     </div>
 </div>
 
+<div class="signup-code-panel">
+    <div>
+        <div class="signup-code-label">Signup code</div>
+        {% if signup_code %}
+        <div class="signup-code-hint">Students need this to create an account at <strong>/signup</strong>. To change it, edit <code>SIGNUP_CODE</code> in <code>.env</code> and restart the app.</div>
+        {% else %}
+        <div class="signup-code-hint"><strong>Signup is closed.</strong> Set <code>SIGNUP_CODE</code> in <code>.env</code> and restart the app to open it.</div>
+        {% endif %}
+    </div>
+    {% if signup_code %}
+    <div class="signup-code-actions">
+        <code id="signupCodeValue" data-code="{{ signup_code }}" aria-live="polite">••••-••••-••••</code>
+        <button type="button" class="admin-btn" id="signupCodeToggle" aria-pressed="false">Show</button>
+        <button type="button" class="admin-btn" id="signupCodeCopy">Copy</button>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .signup-code-panel { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; margin-bottom: 1.5rem; background: var(--bg-white); border: 1px solid var(--border); border-radius: 8px; }
+    .signup-code-label { font-weight: 700; margin-bottom: 0.15rem; }
+    .signup-code-hint { color: var(--text-light); font-size: 0.85rem; max-width: 46ch; }
+    .signup-code-hint code { background: var(--bg-light); padding: 0.05rem 0.3rem; border-radius: 4px; }
+    .signup-code-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    #signupCodeValue { font-size: 1.15rem; font-weight: 600; letter-spacing: 0.06em; padding: 0.45rem 0.8rem; background: var(--bg-light); border: 1px solid var(--border); border-radius: 6px; min-width: 13ch; text-align: center; }
+
+    dialog.pw-dialog { border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; background: var(--bg-white); color: var(--text-dark); max-width: 440px; width: calc(100% - 2rem); box-shadow: 0 10px 40px rgba(0,0,0,0.25); }
+    dialog.pw-dialog::backdrop { background: rgba(0,0,0,0.45); }
+    .pw-dialog h2 { margin: 0 0 0.25rem; font-size: 1.15rem; }
+    .pw-dialog .pw-sub { margin: 0 0 1rem; color: var(--text-light); font-size: 0.88rem; }
+    .pw-dialog .pw-option { display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.6rem; font-size: 0.92rem; }
+    .pw-dialog input[type=text] { width: 100%; box-sizing: border-box; padding: 0.55rem 0.7rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-light); color: var(--text-dark); font-size: 0.95rem; }
+    .pw-dialog .pw-error { color: #b91c1c; font-size: 0.85rem; min-height: 1.2rem; margin: 0.4rem 0; }
+    .pw-dialog .pw-buttons { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; }
+    .pw-result { text-align: center; }
+    .pw-result .pw-value { display: block; font-family: ui-monospace, Consolas, monospace; font-size: 1.5rem; font-weight: 700; letter-spacing: 0.05em; padding: 0.9rem; margin: 0.75rem 0; background: var(--bg-light); border: 1px dashed var(--primary); border-radius: 8px; user-select: all; word-break: break-all; }
+    .pw-result .pw-warn { color: var(--text-light); font-size: 0.85rem; }
+</style>
+
 <style>
     /* This page is a wide data table — let it use the full window width
        instead of the 1300px cap style.css puts on .admin-main. */
@@ -263,6 +302,7 @@
                     <button class="action-menu-btn" style="background: var(--bg-light); border: 1px solid var(--border); border-radius: 4px; padding: 0.4rem 0.6rem; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--text-dark);">⋮</button>
                     <div class="action-menu-content" style="display: none; position: absolute; right: 0; background: var(--bg-white); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 1000; min-width: 150px;">
                         <a href="{{ url_for('admin.reset_student_data', student_id=s.id) }}" style="display: block; padding: 0.6rem 1rem; color: var(--link-color); text-decoration: none; border-bottom: 1px solid var(--border); font-size: 0.9rem;">Reset Data</a>
+                        <button type="button" class="reset-password-btn" data-student-id="{{ s.id }}" data-student-name="{{ s.name }}" data-student-username="{{ s.username }}" style="display: block; width: 100%; text-align: left; padding: 0.6rem 1rem; border: none; border-bottom: 1px solid var(--border); background: none; color: var(--link-color); cursor: pointer; font-size: 0.9rem;">Reset password</button>
                         <form method="POST" action="{{ url_for('admin.delete_student', student_id=s.id) }}" style="display: block; margin: 0;" onsubmit="return confirm('Delete this student? All their data and enrollments will be permanently deleted. This cannot be undone.');">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" style="width: 100%; text-align: left; padding: 0.6rem 1rem; border: none; background: none; color: #dc2626; cursor: pointer; font-size: 0.9rem; font-weight: 500;">Delete</button>
@@ -633,5 +673,128 @@ document.getElementById('nameModal').addEventListener('click', (e) => {
 
 // Load mappings on page load
 loadNameMappings();
+</script>
+
+<dialog class="pw-dialog" id="pwDialog" aria-labelledby="pwTitle">
+    <div id="pwForm">
+        <h2 id="pwTitle">Reset password</h2>
+        <p class="pw-sub" id="pwWho"></p>
+        <label class="pw-option"><input type="radio" name="pwMode" value="generate" checked> <span>Generate a random password</span></label>
+        <label class="pw-option"><input type="radio" name="pwMode" value="custom"> <span>Set one myself</span></label>
+        <input type="text" id="pwCustom" placeholder="At least 8 characters" autocomplete="off" hidden>
+        <div class="pw-error" id="pwError" role="alert"></div>
+        <div class="pw-buttons">
+            <button type="button" class="btn-secondary" id="pwCancel">Cancel</button>
+            <button type="button" class="btn-primary" id="pwSubmit">Reset password</button>
+        </div>
+    </div>
+    <div id="pwDone" class="pw-result" hidden>
+        <h2>New password set</h2>
+        <p class="pw-sub" id="pwDoneWho"></p>
+        <code class="pw-value" id="pwValue"></code>
+        <p class="pw-warn">Give this to the student now. It can't be shown again, only reset again.</p>
+        <div class="pw-buttons">
+            <button type="button" class="btn-secondary" id="pwCopy">Copy</button>
+            <button type="button" class="btn-primary" id="pwClose">Done</button>
+        </div>
+    </div>
+</dialog>
+
+<script>
+(function () {
+    // ---- Signup code: masked until you click Show ----
+    var codeEl = document.getElementById('signupCodeValue');
+    if (codeEl) {
+        var toggle = document.getElementById('signupCodeToggle');
+        var MASK = '••••-••••-••••';
+        toggle.addEventListener('click', function () {
+            var showing = toggle.getAttribute('aria-pressed') === 'true';
+            codeEl.textContent = showing ? MASK : codeEl.dataset.code;
+            toggle.textContent = showing ? 'Show' : 'Hide';
+            toggle.setAttribute('aria-pressed', String(!showing));
+        });
+        document.getElementById('signupCodeCopy').addEventListener('click', function (e) {
+            var btn = e.currentTarget;
+            if (!navigator.clipboard) { return; }
+            navigator.clipboard.writeText(codeEl.dataset.code).then(function () {
+                btn.textContent = 'Copied';
+                setTimeout(function () { btn.textContent = 'Copy'; }, 1500);
+            }).catch(function () {});
+        });
+    }
+
+    // ---- Reset password ----
+    var dlg = document.getElementById('pwDialog');
+    var current = null;
+    var el = function (id) { return document.getElementById(id); };
+
+    function csrf() { return document.querySelector('meta[name="csrf-token"]').content; }
+    function showForm() { el('pwForm').hidden = false; el('pwDone').hidden = true; }
+
+    document.querySelectorAll('.reset-password-btn').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            document.querySelectorAll('.action-menu-content').forEach(function (m) { m.style.display = 'none'; });
+            current = { id: btn.dataset.studentId, name: btn.dataset.studentName, username: btn.dataset.studentUsername };
+            el('pwWho').textContent = current.name + ' (login: ' + current.username + ')';
+            el('pwError').textContent = '';
+            el('pwCustom').value = '';
+            el('pwCustom').hidden = true;
+            document.querySelector('input[name="pwMode"][value="generate"]').checked = true;
+            showForm();
+            dlg.showModal();
+        });
+    });
+
+    document.querySelectorAll('input[name="pwMode"]').forEach(function (r) {
+        r.addEventListener('change', function () {
+            var custom = document.querySelector('input[name="pwMode"]:checked').value === 'custom';
+            el('pwCustom').hidden = !custom;
+            if (custom) { el('pwCustom').focus(); }
+        });
+    });
+
+    function closeAndForget() {
+        el('pwValue').textContent = '';   // don't leave the password in the page
+        dlg.close();
+    }
+    el('pwCancel').addEventListener('click', closeAndForget);
+    el('pwClose').addEventListener('click', closeAndForget);
+    dlg.addEventListener('close', function () { el('pwValue').textContent = ''; });
+
+    el('pwSubmit').addEventListener('click', async function () {
+        var mode = document.querySelector('input[name="pwMode"]:checked').value;
+        var body = { mode: mode };
+        if (mode === 'custom') { body.password = el('pwCustom').value; }
+        el('pwError').textContent = '';
+        el('pwSubmit').disabled = true;
+        try {
+            var res = await fetch('/admin/students/' + current.id + '/reset-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+                body: JSON.stringify(body)
+            });
+            var data = await res.json();
+            if (!res.ok || !data.success) { el('pwError').textContent = data.error || 'Could not reset the password.'; return; }
+            el('pwDoneWho').textContent = current.name + ' (login: ' + data.username + ')';
+            el('pwValue').textContent = data.password;
+            el('pwForm').hidden = true;
+            el('pwDone').hidden = false;
+        } catch (err) {
+            el('pwError').textContent = 'Network error: ' + err.message;
+        } finally {
+            el('pwSubmit').disabled = false;
+        }
+    });
+
+    el('pwCopy').addEventListener('click', function (e) {
+        var btn = e.currentTarget;
+        if (!navigator.clipboard) { return; }
+        navigator.clipboard.writeText(el('pwValue').textContent).then(function () {
+            btn.textContent = 'Copied';
+            setTimeout(function () { btn.textContent = 'Copy'; }, 1500);
+        }).catch(function () {});
+    });
+})();
 </script>
 {% endblock %}

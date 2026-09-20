@@ -97,6 +97,9 @@ def students():
             if not u["last_active"] or row.last_opened_at > u["last_active"]:
                 u["last_active"] = row.last_opened_at
 
+    # The code the running app actually accepts (read at startup from SIGNUP_CODE).
+    from auth_routes import SIGNUP_CODE
+
     return render_template(
         "admin_students.html",
         students=all_students,
@@ -104,7 +107,47 @@ def students():
         archived_classes=archived_classes,
         classes_by_student=classes_by_student,
         usage_by_student=usage_by_student,
+        signup_code=SIGNUP_CODE,
     )
+
+
+PASSWORD_MIN_LENGTH = 8
+
+
+def _generate_password(length=12):
+    """Readable temporary password: no look-alike characters (0/O, 1/l/I)."""
+    import secrets
+    alphabet = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+@admin_bp.route("/students/<int:student_id>/reset-password", methods=["POST"])
+@login_required
+@admin_required
+def reset_student_password(student_id):
+    """Set a student's password to a generated or admin-typed value.
+
+    Passwords are stored only as one-way hashes, so an existing password can never
+    be shown; resetting is the supported way to help a student who is locked out.
+    The new password is returned once, in this response, and is never stored or logged.
+    """
+    student = User.query.filter_by(id=student_id, role="student").first_or_404()
+    data = request.get_json(silent=True) or {}
+
+    if data.get("mode") == "custom":
+        password = data.get("password") or ""
+        if len(password) < PASSWORD_MIN_LENGTH:
+            return jsonify({"success": False, "error": f"Password must be at least {PASSWORD_MIN_LENGTH} characters."}), 400
+    else:
+        password = _generate_password()
+
+    student.set_password(password)
+    db.session.commit()
+    current_app.logger.info("admin id=%s reset the password of student id=%s", current_user.id, student.id)
+
+    resp = jsonify({"success": True, "username": student.username, "password": password})
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
 
 
 @admin_bp.route("/students/<int:student_id>/assign-class", methods=["POST"])
