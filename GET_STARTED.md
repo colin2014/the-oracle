@@ -15,7 +15,7 @@ A complete content scraping system with:
 
 ## Prerequisites
 
-- **Python 3.7+** installed
+- **Python 3.12+** installed
 - **Chrome browser** (for the extension)
 - **Administrator access** (for installing Python packages)
 
@@ -391,7 +391,7 @@ You own the local copies, but respect original authors' copyright.
 
 ## System Requirements
 
-- Python 3.7+
+- Python 3.12+
 - 200MB free disk space (for dependencies and data)
 - Chrome/Chromium browser
 - 2GB RAM minimum

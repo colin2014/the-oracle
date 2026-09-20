@@ -156,7 +156,7 @@ airplay/
 
 ## 🔧 System Requirements
 
-- Python 3.7+
+- Python 3.12+
 - Chrome browser
 - 200MB free space
 - Administrator access (for pip install)
