@@ -1,0 +1,87 @@
+/* Registering --p makes it a real number to the engine, not a token string,
+   so calc() in font-size resolves reliably (and it can't be inherited as garbage). */
+@property --p {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+/* --p goes 0 (expanded) -> 1 (compact); every value below is interpolated from it. */
+.sph {
+  --p: 0;
+  /* Tweak the two endpoints here rather than in the calc() expressions. */
+  --title-lg: 32px;
+  --title-sm: 16px;
+  --code-lg: 14px;
+  --code-sm: 13px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: calc(32px - 20px * var(--p)) 24px calc(28px - 16px * var(--p));
+
+  /* Translucency + shadow fade in with scroll rather than popping on. */
+  background: rgba(255, 255, 255, calc(0.65 + 0.25 * var(--p)));
+  -webkit-backdrop-filter: blur(calc(14px * var(--p))) saturate(180%);
+  backdrop-filter: blur(calc(14px * var(--p))) saturate(180%);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, calc(0.08 * var(--p))),
+              0 8px 24px -12px rgba(15, 23, 42, calc(0.35 * var(--p)));
+}
+
+/* Opaque fallback where backdrop-filter is unsupported. */
+@supports not (backdrop-filter: blur(1px)) {
+  .sph { background: rgba(255, 255, 255, calc(0.85 + 0.15 * var(--p))); }
+}
+
+.sph__inner {
+  display: flex;
+  /* Stacked at the top, single line once compact — the wrap is what flips. */
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: calc(12px * var(--p));
+  row-gap: calc(6px * (1 - var(--p)));
+  max-width: 880px;
+  margin: 0 auto;
+}
+
+.sph .sph__code {
+  flex: 0 0 auto;
+  /* width:100% while expanded forces the title onto its own line; 0 lets them share one. */
+  width: calc(100% * (1 - var(--p)));
+  font-size: calc(var(--code-lg) + (var(--code-sm) - var(--code-lg)) * var(--p));
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6366f1;
+}
+
+/* Extra specificity: a bare `.sph__title` loses to global h1 / preflight rules
+   that load after this file. This has to out-rank them or the size never moves. */
+.sph h1.sph__title {
+  margin: 0;
+  min-width: 0;
+  font-size: calc(var(--title-lg) + (var(--title-sm) - var(--title-lg)) * var(--p));
+  line-height: 1.25;
+  font-weight: calc(700 - 100 * var(--p));
+  letter-spacing: calc(-0.02em + 0.02em * var(--p));
+  color: #0f172a;
+  /* Compact bar is one line: clip instead of pushing the bar taller. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Let the expanded title wrap freely; only the compact state truncates. */
+.sph:not(.is-compact) .sph__title {
+  white-space: normal;
+  overflow: visible;
+}
+
+@media (prefers-color-scheme: dark) {
+  .sph {
+    background: rgba(15, 23, 42, calc(0.65 + 0.25 * var(--p)));
+    box-shadow: 0 1px 0 rgba(0, 0, 0, calc(0.4 * var(--p))),
+                0 8px 24px -12px rgba(0, 0, 0, calc(0.6 * var(--p)));
+  }
+  .sph__title { color: #f1f5f9; }
+  .sph__code { color: #a5b4fc; }
+}

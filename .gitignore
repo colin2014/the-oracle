@@ -61,3 +61,25 @@ logs/
 
 # Temp files
 *.tmp
+
+# App data, database and scraped/generated content
+data/
+
+# Tool caches
+.agents/
+.impeccable/
+
+# Saved webpage dumps (reference material, not source)
+toddleWebpage/
+exampleWebpage/
+Books _ GrowHall*.html
+Books _ GrowHall*_files/
+
+# Backups / generated artifacts
+*.bak
+*.preconsolidate
+*.preimages
+*.vocabbak
+
+# Excel lock files
+~$*.xls*

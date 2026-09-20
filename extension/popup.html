@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Content Scraper</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 Content Scraper</h1>
+            <p>Extract and organize web content</p>
+        </div>
+
+        <div class="settings">
+            <div class="form-group">
+                <label for="serverUrl">Server URL:</label>
+                <input type="url" id="serverUrl" placeholder="http://localhost:5000">
+            </div>
+            <button id="saveSettings" class="btn btn-secondary">Save Settings</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="content">
+            <div class="form-group">
+                <label for="pageTitle">Page Title:</label>
+                <input type="text" id="pageTitle" readonly>
+            </div>
+
+            <div class="stats">
+                <div class="stat">
+                    <span class="label">Size</span>
+                    <span class="value" id="textCount">0 bytes</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Images</span>
+                    <span class="value" id="imageCount">0</span>
+                </div>
+                <div class="stat">
+                    <span class="label">Sections</span>
+                    <span class="value" id="sectionCount">0</span>
+                </div>
+            </div>
+
+            <!-- New Navigation Checklist Selection Section -->
+            <div id="navSection" class="form-group" style="display: none; margin-top: 1rem;">
+                <label>Select Pages to Scrape:</label>
+                <div class="select-all-wp" style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600;">
+                    <input type="checkbox" id="selectAllNav" checked>
+                    <span>Select All</span>
+                </div>
+                <div id="navList" class="nav-list">
+                    <!-- Dynamic navigation tree list with checkboxes -->
+                </div>
+            </div>
+
+            <!-- New Progress Bar Section -->
+            <div id="progressSection" class="form-group" style="display: none; margin-top: 1rem; text-align: center;">
+                <label id="progressTitle" style="color: #2c3e50;">Batch scraping in progress...</label>
+                <div class="progress-bar-wp">
+                    <div id="progressBar"></div>
+                </div>
+                <div id="progressDetails" style="font-size: 0.85rem; color: #7f8c8d; margin-top: 0.5rem; font-weight: 500;">0 / 0 pages scraped</div>
+                <button id="stopScrapeBtn" class="btn btn-secondary" style="margin-top: 0.75rem; background: #e74c3c; color: white; width: auto; font-size: 0.85rem; padding: 0.4rem 0.8rem; border-radius: 4px; border: none; cursor: pointer;">🛑 Stop Scraping</button>
+            </div>
+
+            <button id="scrapeBtn" class="btn btn-primary" style="margin-top: 1rem;">🔍 Scrape Current Page Only</button>
+            <button id="scrapeBatchBtn" class="btn btn-primary" style="margin-top: 0.5rem; background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); display: none;">📥 Scrape Selected Pages</button>
+        </div>
+
+        <div id="status" class="status-message"></div>
+
+        <div class="footer">
+            <button id="openDashboard" class="link-btn">Open Dashboard</button>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

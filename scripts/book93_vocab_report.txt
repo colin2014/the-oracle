@@ -1,0 +1,924 @@
+===== A.1.2.5  (src=block, kept=1, dropped=0, REVIEW) =====
+  KEEP  Logic diagram: A visual representation of a Boolean expression using logic gate symbols to show how logical decisions are made.Input variable – A binary value (typically A, B, C, etc.) that feeds into a logic gate and affects the circuit’s output.Output – The result produced by the logic circuit, typically represented by a single binary value (0 or 1).Circuit – A complete and closed path through which electricity flows, or in logic, a path through which logical operations are performed.Truth table – A table showing all possible input combinations and their corresponding output values for a logic circuit.Abstraction – The process of simplifying a complex system by focusing on key elements; in logic diagrams, this means representing logic clearly without unnecessary detail.
+
+===== A1.1.1  (src=sidebar, kept=13, dropped=0) =====
+  KEEP  Central Processing Unit (CPU): The part of a computer that executes program instructions and coordinates the activity of other components; it processes data and controls information flow.
+  KEEP  Control Unit (CU): The CPU subcomponent that fetches and decodes instructions and sends control signals so the ALU, registers, memory and I/O act in the correct sequence.
+  KEEP  Arithmetic Logic Unit (ALU): The portion of the CPU that performs arithmetic (e.g., add, subtract) and logical (e.g., compare) operations on data supplied by registers.
+  KEEP  Register: A very small, very fast storage location inside the CPU used to hold instructions, addresses, operands or intermediate results while they are processed.
+  KEEP  Program Counter (PC): A register that holds the address of the next instruction to be fetched from memory.
+  KEEP  Instruction Register (IR): A register that holds the instruction currently being decoded and executed.
+  KEEP  Memory Address Register (MAR): A register that holds the memory address the CPU will read from or write to.
+  KEEP  Memory Data Register (MDR): A register that temporarily holds data being transferred between CPU and memory.
+  KEEP  Accumulator (ACC): A register commonly used to store intermediate results produced by the ALU.
+  KEEP  Cache: A small amount of very fast memory near the CPU that stores frequently used instructions and data so the CPU can access them more quickly than from RAM.
+  KEEP  Clock speed (Clock rate): The frequency of the CPU’s internal clock, measured in hertz; it sets how many basic cycles the CPU can perform per second.
+  KEEP  Clock cycle: One tick of the CPU clock when part of an instruction can be processed; many instructions require multiple cycles.
+  KEEP  Bus: The set of signal lines used to transfer data, addresses and control signals between the CPU, memory and peripherals.
+
+===== A1.1.2  (src=block, kept=1, dropped=0, REVIEW) =====
+  KEEP  GPU (Graphics Processing Unit): A specialized processor designed to accelerate image rendering and perform large-scale parallel computations.Parallel Processing: A method of computation in which many calculations are carried out simultaneously, ideal for tasks like graphics rendering and machine learning.Rendering: The process of generating a visual image from a model using a computer program, commonly handled by the GPU.Dedicated GPU: A standalone graphics card with its own video memory (VRAM), used for high-performance tasks like gaming, video editing, and AI processing.Integrated GPU: A graphics unit built into the CPU that shares memory with the main system, suitable for basic display functions.VRAM (Video RAM): High-speed memory used by the GPU to store textures, frame buffers, and other graphical data.
+
+===== A1.1.3  (src=sidebar, kept=8, dropped=0) =====
+  KEEP  CPU: General-purpose processor optimized for low-latency, branchy tasks.
+  KEEP  GPU: Massively parallel processor optimized for high-throughput, data-parallel tasks.
+  KEEP  Core / Thread: Execution unit (core) and a sequence of instructions (thread).
+  KEEP  SIMD/SIMT: Many data elements processed by the same instruction (vector/warp execution).
+  KEEP  Latency vs. Throughput: Time to finish one task vs. amount of work finished per unit time.
+  KEEP  VRAM: High-bandwidth memory on a discrete GPU for textures and tensors.
+  KEEP  Kernel (GPU): A function launched to run in parallel across many threads.
+  KEEP  Integrated vs. Discrete GPU: Shares system memory vs. has dedicated VRAM.
+
+===== A1.1.4  (src=sidebar, kept=9, dropped=0) =====
+  KEEP  Primary memory (main memory): The fast, CPU-accessible storage used to hold program instructions and data while a program runs; it consists mainly of RAM and ROM.
+  KEEP  RAM (Random Access Memory): Read/write, volatile memory used to store currently running programs and their data; contents are lost when power is removed.
+  KEEP  ROM (Read-Only Memory): Non-volatile memory used to store permanent firmware (e.g., boot code); it cannot normally be overwritten during regular operation.
+  KEEP  Volatile: A property of memory that requires continuous power to retain data (e.g., RAM).
+  KEEP  Non-volatile: A property of memory that preserves data when power is removed (e.g., ROM, secondary storage).
+  KEEP  DRAM (Dynamic RAM): The common form of main RAM; needs frequent refresh cycles and is relatively cheap per bit.
+  KEEP  SRAM (Static RAM): Faster and more expensive than DRAM; typically used for small, very fast cache memory.
+  KEEP  Cache memory (L1, L2, L3): Very small, very fast SRAM placed close to the CPU to store the most-used instructions/data and speed up access.
+  KEEP  Virtual memory: A technique that uses secondary (disk) storage to extend the effective size of RAM by swapping pages between RAM and disk.
+
+===== A1.1.6  (src=sidebar, kept=10, dropped=0) =====
+  KEEP  Pipelining: A CPU design technique where multiple instructions are overlapped in execution by dividing the instruction cycle into several stages (fetch, decode, execute, memory, and write-back). This increases overall instruction throughput.
+  KEEP  Instruction Throughput: The number of instructions a CPU can complete per unit of time. Pipelining improves throughput without increasing the clock speed.
+  KEEP  Pipeline Stall: A pause in the instruction pipeline that occurs when an instruction depends on the result of a previous one that has not yet completed.
+  KEEP  Hazard: A situation in which a pipeline must delay or alter the normal sequence of instruction execution. Common types include data hazards, control hazards, and structural hazards.
+  KEEP  Clock Cycle: The smallest unit of time during which the CPU performs one operation or part of an instruction. Pipelining enables one instruction to complete every clock cycle under ideal conditions.
+  KEEP  Multi-core Processor: A single CPU that contains two or more independent processing cores, each capable of running its own sequence of instructions simultaneously.
+  KEEP  Parallel Processing: The simultaneous execution of multiple instructions or tasks across multiple CPU cores to increase performance and efficiency.
+  KEEP  Cache Memory: A small, high-speed memory located inside or close to the CPU that stores frequently accessed data and instructions, reducing the time needed to fetch them.
+  KEEP  Thread: A sequence of instructions that can be managed independently by a CPU core; multiple threads can run in parallel on a multi-core processor.
+  KEEP  Scalability: The ability of a computer system or CPU architecture to increase performance efficiently as more resources (like additional cores) are added.
+
+===== A1.1.7  (src=sidebar, kept=10, dropped=9) =====
+  KEEP  Secondary Storage: Non-volatile memory used to store data permanently, even when the computer is turned off.
+  KEEP  Internal Storage: Storage devices located inside a computer system, typically used for the operating system, applications, and files.
+  KEEP  External Storage: Portable or network-connected devices used for backups, file sharing, and extra capacity.
+  KEEP  Hard Disk Drive (HDD): A mechanical storage device that reads and writes data using spinning magnetic platters.
+  KEEP  Solid-State Drive (SSD): A modern storage device that uses flash memory, allowing faster data access and no moving parts.
+  KEEP  M.2 SSD: A slim, compact type of SSD that connects directly to the motherboard and offers very high transfer speeds.
+  KEEP  USB Flash Drive: A small, portable storage device that connects via a USB port, often used for quick data transfers.
+  KEEP  Network-Attached Storage (NAS): A dedicated storage system connected to a network that allows multiple users to store and access files remotely.
+  KEEP  Cloud Storage: A form of external storage that saves data on remote servers accessed through the internet.
+  KEEP  Data Transfer Rate: The speed at which information can be read from or written to a storage device, measured in megabytes per second (MB/s).
+  DROP  When choosing secondary storage, consider the trade: off between speed and capacity. SSDs offer speed, ideal for applications requiring fast da
+  DROP  Knowledge and Technology: How do we decide what storage technologies are reliable? What evidence influences consumer
+  DROP  Explore Storage Upgrade: 
+  DROP  Objective: Understand the impact of upgrading storage devices by replacing an HDD with an SSD in a co
+  DROP  Materials Needed: A computer with an HDD, a compatible SSD, screwdriver, data transfer software, USB drive, 
+  DROP  Procedure: 
+  DROP  Guiding Questions: 
+  DROP  Expected Outcome: Gain practical insights into the advantages of SSDs over HDDs, improve technical skills, a
+  DROP  The very first hard disk drive, created by IBM in 1956, could only store 5 megabytes of data: about the size of a single high-quality photo today! The entire drive was the size of two refrigerators and weighed over one ton. In contrast, a modern solid-state drive (SSD) smaller than your smartphone can store over 4 terabytes, showing just how far storage technology has evolved.: 
+
+===== A1.1.8  (src=sidebar, kept=7, dropped=5) =====
+  KEEP  Compression: The process of reducing the size of a file by encoding data more efficiently.
+  KEEP  Lossless Compression: A type of compression where no data is lost, allowing the original file to be perfectly restored.
+  KEEP  Lossy Compression: Compression that permanently removes some data to reduce file size.
+  KEEP  Bit Rate: The amount of data processed per second in audio or video files, influencing quality and size.
+  KEEP  Codec: A software or hardware tool used to compress or decompress digital media files.
+  KEEP  Digital-to-Analog Converter (DAC): A device that converts digital signals into analog sound waves.
+  KEEP  High Fidelity (Hi-Fi): Audio reproduction that is very close to the original recording quality.
+  DROP  When choosing between lossless and lossy compression, consider the purpose and audience. For archival or scientific data where accuracy is crucial, opt for lossless compression to preserve original quality. For general media consumption, where storage and bandwidth are priorities, lossy compression often provides significant savings.: 
+  DROP  Compression connects to knowledge questions such as: 
+  DROP  To what extent can we consider compressed data as a true representation of the original?: 
+  DROP  How do we define the boundary between loss of data and loss of meaning?: 
+  DROP  This encourages students to reflect on whether “smaller” is always “better” and the epistemological implications of information loss in digital media.: 
+
+===== A1.1.9  (src=sidebar, kept=10, dropped=0) =====
+  KEEP  Cloud Computing: The delivery of computing services (such as storage, servers, databases, and applications) over the internet instead of using local computers.
+  KEEP  Virtualization: The process of creating virtual versions of physical hardware, allowing multiple systems to run on a single physical machine.
+  KEEP  SaaS (Software as a Service): A cloud model where users access software applications over the internet, such as Google Drive or Microsoft 365.
+  KEEP  PaaS (Platform as a Service): Provides a platform and environment to allow developers to build, test, and deploy applications without managing underlying infrastructure.
+  KEEP  IaaS (Infrastructure as a Service): Offers virtualized computing resources like servers and storage over the internet, such as AWS EC2.
+  KEEP  Hybrid Cloud: A combination of public and private cloud services that allows data and applications to be shared between them.
+  KEEP  Scalability: The ability of a system to increase or decrease computing resources as demand changes.
+  KEEP  Data Center: A facility that houses computer systems and associated components, such as storage and networking equipment, that form the backbone of cloud services.
+  KEEP  Latency: The delay between a user’s action and a web application’s response, important in determining cloud service performance.
+  KEEP  Edge Computing: A distributed computing paradigm where data is processed near its source to reduce latency and bandwidth use.
+
+===== A1.2.1  (src=sidebar, kept=5, dropped=2) =====
+  KEEP  Bit: The smallest unit of data in computing, representing a single binary digit (0 or 1).
+  KEEP  Byte: A group of eight bits; it can represent a single character, such as a letter or symbol.
+  KEEP  Binary Number System: A base-2 system using only the digits 0 and 1; the fundamental language of computers for processing and storing data.
+  KEEP  Hexadecimal Number System: A base-16 system using digits 0–9 and letters A–F; commonly used in programming to simplify long binary strings and in colour representation on digital screens.
+  KEEP  Nibble: A group of four bits; equal to one hexadecimal digit and often used when converting between binary and hexadecimal values.
+  DROP  Easily convert an 8: bit binary number to denary by aligning each bit with its corresponding power of two, mult
+  DROP  Binary isn’t just a mathematical concept: it’s the language that every computer on Earth understands. When you type a message, save 
+
+===== A1.2.3  (src=sidebar, kept=3, dropped=0) =====
+  KEEP  Logic Gate: A digital circuit that performs a basic logical function such as AND, OR, or NOT, producing an output based on one or more inputs.
+  KEEP  Boolean Logic: A form of algebra where all values are either TRUE (1) or FALSE (0), forming the basis for logic gate operations.
+  KEEP  Truth Table: A mathematical table used to represent the relationship between all possible input values and their corresponding output in a logic gate.
+
+===== A1.3.1  (src=sidebar, kept=5, dropped=10) =====
+  KEEP  Operating System (OS): A software layer that manages hardware resources and provides common services for computer programs.
+  KEEP  Multitasking: The capability of an operating system to run multiple programs simultaneously.
+  KEEP  Kernel: The core component of an operating system that has complete control over everything in the system.
+  KEEP  Command Line Interface (CLI): A text-based user interface used to interact with the operating system by typing commands.
+  KEEP  Driver: A specialized program that allows the operating system to communicate with hardware devices like printers or keyboards.
+  DROP  Explore how operating systems manage hardware, software, and resources to maintain efficiency and security. Investigating current OS trends like virtualization and cloud computing can enhance understanding.: 
+  DROP  Activity: Explore Your Operating System
+  DROP  Memory Management: Open your task manager or system monitor and observe how memory is allocated to different 
+  DROP  Process Scheduling: Use a process explorer tool to examine the active processes on your computer. Identify sys
+  DROP  I/O Operations: Connect a peripheral device (like a mouse or printer) to your computer and explore the rol
+  DROP  File System: Navigate to your file explorer and understand how data is organized. Create, rename, move,
+  DROP  User Interface: Test both the GUI and any available CLI (such as Terminal on macOS or Command Prompt on Wi
+  DROP  Operating System Updates: Research how updates are managed in your operating system. Explore the update settings and
+  DROP  After completing these tasks, reflect on how each aspect contributes to the overall user experience and the efficient functioning of your computing device. Consider how these aspects might differ in other operating systems you have learned about.: 
+  DROP  The first operating system was created in the 1950s, but it didn't look anything like what we use today. Instead of windows, icons, or a mouse, users had to interact with computers using punch cards or typed instructions. One of the earliest mainstream operating systems, UNIX, developed in 1969 at Bell Labs, still influences many modern OSes like Linux, macOS, and even Android!: 
+
+===== A1.3.2  (src=sidebar, kept=5, dropped=8) =====
+  KEEP  Real-Time Operating System (RTOS): An OS designed to process data and respond to inputs within a guaranteed time frame—often used in robotics, automotive systems, and medical devices.
+  KEEP  Single-user, single-task OS: A system that allows only one user to perform one task at a time, such as early mobile phones or simple embedded systems.
+  KEEP  Multi-user Operating System: An OS that allows multiple users to access a system’s resources at the same time, often found in mainframes and servers.
+  KEEP  Distributed Operating System: An OS that manages a group of distinct computers and makes them appear to the user as a single system.
+  KEEP  Embedded Operating System: A specialized OS used in embedded systems, such as smart appliances, sensors, and controllers, designed for specific hardware with limited functionality.
+  DROP  Create a concept map of OS functions to visualize and understand the interconnections between memory management, multitasking, and security. Mapping these relationships can aid in grasping complex systems more effectively.: 
+  DROP  Hands: On Exploration
+  DROP  Experiment with Multitasking: Use a virtual machine or sandboxed environment on your computer to launch and manage multi
+  DROP  Peripheral Device Setup: Connect various peripheral devices, like printers and external drives, to your computer. I
+  DROP  DIY Network Simulation: Set up a small local network using networking cables or Wi-Fi. Test basic networking comma
+  DROP  Data Security Drill: Create and manage user accounts with varying permissions on your OS. Try accessing files a
+  DROP  Investigate File Systems: Explore the file systems used by different operating systems. Create, modify, and delete f
+  DROP  NASA once ran its space shuttle software on an RTOS (Real: Time Operating System) written in the 1970s using the HAL/S programming language. The soft
+
+===== A1.3.6  (src=sidebar, kept=4, dropped=2) =====
+  KEEP  Control unit (CU): Hardware component of the CPU that directs the fetch–decode–execute sequence and controls data flow.
+  KEEP  Scheduler: Kernel component that decides which process runs next and for how long, enforcing priorities and fairness.
+  KEEP  Interrupt / ISR: An external or internal signal that pauses the CPU’s current work so an Interrupt Service Routine can handle an event (e.g., I/O ready).
+  KEEP  Device driver: Software that translates generic OS requests into device-specific commands so hardware and kernel can talk smoothly.
+  DROP  When exploring operating systems, focus on how each control system component plays a vital role in maintaining system stability and efficiency. Prioritizing this understanding will help you in analyzing complex OS behaviors, such as multitasking and resource management. Dive into the practical application of algorithms and real: world scenarios in embedded systems to enrich your comprehension.: 
+  DROP  The CPU’s control unit acts like a literal conductor: it sequences instruction fetch/decode/execute steps and coordinates interrupts and I/O so 
+
+===== A1.3.7  (src=sidebar, kept=5, dropped=10) =====
+  KEEP  Feedback Loop: A system structure in which the output is fed back into the system as input to maintain or adjust performance.
+  KEEP  Actuator: A device that converts an electrical control signal into physical motion, such as motors or valves.
+  KEEP  PID Controller: A control algorithm (Proportional-Integral-Derivative) that continuously calculates error values and adjusts system outputs to maintain desired conditions.
+  KEEP  Embedded System: A specialized computing system integrated into a larger device to perform dedicated control tasks.
+  KEEP  Automation: The technology that enables systems to perform operations automatically without human intervention.
+  DROP  To what extent can control systems "make decisions"? What distinguishes machine decision: making from human judgment?: 
+  DROP  How does the reliability of data from sensors affect our confidence in automated systems?: 
+  DROP  What are the limitations of human knowledge in designing fully autonomous control systems?: 
+  DROP  Explore the role of control systems in maintaining operational efficiency and safety within modern computing environments.: 
+  DROP  Investigate the importance of real: time processing for control systems, particularly in applications that demand immediate re
+  DROP  Examine case studies where operating systems and control hardware collaborate to execute complex tasks, such as in autonomous vehicles or smart buildings.: 
+  DROP  Compare and contrast control systems across various sectors, such as healthcare, automotive, and environmental management, focusing on their adaptability and reliability.: 
+  DROP  Discuss the ethical considerations in deploying control systems, especially those involved in critical sectors like healthcare and surveillance.: 
+  DROP  Develop a small: scale control system simulation using programming, integrating sensors and actuators to un
+  DROP  NASA’s Mars rovers like Curiosity and Perseverance are some of the most advanced control systems ever built. Each rover can autonomously navigate the Martian surface by processing data from its sensors, making decisions about obstacles, and adjusting its actuators: all while being millions of kilometers away from human control. Essentially, they run a full control loop—sense, decide, and act—just like an intelligent robot operating system.: 
+
+===== A1.4.1  (src=sidebar, kept=5, dropped=2) =====
+  KEEP  Source code: human-readable instructions written by programmers (examples: C, Java, Python).
+  KEEP  Machine code: low-level binary instructions the CPU executes directly (what a compiler ultimately produces for a given architecture).
+  KEEP  Compiler: a program that translates all (or large parts of) source code into machine code or bytecode before the program runs (examples: C, C++, Rust).
+  KEEP  Interpreter: a program that reads and executes source code line-by-line (examples: CPython for Python, many Ruby implementations), producing output immediately but usually with more runtime overhead.
+  KEEP  Bytecode / JIT (Just-In-Time): bytecode is an intermediate, portable form (Java/.NET); JIT compilation converts bytecode to machine code at runtime to speed frequently-used code.
+  DROP  Focus on understanding both compilers and interpreters, their advantages and trade: offs. This foundational knowledge aids in deciding which language suits specific projects, enriching both theoretical and practical skills.: 
+  DROP  Compilers and interpreters are not enemies: they’re teammates. For example, Java compiles source code to portable bytecode and the JVM
+
+===== A2.1.1  (src=sidebar, kept=5, dropped=2) =====
+  KEEP  Network: A collection of interconnected devices that communicate and share resources.
+  KEEP  Bandwidth: The amount of data that can be transmitted over a network in a given time period.
+  KEEP  Topology: The physical or logical layout of a network’s connections and paths.
+  KEEP  Protocol: A set of standardized rules that govern how data is transmitted and received across a network.
+  KEEP  Latency: The delay between sending and receiving data over a network.
+  DROP  Focus on understanding the distinct characteristics and purposes of different network types (LAN, WAN, PAN, MAN, WLAN, VPN). Create a comparison table to visualize their differences in terms of scale, speed, security, and typical use cases. This will help consolidate your knowledge and prepare you for application: based questions.: 
+  DROP  Did you know that the internet we use every day started as a small research network called ARPANET in 1969? It connected just four computers in the United States: yet it laid the foundation for all modern computer networks. Today, billions of devices communicate instantly through systems that trace their roots back to that early experiment. Every text message, video call, and cloud file transfer is powered by the same basic networking principles that began over fifty years ago.: 
+
+===== A2.1.2  (src=sidebar, kept=5, dropped=8) =====
+  KEEP  Scalability: the capability of a digital infrastructure to handle increasing workloads by adding resources without compromising performance
+  KEEP  Latency: the delay before a transfer of data begins following an instruction for its transfer
+  KEEP  High Availability (HA): a system design approach that ensures a prearranged level of operational performance, typically uptime, for a higher than normal period
+  KEEP  Edge Computing: a computing model that places processing closer to the data source or end-user to reduce latency and improve performance
+  KEEP  Single Point of Failure (SPOF): a part of a system that, if it fails, will stop the entire system from working
+  DROP  Create a mind map linking the different components of digital infrastructures: data centers, servers, network equipment, storage solutions, and cloud computing resources. Use this visual aid to understand their interactions and how they collectively support digital services.: 
+  DROP  💡 Activities & Exploration: 
+  DROP  Identify and list three types of digital infrastructures you use in your daily life. For each, note its primary function and how it integrates into your routine.: 
+  DROP  Investigate a cloud computing provider. Describe their services, and evaluate how these services enhance performance and offer advantages over traditional infrastructures.: 
+  DROP  Conduct a risk assessment on the reliability and security of using global cloud providers. Discuss potential vulnerabilities and how they might affect users globally.: 
+  DROP  Imagine you are designing an environmentally sustainable data center. Propose strategies to minimize its carbon footprint, considering aspects like energy consumption, hardware efficiency, and alternative power sources.: 
+  DROP  These explorations aim to deepen your understanding of digital infrastructures and their impact on technology, society, and the environment. Use your findings to foster discussions on innovation, security, and sustainability.: 
+  DROP  In 2021, Amazon Web Services (AWS) experienced a major outage that disrupted popular services like Netflix, Disney+, Ring, and even some McDonald’s kiosks. The incident revealed just how centralized modern digital infrastructures can be: where a single failure in a cloud region can ripple across millions of users globally. This sparked renewed discussions around redundancy, multi-cloud strategies, and infrastructure resilience.: 
+
+===== A2.1.3  (src=sidebar, kept=5, dropped=9) =====
+  KEEP  Router: A device that directs data packets between networks, determining the most efficient path for transmission.
+  KEEP  Switch: A device that connects multiple computers within a local network and intelligently forwards data to the correct destination.
+  KEEP  Firewall: Hardware or software that monitors and filters network traffic, protecting systems from unauthorized access.
+  KEEP  Access Point: A device that allows wireless devices to connect to a wired network.
+  KEEP  Server: A computer or program that provides data, resources, or services to other devices, known as clients, over a network.
+  DROP  Focus on understanding the specific roles and functionalities of each network device, such as routers, switches, and firewalls. This foundational knowledge is crucial to design, implement, and troubleshoot complex networks effectively.: 
+  DROP  Activity: Building and Analyzing a Basic Network
+  DROP  Objective: Explore the fundamental roles of network devices by creating a simple network setup.
+  DROP  Materials Needed: 
+  DROP  Steps: 
+  DROP  Tasks: 
+  DROP  Discussion Points: 
+  DROP  Outcome: Gain hands: on experience with network devices, improve troubleshooting skills, and unders
+  DROP  Did you know that the earliest “router” dates back to 1969 and was part of ARPANET: the original version of the internet? It was called an Interface Message Processor (IMP), and it was roughly the size of a refrigerator! Modern routers and firewalls can now fit in the palm of your hand while handling billions of data packets every second.: 
+
+===== A2.1.4  (src=sidebar, kept=5, dropped=6) =====
+  KEEP  Protocol: A set of rules that define how data is transmitted and received across a network.
+  KEEP  Encapsulation: The process of wrapping data with protocol information at each layer of the OSI or TCP/IP model.
+  KEEP  TCP (Transmission Control Protocol): A connection-oriented protocol that ensures reliable, ordered delivery of data.
+  KEEP  UDP (User Datagram Protocol): A connectionless protocol designed for speed and efficiency, without guaranteed delivery.
+  KEEP  HTTP (HyperText Transfer Protocol): An application-layer protocol used for transferring web content between browsers and servers.
+  DROP  Explore different scenarios for selecting appropriate transport layer protocols. Choose TCP for applications where accuracy and data integrity are crucial, such as email and web browsing. Opt for UDP when speed is critical and minor data loss is acceptable, like in live video streaming and gaming. Understanding these use cases helps in optimizing network performance based on application needs.: 
+  DROP  Consider how Transmission Control Protocol (TCP) meticulously orchestrates data exchange in dynamic network environments. Its ability to manage packet delivery with precision contrasts sharply with the User Datagram Protocol (UDP), which prioritizes speed over assured delivery. This dichotomy offers a versatile toolkit for handling varied networking needs, from robust data transactions to swift media streaming.: 
+  DROP  Explore the intricacies of web communication dictated by HTTP methods. Each method: GET, POST, PUT, DELETE—plays a distinct role in determining how data is requested, sent, and manipulated, ultimately shaping the user experience on the internet.: 
+  DROP  Delve into the security challenges associated with traditional File Transfer Protocol (FTP) and the enhancements introduced in Secure FTP versions (FTPS, SFTP). These protocols address vulnerabilities through encryption and secure channels, safeguarding data integrity and confidentiality.: 
+  DROP  Uncover the rationale behind Domain Name System's (DNS) predominant use of UDP for swift query resolution while recognizing the scenarios necessitating TCP’s reliability for complex data interactions. The nuanced application of protocols across layers exemplifies the careful balance between speed, security, and reliability in network communications.: 
+  DROP  The foundation of modern Internet communication: TCP/IP—was officially adopted on January 1, 1983, a date known as “Flag Day.” On that day,
+
+===== A2.1.5  (src=sidebar, kept=5, dropped=3) =====
+  KEEP  TCP/IP (Transmission Control Protocol / Internet Protocol): A suite of communication protocols that governs how data is packaged, addressed, transmitted, and received over networks.
+  KEEP  Packet: A small unit of data sent across a network that contains both the payload and addressing information required for routing and reassembly.
+  KEEP  Transport Layer: The TCP/IP layer responsible for ensuring reliable, end-to-end data transmission between hosts, including error detection and correction.
+  KEEP  Internet Layer: The layer that handles logical addressing and routing, enabling data to travel across multiple interconnected networks (using protocols such as IP).
+  KEEP  Network Access Layer: The lowest layer of the TCP/IP model that defines how data is physically transmitted over hardware media such as Ethernet or Wi-Fi
+  DROP  Focus on understanding how data flows through the TCP/IP layers rather than just memorizing each layer's function. Visualize or sketch the process, from how application data starts at the top and is broken into packets, to how these packets travel through networks and are reassembled at the destination.: 
+  DROP  💡 Explore and Experiment: 
+  DROP  When the U.S. Department of Defense first developed the TCP/IP protocol suite in the 1970s, it was designed to survive a nuclear attack. Its decentralized structure meant that even if parts of the network were destroyed, data could still find alternate routes to its destination. This design principle: known as redundancy—laid the groundwork for today’s resilient global Internet: 
+
+===== A2.2.1  (src=sidebar, kept=5, dropped=6) =====
+  KEEP  Topology: The arrangement or layout of devices and connections within a network.
+  KEEP  Scalability: The capacity of a network to expand by adding new devices without losing performance.
+  KEEP  Redundancy: The inclusion of extra connections or devices to ensure reliability in case of failure.
+  KEEP  Data Collision: When two or more data packets attempt to travel across the same network channel at the same time, causing interference.
+  KEEP  Throughput: The actual rate at which data is successfully transmitted over a network.
+  DROP  For each of the following scenarios, determine the most suitable network topology and justify your choice based on reliability, cost, and maintenance considerations.: 
+  DROP  Small Coffee Shop: 
+  DROP  Tech Start: up Office
+  DROP  Remote Research Station: 
+  DROP  University Campus: 
+  DROP  Did you know that NASA’s deep: space communication networks rely on mesh topologies to maintain uninterrupted communicati
+
+===== A2.2.3  (src=sidebar, kept=5, dropped=3) =====
+  KEEP  Client: A device or program that requests services or data from a server in a network.
+  KEEP  Server: A powerful computer that provides resources, data, or services to clients over a network.
+  KEEP  Peer-to-Peer (P2P): A decentralized networking model where each device can act as both a client and a server.
+  KEEP  Centralization: The organization of network control and data management around one or more central servers.
+  KEEP  Decentralization: The distribution of control and resources across multiple nodes without a central authority.
+  DROP  To what extent does the centralization of authority (in client: server networks) mirror our trust in “experts” as sources of knowledge, and when might dec
+  DROP  Can peer: to-peer systems—which rely on many individual nodes—teach us about the strengths and limit
+  DROP  To effectively decide between the client: server and peer-to-peer models, consider the specific needs of your application. Centraliz
+
+===== A2.3.1  (src=sidebar, kept=5, dropped=9) =====
+  KEEP  IPv4: The fourth version of the Internet Protocol, using a 32-bit address format (e.g., 192.168.0.1) and supporting about 4.3 billion unique addresses.
+  KEEP  IPv6: The sixth version of the Internet Protocol, using a 128-bit address format (e.g., 2001:0db8::1) and allowing for an almost unlimited number of unique addresses.
+  KEEP  DHCP (Dynamic Host Configuration Protocol): A network protocol that automatically assigns IP addresses to devices when they join a network.
+  KEEP  NAT (Network Address Translation): A method used by routers to modify network address information in IP headers, allowing multiple devices on a local network to share a single public IP address.
+  KEEP  Public IP Address: An address that can be accessed over the Internet, used to identify devices globally.
+  DROP  EXPERIMENTATION SUGGESTIONS: 
+  DROP  Set up a simple local network using a router and a few devices. Observe the allocation of IP addresses using both DHCP and manually assigned static IPs.: 
+  DROP  Simulate a small: scale network using virtualization tools to understand how converting from IPv4 to IPv6 af
+  DROP  Utilize network simulation software to configure NAT and observe how data packets are translated as they pass through the router.: 
+  DROP  Compare network performance in scenarios using static NAT, dynamic NAT, and PAT. Evaluate how each method affects device connectivity and overall network efficiency.: 
+  DROP  Test a scenario where a device transitions between networks, one using private IPs and another using public IPs, to observe how NAT facilitates seamless connectivity.: 
+  DROP  Set up a server that requires remote access using a static IP and experiment with changing to a dynamic IP to see the impact on access and usability.: 
+  DROP  Measure the impact of DHCP server configurations, such as lease time, on network flexibility and device accessibility. Evaluate how different configurations improve or compromise network performance.: 
+  DROP  Did you know that the entire global internet originally ran on IPv4, which only supports about 4.3 billion unique addresses? That might sound like a lot, but we ran out of them in 2011! IPv6, which provides enough addresses for every grain of sand on Earth: and still have room to spare—was created to solve this problem.: 
+
+===== A2.3.2  (src=sidebar, kept=4, dropped=9) =====
+  KEEP  Bandwidth: The maximum rate at which data can be transferred through a network connection, measured in bits per second (bps).
+  KEEP  Throughput: The actual rate of successful data transmission, often lower than bandwidth due to interference or congestion.
+  KEEP  Interference: Disruption in signal transmission caused by external electromagnetic noise or overlapping frequencies.
+  KEEP  Latency: The time delay between data being sent and received across a network connection.
+  DROP  Focus on understanding the strengths and weaknesses of different transmission media. Knowing when to use twisted pair, fiber optic, or wireless channels can save costs and improve performance in real: world applications. Consider the impact of electromagnetic interference, data security, and the environmental context on your choice of medium.: 
+  DROP  Explore transmission methods in controlled environments: 
+  DROP  Hands-on Testing: Setup a small network using both twisted pair and fiber optic cables. Measure and compare 
+  DROP  Wireless Experimentation: Using a spectrum analyzer, monitor Wi-Fi and Bluetooth signals to observe frequency usage,
+  DROP  Comparative Analysis: Create a simulation that models bandwidth and throughput under diverse conditions using to
+  DROP  Security Focus: Conduct a security drill to compare the vulnerability of wired vs. wireless networks to un
+  DROP  Field Research: Interview a network engineer or technician about real-world challenges with transmission m
+  DROP  Consider real: world applications and the rationale behind choosing specific transmission media for vario
+  DROP  Fiber optic cables can transmit data at nearly the speed of light: up to 99.7% of light’s speed in a vacuum. A single fiber strand, thinner than a human hair
+
+===== A2.3.3  (src=sidebar, kept=5, dropped=6) =====
+  KEEP  Packet Switching: The method of breaking data into small packets that are transmitted independently and reassembled at the destination.
+  KEEP  Router: A network device that determines the optimal path for data packets to travel across networks.
+  KEEP  Header: The part of a data packet containing control information such as source and destination addresses.
+  KEEP  Payload: The actual data or content carried within a packet.
+  KEEP  Virtual Circuit: A logical connection established between sender and receiver in packet-switched networks where all packets follow the same route.
+  DROP  Master the Basics: Understanding the structure and purpose of a data packet is critical. Focus on how headers
+  DROP  Efficiency in Networking: Familiarize yourself with why packet switching is more efficient than circuit switching. I
+  DROP  Role of Network Devices: Recognize the distinct roles of routers and switches. Know how each contributes to data pa
+  DROP  Diverse Routing Methods: Learn the differences between datagram packet switching and virtual circuit packet switchi
+  DROP  Error Handling: Practice how TCP/IP protocols handle lost or damaged packets. Understand the trade-offs be
+  DROP  The concept of packet switching was first proposed in the early 1960s by Paul Baran and Donald Davies, working independently in the United States and the United Kingdom. Their groundbreaking idea of dividing messages into smaller packets that could be routed separately laid the foundation for the modern Internet. Without packet switching, streaming, online gaming, and video calls as we know them today wouldn’t exist: it’s literally the backbone of global digital communication.: 
+
+===== A2.3.4  (src=sidebar, kept=5, dropped=1) =====
+  KEEP  Static Route: A manually configured routing entry that defines a specific path for network traffic. Static routes do not change unless an administrator updates them.
+  KEEP  Dynamic Routing: A method where routers automatically discover network destinations and adjust routing paths using routing protocols.
+  KEEP  Convergence: The process by which all routers on a network update and agree upon the best paths after a topology change. Faster convergence = less downtime.
+  KEEP  Scalability: The ability of a network or routing protocol to grow in size and complexity without performance issues.
+  KEEP  Routing Table: A data structure stored in a router that lists routes to network destinations, used to determine the next hop for forwarding packets.
+  DROP  The very first dynamic routing protocol: RIP (Routing Information Protocol)—was designed in the 1980s and is still in use today in 
+
+===== A2.4.1  (src=sidebar, kept=5, dropped=4) =====
+  KEEP  Firewall: A network security device that monitors and filters incoming and outgoing network traffic based on predetermined rules.
+  KEEP  NAT (Network Address Translation): A process where the firewall or router modifies IP address information in packet headers to conceal internal network details.
+  KEEP  Port Forwarding: A method that allows external devices to access services on private networks by redirecting communication requests to specific ports.
+  KEEP  Whitelist / Blacklist: Lists defining which IPs, domains, or applications are allowed (whitelist) or denied (blacklist) access through a firewall.
+  KEEP  DMZ (Demilitarized Zone): A subnetwork that separates an internal local area network (LAN) from untrusted external networks, often used for hosting public-facing servers.
+  DROP  Enterprise firewalls vary in cost depending on capacity, features, and support. A basic enterprise firewall may cost between $1,000 and $10,000, with high: end NGFWs costing up to $100,000 or more. Beyond hardware or license costs, there are annual support fees, firmware update subscriptions, cloud integration add-ons, and ongoing administration and monitoring, which can add 20-30% annually to the original investment.: 
+  DROP  Deep Packet Inspection (DPI) is a method of examining and managing network traffic. It inspects packet data and headers to check predefined criteria, deciding if a packet passes, is rerouted, or blocked. DPI can detect and manage packets with specific payloads or headers. For firewalls, DPI identifies encrypted threats and unfamiliar protocols, offering advanced filtering capabilities by inspecting full traffic content.: 
+  DROP  The exploration of firewall technology presents a fascinating intersection of cybersecurity and the philosophy of knowledge assessment. Firewalls, as boundary: defining tools, enforce what should be known and accessed within a network, akin to how epistemological frameworks shape our understanding by defining the limits of our knowledge. Their role in discerning between legitimate and malicious data parallels the critical evaluation process in determining credible information. Moreover, the limitations and vulnerabilities of firewalls in the face of evolving cybersecurity threats echo the philosophical question of whether absolute certainty in knowledge is achievable, highlighting the necessity for continuous scrutiny and adaptation in both technology and knowledge systems.: 
+  DROP  The term “firewall” originally came from architecture, describing walls built to stop the spread of fires between buildings or compartments. When the first digital “firewalls” appeared in the late 1980s, the same principle applied: but instead of blocking flames, they stopped unwanted data packets from spreading into private networks.: 
+
+===== A2.4.3  (src=sidebar, kept=5, dropped=16) =====
+  KEEP  Multifactor Authentication (MFA): A security system that requires more than one method of authentication from independent categories of credentials—like a password and a fingerprint—to verify user identity.
+  KEEP  Intrusion Detection System (IDS): A network security tool that monitors and analyzes traffic for signs of unauthorized access or anomalies and alerts administrators when threats are detected.
+  KEEP  Transport Layer Security (TLS): A cryptographic protocol that provides secure communication over a network, ensuring data confidentiality and integrity between web applications and servers.
+  KEEP  VPN (Virtual Private Network): A tool that creates an encrypted “tunnel” between a user’s device and the Internet, hiding their IP address and securing transmitted data.
+  KEEP  Input Validation: A technique used to ensure only correctly formatted data is accepted into a system, protecting against malicious input like SQL injection or cross-site scripting (XSS).
+  DROP  Input validation ensures user data is safe for web applications. It prevents security risks like SQL injections and XSS by confirming that inputs meet the expected format. Effective strategies include whitelisting acceptable input types, escaping harmful characters, and checking data length and format.: 
+  DROP  Consider integrating multiple layers of security measures rather than relying on one. Combining methods like MFA, regular software updates, and encrypted protocols can create a more robust defense against various types of cyber threats. Experiment with settings and tools to understand how they complement each other in practice, and keep up with the latest in network security developments.: 
+  DROP  EXPLANATIONS OF NETWORK COUNTERMEASURES: 
+  DROP  Content Security Policies (CSP): Restrict browser resources to trusted domains, preventing threats like XSS attacks.
+  DROP  Complex Password Policies: Enforce strong passwords to thwart brute: force and dictionary attacks.
+  DROP  DDoS Mitigation Tools: Protect against overwhelming traffic attacks with load balancers, traffic filters, and clo
+  DROP  Email Filtering Solutions: Detect spam, phishing, and malware using machine learning and advanced filters.
+  DROP  Encrypted Protocols (HTTPS, FTPS, SSH): Secure data during transmission with encryption to protect against eavesdropping.
+  DROP  Input Validation: Ensure safe input by using whitelisting, escaping characters, and verifying formats to pre
+  DROP  Intrusion Detection Systems (IDS): Monitor network activity for anomalies but focus on detection, not prevention.
+  DROP  Intrusion Prevention Systems (IPS): Actively block threats by dropping packets or terminating connections upon detection.
+  DROP  Multi: Factor Authentication (MFA): Adds an extra layer of security requiring multiple verificati
+  DROP  SSL/TLS Certificates: Encrypt connections to ensure data privacy and authenticate website identity.
+  DROP  Software Updates and Patching: Regularly fix vulnerabilities to keep systems secure against known exploits.
+  DROP  Virtual Private Networks (VPNs): Encrypt data and allow secure remote access, maintaining privacy and security in potential
+  DROP  In 2016, the massive Mirai botnet attack took down major parts of the Internet: including Twitter, Netflix, and Reddit—by hijacking thousands of unsecured IoT devices like baby monitors and cameras. The attack overwhelmed DNS provider Dyn with a DDoS wave, highlighting just how essential strong security countermeasures are, especially as smart devices become more common.: 
+
+===== A2.4.4  (src=sidebar, kept=5, dropped=2) =====
+  KEEP  Symmetric encryption: A method of encryption where the same key is used for both encrypting and decrypting the data. It is fast but requires secure key distribution.
+  KEEP  Asymmetric encryption: An encryption method using two different keys: a public key for encryption and a private key for decryption. It enables secure communication between unknown parties.
+  KEEP  Public key: A key that can be shared openly and is used to encrypt data in asymmetric encryption. Only the corresponding private key can decrypt the data.
+  KEEP  Private key: A secret key that is kept confidential by the owner in asymmetric encryption. It is used to decrypt data encrypted with the corresponding public key.
+  KEEP  Digital certificate: An electronic document issued by a Certificate Authority (CA) that verifies the ownership of a public key. It ensures the authenticity and integrity of a secure connection (e.g., HTTPS websites).
+  DROP  Focus on understanding key concepts, like the differences between symmetric and asymmetric encryption, and how each suits various cryptographic needs. Using diagrams can help visualize processes such as key exchanges and digital certificate validation. Practice explaining these concepts in simple terms to solidify your understanding.: 
+  DROP  The world’s first known use of encryption dates back over 3,500 years ago to ancient Mesopotamia, where a Babylonian scribe encrypted a formula for pottery glaze on a clay tablet. Fast forward to today, and encryption algorithms like RSA and AES are securing everything from private messages to international financial transactions in milliseconds.: 
+
+===== A3.1.1  (src=sidebar, kept=5, dropped=4) =====
+  KEEP  Relational Database: A structured collection of data organized into related tables using rows and columns.
+  KEEP  Primary Key: A unique field (or combination of fields) that identifies each record in a table.
+  KEEP  Foreign Key: A field in one table that creates a link to the primary key of another table, establishing a relationship.
+  KEEP  Data Integrity: The accuracy, consistency, and reliability of data stored in a database.
+  KEEP  Normalization: The process of organizing data to reduce redundancy and improve data integrity.
+  DROP  To what extent is the integrity of knowledge in a database dependent on social agreements about keys, relationships and constraints?: 
+  DROP  How does the abstraction involved in normalizing data mirror the TOK concept of categorizing knowledge through paradigms?: 
+  DROP  What biases might enter when we decide which attributes to include or exclude in a relational model?: 
+  DROP  The concept of the relational database was first introduced by Dr. Edgar F. Codd at IBM in 1970. His revolutionary paper, “A Relational Model of Data for Large Shared Data Banks,” completely changed how we store and manage information: moving from rigid file-based systems to a model based on mathematics and logic. This design still underpins almost every major database system today, from MySQL to PostgreSQL and even parts of Google’s and Amazon’s massive cloud infrastructures.: 
+
+===== A3.2.1  (src=sidebar, kept=5, dropped=12) =====
+  KEEP  Conceptual Schema: An abstract model that outlines the entities, relationships, and constraints of the database, independent of how data is stored or accessed.
+  KEEP  Logical Schema: The detailed design of the database as understood by the DBMS, specifying tables, fields, data types, and relationships in a platform-independent format.
+  KEEP  Physical Schema: Describes the actual storage of data on hardware, including file formats, indexes, and data partitioning used by the DBMS.
+  KEEP  Data Independence: The ability to change the schema at one level (e.g., physical) without affecting the schema at higher levels (e.g., logical or conceptual).
+  KEEP  DBMS (Database Management System): Software used to define, create, maintain, and control access to the database and its schemas.
+  DROP  Database schemas form the blueprint of a database's structure and operation, essential for organization and accessibility. They outline how data is stored, indexed, and accessed, ensuring consistency and reliability. Schemas exist on three levels: conceptual, logical, and physical. The conceptual schema provides a global view, focusing on data entities and relationships without considering physical storage details. The logical schema organizes how data tables and relationships are structured, designed for specific database management systems. The physical schema details data storage methods, focusing on performance and efficiency. Understanding these schemas is critical for effective database management and meeting organizational goals.: 
+  DROP  Activity: Creating a Simple Database Schema
+  DROP  Objective: Design and implement a database schema for a small business to manage customer orders.
+  DROP  Steps: 
+  DROP  Identify Entities and Relationships: List key entities such as 'Customer', 'Product', and 'Order'. Define relationships like 'C
+  DROP  Define Attributes: Specify attributes for each entity, such as customer names, order dates, and product price
+  DROP  Establish Constraints: Determine constraints to ensure data integrity, like unique customer IDs or non-null order
+  DROP  Create a Conceptual Schema: Draft a high-level schema diagram that includes entities, attributes, relationships, and c
+  DROP  Develop a Logical Schema: Translate the conceptual model into a logical schema suitable for a database management sy
+  DROP  Prototype a Physical Schema: Implement the schema using a database tool. Include indexing strategies for efficient data
+  DROP  Reflection: Analyze the schema's effectiveness in meeting the business's data management needs and how
+  DROP  The term “schema” comes from the Greek word schēma, meaning “form” or “shape.” In databases, a schema provides the “shape” of how data is organized, much like a blueprint for a building. Interestingly, the concept of using schemas to describe abstract data structures dates back to the 1970s with the development of the ANSI/SPARC three: level architecture, which still influences how databases are taught and designed today.: 
+
+===== A3.2.2  (src=sidebar, kept=5, dropped=8) =====
+  KEEP  Entity: A distinct object or concept in a database that holds data, such as “Student” or “Course.”
+  KEEP  Relationship: The connection that exists between two or more entities, like “enrolls in” or “teaches.”
+  KEEP  Attribute: A characteristic or property of an entity, such as a student’s name or course code.
+  KEEP  Cardinality: Defines the numerical relationship between entities (for example, one-to-many).
+  KEEP  Modality: Specifies whether a relationship is optional or mandatory for an entity to exist in the database.
+  DROP  Understanding Entities and Attributes: 
+  DROP  Visual Mapping Practice: 
+  DROP  Relationship Design: 
+  DROP  Error Identification: 
+  DROP  Scenario Implementation: 
+  DROP  Tools and Techniques: 
+  DROP  The creation of entity: relationship diagrams (ERDs) offers a compelling avenue for examining how abstract thought
+  DROP  Did you know the idea for Entity Relationship Diagrams (ERDs) originated in the 1970s from a computer scientist named Peter Chen? His goal was to make database design more visual and intuitive: something humans could reason about before writing any code. Today, nearly every major database system—from MySQL to Oracle—still relies on Chen’s core principles to structure and organize relational data efficiently.: 
+
+===== A3.2.4  (src=sidebar, kept=5, dropped=5) =====
+  KEEP  Primary Key: A unique identifier for each record in a table, ensuring that no two rows are exactly the same.
+  KEEP  Foreign Key: A field in one table that links to the primary key in another table, establishing a relational connection between the two.
+  KEEP  Composite Key: A primary key made up of two or more columns that together uniquely identify a record.
+  KEEP  Data Integrity: The accuracy, consistency, and reliability of data throughout its lifecycle in a database.
+  KEEP  Normalization: A process of organizing data in a database to reduce redundancy and improve data integrity.
+  DROP  EXPLORING RELATIONAL DATABASES: 
+  DROP  Reflect on the process of constructing relational tables and connecting them through primary and foreign keys. Create sample tables for students and courses, then establish a linking table for course enrollments using foreign keys. Identify the need for composite or concatenated keys in your design.: 
+  DROP  Test your table structure by inserting sample data and query the tables to ensure accurate relationships and data integrity. Consider what changes might be necessary to normalize the tables further and what constraints should be added to maintain data consistency.: 
+  DROP  Discuss how these principles can be applied in real: world scenarios, and the potential challenges of managing complex relationships in larger 
+  DROP  The earliest form of relational databases was proposed by E.F. Codd in 1970. His groundbreaking paper, "A Relational Model of Data for Large Shared Data Banks," revolutionized the way we organize data and led to the creation of SQL, a language still widely used today. Fun twist: Codd’s rules: 12 in total—still define what makes a "true" relational database, but no commercial DBMS fully implements all of them!: 
+
+===== A3.2.6  (src=sidebar, kept=5, dropped=1) =====
+  KEEP  Partial Dependency: A situation in a table where a non-key attribute depends only on part of a composite primary key, violating 2NF.
+  KEEP  Transitive Dependency: A form of redundancy where a non-key attribute depends on another non-key attribute instead of the primary key, violating 3NF.
+  KEEP  Unnormalized Form (UNF): A data structure that has not been subjected to any normalization. It often contains repeating groups or multivalued attributes.
+  KEEP  Atomic Value: A data value that cannot be divided further and is indivisible in the context of 1NF.
+  KEEP  Referential Integrity: A rule that ensures foreign key values always point to valid, existing records in another related table.
+  DROP  The original concept of normalization was developed by Edgar F. Codd in 1970: the same mathematician who invented the relational database model. He not only introduced the theory behind 1NF, 2NF, and 3NF, but also proposed 12 rules for what a true relational database should follow. Most modern database systems don’t even meet all 12!: 
+
+===== A3.3.1  (src=sidebar, kept=5, dropped=0) =====
+  KEEP  Schema: The structure of a database.
+  KEEP  DDL: Language used to define or alter a database structure.
+  KEEP  DML: Language used to manipulate the data within a database.
+  KEEP  Commit: A command to save changes in a database.
+  KEEP  Query: A request for data retrieval.
+
+===== A3.3.2  (src=sidebar, kept=9, dropped=9) =====
+  KEEP  JOIN: SQL operation used to combine rows from two or more tables.
+  KEEP  FOREIGN KEY: A field that links to the primary key in another table.
+  KEEP  INNER JOIN: Returns only matching rows between two tables.
+  KEEP  LEFT JOIN: Returns all rows from the left table, with matching rows from the right.
+  KEEP  WHERE: Clause used to filter records.
+  KEEP  LIKE: Operator used for pattern matching in strings.
+  KEEP  ORDER BY: Sorts results based on specified columns.
+  KEEP  GROUP BY: Groups rows that have the same values in specified columns.
+  KEEP  HAVING: Filters groups of records created by GROUP BY.
+  DROP  Master SQL Joins: Different types of SQL joins like INNER, LEFT, and FULL OUTER serve specific purposes. INN
+  DROP  Exploration Activity: 
+  DROP  SQL Join Types: 
+  DROP  Choosing Joins: 
+  DROP  Advanced Filtering: 
+  DROP  Aggregation and Grouping: 
+  DROP  Data Sorting: 
+  DROP  Challenge Task: 
+  DROP  The % wildcard in SQL’s LIKE operator originated from early database languages in the 1970s. It allowed for pattern matching before graphical interfaces existed, and it still remains a powerful tool for searching large datasets today.: 
+
+===== A3.3.3  (src=sidebar, kept=6, dropped=0) =====
+  KEEP  SQL (Structured Query Language): A language used to manage and manipulate relational databases.
+  KEEP  INSERT INTO: SQL command for adding new data.
+  KEEP  UPDATE SET: SQL command for modifying existing data.
+  KEEP  DELETE FROM: SQL command for removing data.
+  KEEP  Index: A database object that speeds up data retrieval.
+  KEEP  Fragmentation: The degradation of index efficiency due to frequent data changes.
+
+===== A3.3.4  (src=sidebar, kept=4, dropped=0) =====
+  KEEP  Aggregate Function: A function that operates on a set of values to return a single value.
+  KEEP  GROUP BY: SQL clause that groups rows sharing a property so aggregate functions can be applied.
+  KEEP  HAVING: Clause used to filter groups after aggregation.
+  KEEP  Alias: A temporary name given to a column or table.
+
+===== A3.3.5  (src=sidebar, kept=5, dropped=0) =====
+  KEEP  View: A virtual table defined by a SQL query.
+  KEEP  Materialized View: A stored, physical copy of the result of a query.
+  KEEP  Refresh: The process of updating the data in a materialized view.
+  KEEP  Updatable View: A view that allows insert, update, or delete operations on the underlying table(s).
+  KEEP  Snapshot: Another term for a materialized view.
+
+===== A3.3.6  (src=sidebar, kept=5, dropped=8) =====
+  KEEP  Transaction: A group of SQL operations that function as one unit.
+  KEEP  ACID: A set of properties ensuring reliable transaction processing.
+  KEEP  Commit: Making all changes in a transaction permanent.
+  KEEP  Rollback: Undoing changes in a transaction due to failure.
+  KEEP  Isolation level: Defines the degree to which one transaction must be isolated from resource or data modifications made by other transactions.
+  DROP  Conduct experiments by creating a simple database using an SQL system like MySQL or SQLite. Begin with basic operations such as INSERT, UPDATE, and DELETE, observing how they affect the data integrity.: 
+  DROP  Simulate a transaction involving multiple steps, such as transferring an amount from one account to another. Observe what happens if some steps are deliberately made to fail, and witness how rollback mechanisms preserve data accuracy.: 
+  DROP  Analyze how isolation levels in the database manage concurrency control. Use two sessions to perform simultaneous transactions and note how different isolation levels affect data visibility.: 
+  DROP  Investigate the durability aspect of transactions by committing a change and simulating a system crash. Verify that data remains unchanged post: recovery.: 
+  DROP  Discuss the role of constraints in maintaining consistency. Experiment with different types of constraints like primary keys and foreign keys and observe their impact on transaction validity.: 
+  DROP  Extend learning by designing a complex transaction scenario involving multiple tables, ensuring adherence to ACID properties throughout.: 
+  DROP  Use transaction logs to trace changes and rollback events, visually mapping out the sequence and impacts of operations to cement understanding of transaction processes.: 
+  DROP  Did you know that in 2012, a major European bank mistakenly transferred nearly €300 million due to a missing rollback command in its batch transaction processing system? It took days to undo the damage: and the story is still used to teach the importance of ACID principles today!: 
+
+===== A3.4.1  (src=sidebar, kept=4, dropped=0) =====
+  KEEP  Scalability: The capacity of a database to handle growth in data volume or traffic.
+  KEEP  Latency: The delay between a user’s action and the system’s response.
+  KEEP  Geospatial Data: Information that is associated with a specific location.
+  KEEP  Persistence: The characteristic of data that outlives the process that created it.
+
+===== A3.4.2  (src=sidebar, kept=5, dropped=1) =====
+  KEEP  ETL (Extract, Transform, Load): The process of moving and preparing data for use in a data warehouse.
+  KEEP  Subject-oriented: Focused on specific areas of interest or functions in an organization.
+  KEEP  Time-variant: Data that tracks changes over time.
+  KEEP  Non-volatile: Data that is stable and not modified after being stored.
+  KEEP  Star Schema: A database design that simplifies complex queries by using fact and dimension tables.
+  DROP  The first modern data warehouse was developed in the 1980s by IBM researcher Paul Murphy. He coined the term to distinguish large: scale, analytical data storage from traditional operational databases—paving the way for today’s BI tools like Tableau, Power BI, and Google BigQuery.: 
+
+===== A3.4.3  (src=sidebar, kept=6, dropped=8) =====
+  KEEP  OLAP (Online Analytical Processing): A tool for analyzing data across multiple dimensions.
+  KEEP  Data Mining: The computational process of discovering patterns in large datasets.
+  KEEP  Clustering: Grouping similar data items without pre-labeled categories.
+  KEEP  Classification: Sorting data into labeled classes.
+  KEEP  Regression: Predicting continuous numerical outcomes.
+  KEEP  Anomaly Detection: Identifying data that deviates from the norm.
+  DROP  Hands: On Exploration
+  DROP  OLAP Analysis: 
+  DROP  Data Mining Project: 
+  DROP  Role Simulation: 
+  DROP  Tool Exploration: 
+  DROP  Case Study Reflection: 
+  DROP  To what extent can knowledge derived from data mining be considered objective, given that algorithms are designed and trained by humans?: 
+  DROP  The term "data mining" became popular in the 1990s but the practice dates back to the 1960s with early work in pattern recognition and machine learning. The real explosion in usage came with the rise of the internet and e: commerce, which created massive, analyzable datasets.: 
+
+===== A3.4.4  (src=sidebar, kept=5, dropped=0) =====
+  KEEP  Distributed database: A database spread across multiple sites.
+  KEEP  Data partitioning: Dividing data into segments stored at different locations.
+  KEEP  Replication: Making multiple copies of data for fault tolerance.
+  KEEP  Distribution transparency: Hiding the physical distribution of data.
+  KEEP  Two-phase commit (2PC): A protocol for ensuring atomic transactions across systems.
+
+===== A4.2.1  (src=sidebar, kept=6, dropped=0) =====
+  KEEP  Outlier: an observation far from the bulk of the data.
+  KEEP  Imputation: filling in missing values using rules or models.
+  KEEP  Data leakage: training on information that won’t be available at prediction time.
+  KEEP  Normalization/Standardization: rescaling features to comparable ranges.
+  KEEP  Winsorization: capping extreme values to reduce outlier influence.
+  KEEP  MCAR/MAR/MNAR: mechanisms that describe why data is missing.
+
+===== A4.2.2  (src=sidebar, kept=4, dropped=2) =====
+  KEEP  Feature: An attribute or variable in a dataset.
+  KEEP  Overfitting: When a model learns noise instead of generalizable patterns.
+  KEEP  Regularization: Techniques to penalize model complexity, sometimes leading to feature selection.
+  KEEP  Mutual Information: A measure of the dependency between variables.
+  DROP  Ensure your feature selection process is guided by both the dataset characteristics and the end goal. Using filter methods can quickly exclude irrelevant features, while wrapper methods provide more insight but at increased computational cost. Embedded methods offer a middle ground by integrating feature selection within the learning algorithm.: 
+  DROP  The term “curse of dimensionality” describes the challenge of working with high: dimensional datasets, where adding more features can actually make pattern detection harder. Feature selection is one of the key ways to combat it.: 
+
+===== A4.2.3  (src=sidebar, kept=4, dropped=7) =====
+  KEEP  Dimensionality Reduction: Reducing the number of features while retaining important information.
+  KEEP  Overfitting: When a model learns noise instead of patterns.
+  KEEP  Curse of Dimensionality: Problems caused by high-dimensional data.
+  KEEP  Data Sparsity: When data points are spread out in a high-dimensional space.
+  DROP  🔍 Investigative Tasks: 
+  DROP  Analyze a dataset with 100 features using a dimensionality reduction technique like PCA. Note the reduction in features and the impact on model accuracy and training time.: 
+  DROP  Experiment with different numbers of features retained by varying the parameters of your dimensionality reduction method. Record results focusing on the trade: offs between accuracy and computational efficiency.: 
+  DROP  With a high: dimensional dataset, plot the original and reduced feature sets in 2D or 3D plots. Describ
+  DROP  Explore a real: world scenario where removing too many features could be harmful. Discuss implications on 
+  DROP  Investigate different distance: based machine learning algorithms with and without dimensionality reduction. Evaluate the 
+  DROP  Google’s famous “FaceNet” facial recognition system used dimensionality reduction to compress 128 facial measurements into just a few key numbers: making recognition faster without losing accuracy.: 
+
+===== A4.3.1  (src=sidebar, kept=6, dropped=7) =====
+  KEEP  Independent variable (predictor): A variable used to explain or predict the outcome.
+  KEEP  Dependent variable (response): The outcome variable being predicted.
+  KEEP  Slope (m): The rate of change of the dependent variable for each unit change in the independent variable.
+  KEEP  Intercept (b): The value of the dependent variable when all predictors are zero.
+  KEEP  Residual: The difference between observed and predicted values.
+  KEEP  R² (coefficient of determination): A measure of model fit.
+  DROP  💡 Application Task: 
+  DROP  Real-World Predictions: Use linear regression to predict a context-specific scenario, such as estimating the effec
+  DROP  Slope Experimentation: Modify the slope in a simple linear regression model to observe changes in predictions. Do
+  DROP  R-Squared Evaluation: Calculate the R-squared value for a given dataset and regression model to assess goodness 
+  DROP  Multiple Regression Analysis: Extend to multiple predictors by adding variables like time or demographic data. Analyze h
+  DROP  Visualization and Interpretation: Create a scatter plot with the regression line. Interpret the relationship between data po
+  DROP  The first recorded use of regression analysis dates back to Sir Francis Galton in the 19th century, who studied the relationship between parents’ and children’s heights: leading to the term “regression to the mean.”: 
+
+===== A4.3.2  (src=sidebar, kept=5, dropped=8) =====
+  KEEP  Categorical Outcome: A result that belongs to a distinct category.
+  KEEP  K-Nearest Neighbours (K-NN): A classification method that assigns labels based on the most common class among the K closest training examples.
+  KEEP  Decision Tree: A tree-like model for decision-making where nodes represent tests on features.
+  KEEP  Information Gain: A metric for selecting the best feature to split data in a decision tree.
+  KEEP  Euclidean Distance: A measure of similarity or closeness between two points.
+  DROP  Hands: On Exploration: Classification Techniques
+  DROP  🔎 Procedures & Tasks: 
+  DROP  Data Preparation: 
+  DROP  K: NN Implementation
+  DROP  Decision Tree Construction: 
+  DROP  Model Comparison: 
+  DROP  Analysis & Reflection: 
+  DROP  Understanding the distinct output types in supervised learning, such as continuous versus categorical outcomes, is crucial. For recommendation systems, consider using K: NN due to its ability to handle sparse data efficiently by drawing on user similarity. However, be aware of its limitations with large datasets, which can impact performance. Decision trees, on the other hand, offer transparency by visualizing decision steps but may not be as effective in recommendations due to their tendency to overfit. Focus on mastering metrics like accuracy and F1 score to evaluate models effectively, and tailor your algorithm choice based on data characteristics, interpretability needs, and computational resources.: 
+
+===== A4.3.3  (src=sidebar, kept=4, dropped=2) =====
+  KEEP  Hyperparameter: A model configuration value set before training that controls learning behavior.
+  KEEP  Overfitting: When a model performs well on training data but poorly on new data.
+  KEEP  Underfitting: When a model fails to capture important patterns in the data.
+  KEEP  Cross-Validation: A technique for assessing model performance by partitioning data into multiple training and validation sets.
+  DROP  Focus on understanding the role and impact of hyperparameters in machine learning models. Recognize that effective hyperparameter tuning is crucial to enhance your model's performance, prevent overfitting or underfitting, and ensure that it generalizes well to new data. Engage with methods like grid search or Bayesian optimization to find the best settings, and remember that the F1 score might be more informative than accuracy, particularly in imbalanced datasets.: 
+  DROP  The term hyperparameter comes from the fact that these settings exist “above” (or outside) the parameters learned by the model: they control the learning process rather than being learned themselves.: 
+
+===== A4.3.4  (src=sidebar, kept=5, dropped=0) =====
+  KEEP  Cluster: A group of data points with similar features.
+  KEEP  Centroid: The central point of a cluster in K-Means.
+  KEEP  Dendrogram: A tree diagram showing relationships in hierarchical clustering.
+  KEEP  Noise: Data points that do not belong to any cluster in DBSCAN.
+  KEEP  Unsupervised Learning: A machine learning approach where algorithms find patterns without predefined labels.
+
+===== A4.3.5  (src=sidebar, kept=6, dropped=8) =====
+  KEEP  Association rule: A relationship discovered between attributes in a dataset.
+  KEEP  Support: The frequency of occurrence of a rule.
+  KEEP  Confidence: The probability that a rule holds true.
+  KEEP  Lift: A measure of how much stronger a rule is compared to random chance.
+  KEEP  Apriori algorithm: A classic algorithm for association rule mining.
+  KEEP  FP-Growth: An algorithm for mining frequent patterns without generating many candidate sets.
+  DROP  🔑 Key Understandings: 
+  DROP  Association Rule Learning: Unlike supervised learning, it works on unlabeled data to identify relationships and patte
+  DROP  Core Components: Involves an antecedent ("if") and a consequent ("then") encoded as rules.
+  DROP  Evaluation Metrics: 
+  DROP  Application Examples: 
+  DROP  Algorithmic Tools: The Apriori and FP-Growth algorithms are vital for processing datasets to extract signific
+  DROP  Ethical Considerations: The application to human behavior data raises concerns about privacy and biases.
+  DROP  The famous “beer and diapers” association rule was discovered in U.S. retail data. It showed that men buying diapers late at night often also bought beer. While debated as an urban legend, it highlights the surprising and sometimes humorous insights that association rule learning can reveal.: 
+
+===== A4.3.6  (src=sidebar, kept=9, dropped=3) =====
+  KEEP  Agent: The decision-maker in reinforcement learning.
+  KEEP  Environment: The system with which the agent interacts.
+  KEEP  State: The situation the agent is currently in.
+  KEEP  Action: A choice made by the agent.
+  KEEP  Reward: Feedback signal given after an action.
+  KEEP  Policy: The strategy for choosing actions.
+  KEEP  Cumulative reward: The total reward collected over time.
+  KEEP  Exploration: Trying new actions to discover outcomes.
+  KEEP  Exploitation: Using known actions to maximize reward.
+  DROP  Reinforcement learning navigates the complex dance between action and consequence in dynamic environments. At the center is the agent, a decision: maker learning through environmental interaction. Through trial and error, actions are refined based on rewards and penalties, fostering a deeper understanding of cause and effect. Prioritizing cumulative rewards over instant gratification drives long-term success, urging the need for strategic planning beyond immediate gains. The nuanced balance of exploration and exploitation emerges as a pivotal challenge. Exploring new options can unveil unforeseen advantages, yet exploiting proven strategies ensures efficient reward acquisition. Drawing parallels to real-world applications, from autonomous vehicles to adaptive gaming, reinforcement learning paves the way towards intelligent decision-making across varied domains.: 
+  DROP  To what extent is trial: and-error a valid way of gaining knowledge? How is machine learning similar or different f
+  DROP  DeepMind’s reinforcement learning system once taught itself to play dozens of Atari games directly from the pixel screen. In several cases, the agent discovered strategies that even expert human players had never thought of!: 
+
+===== A4.3.7  (src=sidebar, kept=6, dropped=4) =====
+  KEEP  Population: A group of candidate solutions.
+  KEEP  Fitness Function: A measure of how good a solution is.
+  KEEP  Selection: Choosing the best candidates to reproduce.
+  KEEP  Crossover: Combining features of two parents to form new solutions.
+  KEEP  Mutation: Introducing random changes to maintain diversity.
+  KEEP  Termination: The stopping condition of the algorithm.
+  DROP  Engage with interactive simulators to visualize how genetic algorithms evolve solutions over multiple generations. This hands: on approach reinforces understanding by demonstrating key processes like selection, crossover, and mutation in action, thereby deepening your grasp of evolutionary computation techniques.: 
+  DROP  To what extent can computational models like genetic algorithms truly “imitate” natural processes?: 
+  DROP  How do we judge whether an approximate solution is “good enough” in science and technology?: 
+  DROP  NASA has used genetic algorithms to design efficient spacecraft antennae. The designs generated by the GA were unconventional: sometimes looking nothing like traditional human-made designs—but proved to be highly effective in real-world testing.: 
+
+===== A4.3.8  (src=sidebar, kept=5, dropped=0) =====
+  KEEP  Artificial Neural Network (ANN): A computational model inspired by biological neurons.
+  KEEP  Perceptron: The simplest unit of a neural network.
+  KEEP  Weights and Bias: Adjustable parameters that control learning.
+  KEEP  Activation Function: A function that introduces non-linearity into the network.
+  KEEP  Multi-layer Perceptron (MLP): An ANN with one or more hidden layers.
+
+===== A4.4.1  (src=sidebar, kept=5, dropped=2) =====
+  KEEP  Algorithmic fairness: The principle of ensuring ML systems do not favor or disadvantage certain groups unfairly.
+  KEEP  Transparency: The ability to understand how and why a machine learning system makes its decisions.
+  KEEP  Bias: Systematic prejudice in data or outcomes that unfairly advantages or disadvantages certain groups.
+  KEEP  Consent: The permission individuals give (or may not give) for their data to be used in training ML models.
+  KEEP  Accountability: Responsibility for the outcomes of machine learning systems.
+  DROP  As machine learning continues to permeate various facets of human activity, the underlying ethical questions become critical components to navigate. Who bears the responsibility when these systems go awry: stakeholders, developers, users, or regulators? How do we ensure these complex, often opaque systems remain understandable to the public they serve? Moreover, bias is an ever-present challenge, often lurking insidiously within the data that models are trained on, risking perpetuation of existing inequalities. Is there a way to mitigate such bias, and how should the boundaries of data privacy and consent be defined? There’s also the pressing issue of balancing the promise of innovation with the reality of environmental constraints. As we delve deeper into these questions, we confront not only the mechanics of machine learning but also the broader societal implications, urging us to ponder the future direction of this transformative technology.: 
+  DROP  In 2016, a major tech company released an AI chatbot on Twitter that was meant to learn from users. Within 24 hours, the bot began producing offensive and biased tweets because it absorbed toxic content from real users. This highlighted how quickly ML systems can reflect and magnify societal problems if not carefully designed.: 
+
+===== B1.1.1  (src=sidebar, kept=4, dropped=2) =====
+  KEEP  Problem specification: a detailed description of a problem and requirements for its solution.
+  KEEP  Constraints: limitations that restrict possible solutions.
+  KEEP  Objectives: the aims or purposes of the solution.
+  KEEP  Evaluation criteria: measurable benchmarks for success.
+  DROP  When approaching problem: solving in the IB Computer Science curriculum, defining a detailed problem specification i
+  DROP  NASA engineers preparing to land the Curiosity Rover on Mars created over 500 problem specifications: from how the parachute should deploy to how the rover should send photos back to Earth. Each specification had precise success criteria, because even a small failure could jeopardize the entire mission.: 
+
+===== B1.1.2  (src=sidebar, kept=4, dropped=0) =====
+  KEEP  Decomposition: breaking problems into smaller parts
+  KEEP  Abstraction: focusing on essential details only
+  KEEP  Pattern recognition: identifying similarities and trends
+  KEEP  Algorithmic thinking: creating step-by-step procedures
+
+===== B1.1.3  (src=sidebar, kept=5, dropped=2) =====
+  KEEP  Decomposition: Breaking a complex problem into smaller, manageable parts.
+  KEEP  Pattern Recognition: Identifying trends or similarities within data.
+  KEEP  Abstraction: Simplifying a problem by focusing only on essential details.
+  KEEP  Algorithmic Design: Creating a structured, step-by-step process to solve a problem.
+  KEEP  Computational Thinking: A structured way of approaching and solving problems using techniques from computer science.
+  DROP  Break problems into smaller, manageable parts to enhance understanding. Use abstraction to ignore unnecessary details, focusing on what truly matters. Recognize patterns by relating problems to known solutions, and design algorithms with clear steps. This systematic approach extends beyond programming and can improve efficiency across diverse domains like databases and network security.: 
+  DROP  Computational thinking was popularized by computer scientist Jeannette Wing in 2006, who argued that it is a fundamental skill not only for computer scientists but for everyone. Today, it is applied in fields as diverse as biology (analyzing DNA), linguistics (studying language patterns), and even archaeology (reconstructing ancient sites with digital models): 
+
+===== B1.1.4  (src=sidebar, kept=4, dropped=0) =====
+  KEEP  Vocabulary: Flowchart: a diagram that represents an algorithm using symbols.
+  KEEP  Trace: step-by-step simulation of an algorithm to follow variable changes.
+  KEEP  Decision: a Boolean test in an algorithm that determines the path of execution.
+  KEEP  Connector: a symbol used to link different parts of a flowchart.
+
+===== B2.1.1  (src=sidebar, kept=5, dropped=0) =====
+  KEEP  Variable: a named memory location that stores a value.
+  KEEP  Scope: the region of a program where a variable is accessible.
+  KEEP  Local variable: a variable declared inside a function/method.
+  KEEP  Global variable: a variable accessible throughout a program.
+  KEEP  Data type: defines the kind of values a variable can store.
+
+===== B2.1.2  (src=sidebar, kept=5, dropped=0) =====
+  KEEP  String: A sequence of characters.
+  KEEP  Substring: A smaller part of a string.
+  KEEP  Index: The position of a character in a string, starting at 0.
+  KEEP  Slice: Python’s method of extracting substrings using [start:end].
+  KEEP  Concatenation: Joining two or more strings together.
+
+===== B2.1.3  (src=sidebar, kept=3, dropped=0) =====
+  KEEP  Exception: An error that happens during program execution.
+  KEEP  Exception handling: The process of managing runtime errors safely. try-catch / try-except: Programming blocks used to handle exceptions.
+  KEEP  Robustness: The ability of a program to cope with errors and unexpected inputs.
+
+===== B2.1.4  (src=sidebar, kept=5, dropped=0) =====
+  KEEP  Bug: An error in a computer program.
+  KEEP  Syntax Error: Violation of the rules of the programming language.
+  KEEP  Logic Error: Code runs but produces incorrect results.
+  KEEP  Debugging: Process of identifying and fixing errors in a program.
+  KEEP  Breakpoint: A marker in code where execution will pause during debugging.
+
+===== B2.2.1  (src=sidebar, kept=4, dropped=0) =====
+  KEEP  Static Data Structure: A data structure with a fixed size set at creation.
+  KEEP  Dynamic Data Structure: A data structure that can grow or shrink during execution.
+  KEEP  Array: A contiguous block of memory for storing elements of the same type.
+  KEEP  Linked List: A dynamic data structure where elements (nodes) are linked together using pointers.
+
+===== B2.2.2  (src=sidebar, kept=5, dropped=0) =====
+  KEEP  Array: Fixed-size indexed collection of elements.
+  KEEP  List: Dynamic data structure that grows or shrinks as needed.
+  KEEP  Index: Position of an element in an array or list.
+  KEEP  Iteration: Repeating a process, often to access each element.
+  KEEP  Dynamic Memory: Memory allocated at runtime, allowing flexibility.
+
+===== B2.2.3  (src=sidebar, kept=5, dropped=0) =====
+  KEEP  Stack: A collection that follows the Last In, First Out (LIFO) principle.
+  KEEP  LIFO: Last In, First Out, meaning the last element added is the first one removed.
+  KEEP  Push: Adding an item to the stack.
+  KEEP  Pop: Removing the most recent item from the stack.
+  KEEP  Peek: Looking at the top item without removing it.
+
+===== B2.2.4  (src=sidebar, kept=5, dropped=0) =====
+  KEEP  Queue: A data structure where the first element added is the first to be removed (FIFO).
+  KEEP  Enqueue: Adding an element to the back of the queue.
+  KEEP  Dequeue: Removing the element from the front of the queue.
+  KEEP  FIFO: First In, First Out principle.
+  KEEP  Peek: Viewing the front element without removing it.
+
+===== B2.3.1  (src=sidebar, kept=4, dropped=0) =====
+  KEEP  Vocabulary: Sequence: The specific order in which instructions are executed.
+  KEEP  Control flow: The path a program takes when running instructions.
+  KEEP  Queue (FIFO): A data structure where the first element added is the first one removed.
+  KEEP  Logic error: A mistake in the program’s order that produces unintended outcomes.
+
+===== B2.3.2  (src=sidebar, kept=4, dropped=0) =====
+  KEEP  Selection structure: A control structure that chooses between actions based on conditions.
+  KEEP  Condition: A Boolean expression (true/false test) that controls branching. if–else: The most common selection structure.
+  KEEP  Nested if: A decision structure within another decision structure.
+  KEEP  Switch-case: A multi-branch selection structure available in Java.
+
+===== B2.3.3  (src=sidebar, kept=3, dropped=3) =====
+  KEEP  Iteration: Repeating a set of instructions until a condition is met.
+  KEEP  Infinite loop: A loop that never ends because the terminating condition is never reached.
+  KEEP  Loop control variable: A variable that changes with each iteration and helps determine when the loop ends.
+  DROP  Conditional statements review: 
+  DROP  Break down complex loop problems into smaller, manageable tasks. Start by identifying the termination condition, then outline the steps needed within the loop. Consider edge cases to prevent infinite looping and use descriptive comments to clarify loop logic for future reference and debugging.: 
+  DROP  The first looping mechanism in computing appeared in Charles Babbage’s design of the Analytical Engine in the 1830s, where punched cards were intended to direct the machine to repeat certain operations: a century before modern programming languages were invented!: 
+
+===== B2.3.4  (src=sidebar, kept=4, dropped=0) =====
+  KEEP  Vocabulary: Function: A block of code that performs a specific task.
+  KEEP  Modularization: Dividing a program into smaller, manageable modules.
+  KEEP  Subprogram: Another word for a function or method.
+  KEEP  Abstraction: Hiding unnecessary details to simplify complexity.
+
+===== B2.4.1  (src=sidebar, kept=4, dropped=0) =====
+  KEEP  Big O Notation: Mathematical measure of algorithm growth.
+  KEEP  Scalability: How performance changes as input grows.
+  KEEP  Efficiency: Use of time and memory resources.
+  KEEP  Linear Time (O(n)): Growth proportional to input size. Quadratic Time (O(n²)) – Growth proportional to input squared.
+
+===== B2.4.2  (src=sidebar, kept=5, dropped=0) =====
+  KEEP  Trace Table: a structured way of tracking variable values in an algorithm.
+  KEEP  Linear Search: a simple algorithm that checks each element in sequence.
+  KEEP  Binary Search: a search algorithm that halves the search space each iteration, requiring sorted data.
+  KEEP  Iteration: a repeated execution of a loop.
+  KEEP  Efficiency: a measure of how many steps or resources an algorithm requires.
+
+===== B2.4.3  (src=sidebar, kept=3, dropped=0) =====
+  KEEP  Trace Table: A chart used to follow variable values step by step during algorithm execution.
+  KEEP  Swap: Exchanging the position of two elements in an array.
+  KEEP  Complexity (Time/Space): A measure of how much time or memory an algorithm uses.
+
+===== B2.4.4  (src=sidebar, kept=4, dropped=0) =====
+  KEEP  Recursion: A function calling itself to solve smaller subproblems.
+  KEEP  Base case: The stopping condition of a recursive function.
+  KEEP  Stack overflow: An error caused by infinite recursive calls.
+  KEEP  Divide and conquer: A problem-solving strategy that often uses recursion.
+
+===== B2.4.5  (src=sidebar, kept=4, dropped=0) =====
+  KEEP  Vocabulary: Recursion: A process where a function calls itself.
+  KEEP  Base case: The condition that stops recursion.
+  KEEP  Recursive case: The part of the function where it calls itself.
+  KEEP  Stack overflow: An error caused by too many nested recursive calls.
+
+===== B2.5.1  (src=sidebar, kept=3, dropped=0) =====
+  KEEP  File processing: operations that allow a program to create, read, write, and update files.
+  KEEP  Persistence: the ability of data to remain available even after a program ends.
+  KEEP  BufferedReader / PrintWriter: Java classes used for file input/output operations. open() – Python function used to access files in different modes (read, write, append).
+
+===== B3.1.1  (src=sidebar, kept=6, dropped=0) =====
+  KEEP  Class: Blueprint for objects.
+  KEEP  Object: Instance of a class.
+  KEEP  Encapsulation: Restricting access to internal details.
+  KEEP  Inheritance: Deriving new classes from existing ones.
+  KEEP  Polymorphism: Methods with the same name behaving differently.
+  KEEP  Abstraction: Simplification by focusing only on essential details.
+
+===== B3.1.2  (src=sidebar, kept=6, dropped=0) =====
+  KEEP  Class: A blueprint for objects in OOP.
+  KEEP  Object: An instantiation of a class.
+  KEEP  Attribute: A data field within a class.
+  KEEP  Method: A function that defines an object’s behaviour.
+  KEEP  Instantiation: The process of creating an object from a class.
+  KEEP  UML: Unified Modeling Language, used to represent system design.
+
+===== B3.1.3  (src=sidebar, kept=4, dropped=9) =====
+  KEEP  Static variable: A class-level variable shared by all instances.
+  KEEP  Instance variable: A variable unique to each object.
+  KEEP  Static method: A method callable without creating an object.
+  KEEP  Scope: The part of a program where a variable or method can be accessed.
+  DROP  ✏️ Explore the Concepts: 
+  DROP  Build a MenuItem class representing items in a restaurant's menu.: 
+  DROP  Instance Variables: 
+  DROP  Static Variable: 
+  DROP  Methods to Implement: 
+  DROP  Task: Write a program in Java or Python where you:
+  DROP  Think of static variables as shared resources like a communal notice board in an office. Everyone can read and update it, which ensures consistent information across all instances, but excessive reliance may risk clutter and less flexibility. Evaluate carefully whether the information truly needs to be consistent across all objects or is better suited to individual instances to preserve object integrity and adaptability in your program design.: 
+  DROP  When designing a program, understanding the distinction between static and instance members is crucial. Static members are shared across all instances and tied to the class rather than individual objects, making them ideal for properties or methods that should remain consistent across multiple instances. However, overusing static could lead to a loss of flexibility in your design, as it reduces the programmability and individuality of each object instance. Instance members, on the other hand, allow each object to maintain its unique state. Therefore, carefully balancing between static and instance members will help in building flexible yet efficient programs that suit the dynamics of object: oriented programming.: 
+  DROP  In Java, the main method (public static void main(String[] args)) is static. This is because it must run before any objects are created: the program needs a single entry point that belongs to the class, not to an instance.: 
+
+===== B3.1.4  (src=sidebar, kept=6, dropped=3) =====
+  KEEP  Class: A blueprint for creating objects.
+  KEEP  Object: A specific instance of a class.
+  KEEP  Constructor: A special method that initializes an object.
+  KEEP  Instantiation: The process of creating an object from a class.
+  KEEP  Attribute: A variable that holds data inside a class.
+  KEEP  Method: A function that defines behavior in a class.
+  DROP  Connect concepts to real: world scenarios. When revising, imagine how you would explain classes and objects using ev
+  DROP  Understanding the distinction between classes and objects is crucial for mastering object: oriented programming (OOP). Classes serve as blueprints that define the structure and behaviors of objects, allowing for the creation of multiple instances, each with unique attributes. The use of constructors is vital for ensuring these objects are initialized with consistent and valid values. By effectively utilizing classes and objects, programmers can model real-world scenarios efficiently, fostering code reusability and reducing complexity. This is particularly beneficial when handling large systems or applications requiring multiple instances of similar entities, such as multiple enemies in a video game or numerous student profiles in an educational system.: 
+  DROP  In Java, if you don’t explicitly write a constructor, the compiler automatically creates a default constructor that initializes attributes with default values (like 0 for numbers and null for objects).: 
+
+===== B3.1.5  (src=sidebar, kept=5, dropped=0) =====
+  KEEP  Encapsulation: Bundling data and methods into a class while restricting direct access.
+  KEEP  Information hiding: Concealing internal details of an object from external access.
+  KEEP  Accessor (getter): A method that returns a private variable’s value.
+  KEEP  Mutator (setter): A method that updates a private variable’s value.
+  KEEP  Access modifier: Keywords (private, public) that control visibility.
+
+===== B3.2.2  (src=sidebar, kept=4, dropped=0) =====
+  KEEP  Polymorphism: The ability of different classes to provide different implementations of the same method.
+  KEEP  Static polymorphism (overloading): Methods with the same name but different parameter signatures.
+  KEEP  Dynamic polymorphism (overriding): Subclasses redefining methods from a superclass.
+  KEEP  Decoupling: Separating interface from implementation to allow flexibility.
+
+===== B3.2.3  (src=sidebar, kept=4, dropped=0) =====
+  KEEP  Abstraction: Hiding unnecessary details to focus on essential features.
+  KEEP  Abstract Class: A class that defines methods but does not fully implement them.
+  KEEP  Interface: A set of abstract methods that classes must implement.
+  KEEP  Modularity: Designing a system as a collection of independent but connected parts.
+
+===== B3.2.4  (src=sidebar, kept=3, dropped=3) =====
+  KEEP  Aggregation: A “has a” relationship with independent lifecycles.
+  KEEP  Composition: A “contains-a” relationship where lifecycles are dependent.
+  KEEP  Lifecycle: The duration of an object’s existence in memory.
+  DROP  When deciding between aggregation and composition in object: oriented programming, carefully evaluate the independence and lifecycle of component objec
+  DROP  Understand the difference between composition and aggregation in object: oriented programming. Composition implies a stronger relationship where the part cannot exist without the whole, while aggregation implies a relationship where parts can exist independently. Use composition when parts are inseparable from the whole, and aggregation when parts can be reused across different contexts.: 
+  DROP  The UML (Unified Modeling Language) symbol for aggregation is a hollow diamond, while composition uses a filled diamond. This visual shorthand helps developers quickly distinguish the strength of class relationships in diagrams.: 
+
+===== B3.2.5  (src=sidebar, kept=5, dropped=0) =====
+  KEEP  Design Pattern: A reusable solution to a recurring problem in software design.
+  KEEP  Singleton: Ensures only one instance of a class exists.
+  KEEP  Factory: A method of creating objects without exposing the creation logic.
+  KEEP  Observer: A relationship where one subject notifies multiple observers of changes.
+  KEEP  Blueprint: A plan or template for building software components.
+
+===== B4.1.1  (src=sidebar, kept=5, dropped=4) =====
+  KEEP  Abstract Data Type (ADT): A model for data structures defined by behavior, not implementation.
+  KEEP  Stack: ADT where the last item added is the first removed (LIFO).
+  KEEP  Queue: ADT where the first item added is the first removed (FIFO).
+  KEEP  Abstraction: Hiding implementation details to focus on essential operations.
+  KEEP  Modularity: Designing software in independent, interchangeable components.
+  DROP  Can abstract representations like ADTs be considered forms of knowledge, even though they do not exist physically? How does this compare to abstract concepts in mathematics (like infinity) or economics (like supply and demand)?: 
+  DROP  Understanding Abstract Data Types (ADTs) is crucial for developing efficient and maintainable software solutions within the International Baccalaureate Computer Science curriculum. By focusing on what an ADT does, rather than how it is implemented, students can enhance modularity and code reusability, preparing them for real: world software development. This approach enables students to abstract general operations from specific implementations, fostering their ability to apply ADTs in various scenarios, from queue management in messaging systems to stack operations in game development. Emphasizing this conceptual framework allows students to concentrate on solving problems logically and structurally, irrespective of underlying data storage mechanisms.: 
+  DROP  Focus on understanding the conceptual difference between the interface and implementation of ADTs. This knowledge allows you to develop adaptable solutions that can be easily maintained and optimized.: 
+  DROP  The concept of ADTs was first formalized in the 1970s. Stacks and queues were so influential that many early computer processors had hardware: level stack instructions built directly into their design!: 
+
+===== B4.1.2  (src=sidebar, kept=5, dropped=0) =====
+  KEEP  Node: Basic element of a linked list containing data and a pointer.
+  KEEP  Head/Tail: First and last elements of a linked list.
+  KEEP  Pointer/Reference: A link connecting one node to another.
+  KEEP  Dynamic memory allocation: Adjusting memory usage during program execution.
+  KEEP  Traversal: Visiting each node sequentially.
+
+===== B4.1.3  (src=sidebar, kept=5, dropped=0) =====
+  KEEP  Node: the basic unit of a linked list containing data and references.
+  KEEP  Head: the first node in a linked list.
+  KEEP  Tail: the last node in a linked list (points to null in linear lists).
+  KEEP  Pointer/Reference: a link from one node to another.
+  KEEP  Traversal: moving through nodes of a list.
+
+===== B4.1.4  (src=sidebar, kept=5, dropped=0) =====
+  KEEP  Node: A fundamental unit of a tree containing data and references.
+  KEEP  Root: The topmost node of a tree.
+  KEEP  Leaf: A node with no children.
+  KEEP  Traversal: Visiting all nodes of a tree in a specific order.
+  KEEP  Inorder successor: The smallest node in the right subtree used in deletion.
+
+===== B4.1.5  (src=sidebar, kept=5, dropped=0) =====
+  KEEP  Set: An unordered collection of unique elements.
+  KEEP  Union: Operation combining all elements from two sets.
+  KEEP  Intersection: Operation producing only common elements from two sets.
+  KEEP  Difference: Elements in one set but not in another.
+  KEEP  Membership: Checking if an element exists in a set.
+
+===== B4.1.6  (src=sidebar, kept=5, dropped=0) =====
+  KEEP  Abstract Data Type (ADT): A model for data structures that specifies behavior, not implementation.
+  KEEP  Abstraction: Hiding unnecessary details and focusing on essential features.
+  KEEP  Encapsulation: Combining data and operations into a single unit with restricted access.
+  KEEP  Interface: The set of operations available to users of an ADT.
+  KEEP  Implementation: The internal mechanics that realize the operations of an ADT.
+

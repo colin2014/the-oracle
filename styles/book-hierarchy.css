@@ -1,0 +1,199 @@
+/* Book Chapter Hierarchy Styling */
+
+.book-pages,
+.book-chapters {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.book-page,
+.book-chapter {
+  position: relative;
+  border-left: 2px solid #e0e0e0;
+  margin-left: 0;
+  padding: 12px 0 12px 24px;
+  transition: all 0.2s ease;
+}
+
+.book-page:hover,
+.book-chapter:hover {
+  background-color: #f5f5f5;
+  border-left-color: #3b82f6;
+}
+
+/* Introduction Section */
+.book-page[data-hierarchy-type="introduction"],
+.book-chapter[data-hierarchy-type="introduction"] {
+  border-left: 3px solid #3b82f6;
+  background-color: #f0f9ff;
+  padding-left: 20px;
+  font-weight: 500;
+  color: #1e40af;
+}
+
+.book-page[data-hierarchy-type="introduction"]::before {
+  content: "📘";
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+/* Hierarchy Level Styling */
+
+/* Level 1 - Themes */
+.book-page[data-hierarchy-level="1"],
+.book-chapter[data-hierarchy-level="1"] {
+  padding: 16px 0 16px 12px;
+  margin-top: 24px;
+  border-left: 4px solid #6b21a8;
+  font-size: 15px;
+  font-weight: 600;
+  color: #581c87;
+  background: linear-gradient(to right, #faf5ff, transparent);
+}
+
+.book-page[data-hierarchy-level="1"]::before {
+  content: "▶";
+  margin-right: 10px;
+  color: #6b21a8;
+}
+
+/* Level 2 - Sections */
+.book-page[data-hierarchy-level="2"],
+.book-chapter[data-hierarchy-level="2"] {
+  padding: 12px 0 12px 32px;
+  margin-top: 8px;
+  border-left: 3px solid #059669;
+  font-weight: 500;
+  color: #065f46;
+  background-color: #f0fdf4;
+  font-size: 14px;
+}
+
+.book-page[data-hierarchy-level="2"]::before {
+  content: "📁";
+  margin-right: 8px;
+}
+
+/* Level 3 - Topics */
+.book-page[data-hierarchy-level="3"],
+.book-chapter[data-hierarchy-level="3"] {
+  padding: 10px 0 10px 48px;
+  border-left: 2px solid #d1d5db;
+  font-size: 13px;
+  color: #374151;
+}
+
+.book-page[data-hierarchy-level="3"]::before {
+  content: "📄";
+  margin-right: 8px;
+  opacity: 0.7;
+}
+
+/* Level 4 - Sub-topics */
+.book-page[data-hierarchy-level="4"],
+.book-chapter[data-hierarchy-level="4"] {
+  padding: 8px 0 8px 56px;
+  border-left: 1px solid #e5e7eb;
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* Last in Section - Add visual separator */
+.book-page[data-is-last-in-section="true"],
+.book-chapter[data-is-last-in-section="true"] {
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* Topic Number Styling */
+.book-page .topic-number,
+.book-chapter .topic-number {
+  font-weight: 600;
+  color: #1f2937;
+  font-family: 'Courier New', monospace;
+  font-size: 0.95em;
+  margin-right: 8px;
+}
+
+/* Active/Current Page */
+.book-page.active,
+.book-chapter.active {
+  border-left-color: #3b82f6;
+  background-color: #eff6ff;
+  font-weight: 500;
+}
+
+.book-page.active::after,
+.book-chapter.active::after {
+  content: "✓";
+  position: absolute;
+  right: 12px;
+  color: #3b82f6;
+  font-weight: bold;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .book-page,
+  .book-chapter {
+    padding: 8px 0 8px 16px;
+  }
+
+  .book-page[data-hierarchy-level="1"],
+  .book-chapter[data-hierarchy-level="1"] {
+    padding-left: 8px;
+  }
+
+  .book-page[data-hierarchy-level="2"],
+  .book-chapter[data-hierarchy-level="2"] {
+    padding-left: 24px;
+  }
+
+  .book-page[data-hierarchy-level="3"],
+  .book-chapter[data-hierarchy-level="3"] {
+    padding-left: 40px;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .book-page,
+  .book-chapter {
+    border-left-color: #404040;
+  }
+
+  .book-page:hover,
+  .book-chapter:hover {
+    background-color: #1f2937;
+    border-left-color: #60a5fa;
+  }
+
+  .book-page[data-hierarchy-type="introduction"],
+  .book-chapter[data-hierarchy-type="introduction"] {
+    border-left-color: #60a5fa;
+    background-color: #0c1929;
+    color: #93c5fd;
+  }
+
+  .book-page[data-hierarchy-level="1"],
+  .book-chapter[data-hierarchy-level="1"] {
+    border-left-color: #d946ef;
+    color: #e879f9;
+    background: linear-gradient(to right, #2d1a4a, transparent);
+  }
+
+  .book-page[data-hierarchy-level="2"],
+  .book-chapter[data-hierarchy-level="2"] {
+    border-left-color: #10b981;
+    color: #6ee7b7;
+    background-color: #1a3a2a;
+  }
+
+  .book-page[data-hierarchy-level="3"],
+  .book-chapter[data-hierarchy-level="3"] {
+    border-left-color: #525252;
+    color: #d1d5db;
+  }
+}
