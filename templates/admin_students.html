@@ -17,28 +17,21 @@
 </div>
 
 <div class="signup-code-panel">
-    <div>
-        <div class="signup-code-label">Signup code</div>
-        {% if signup_code %}
-        <div class="signup-code-hint">Students need this to create an account at <strong>/signup</strong>. To change it, edit <code>SIGNUP_CODE</code> in <code>.env</code> and restart the app.</div>
-        {% else %}
-        <div class="signup-code-hint"><strong>Signup is closed.</strong> Set <code>SIGNUP_CODE</code> in <code>.env</code> and restart the app to open it.</div>
-        {% endif %}
-    </div>
+    <div class="signup-code-label">Signup code</div>
     {% if signup_code %}
     <div class="signup-code-actions">
-        <code id="signupCodeValue" data-code="{{ signup_code }}" aria-live="polite">••••-••••-••••</code>
-        <button type="button" class="admin-btn" id="signupCodeToggle" aria-pressed="false">Show</button>
+        <code id="signupCodeValue">{{ signup_code }}</code>
         <button type="button" class="admin-btn" id="signupCodeCopy">Copy</button>
     </div>
+    {% else %}
+    <div class="signup-code-hint"><strong>Signup is closed</strong> (no code is set).</div>
     {% endif %}
 </div>
 
 <style>
     .signup-code-panel { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; margin-bottom: 1.5rem; background: var(--bg-white); border: 1px solid var(--border); border-radius: 8px; }
-    .signup-code-label { font-weight: 700; margin-bottom: 0.15rem; }
-    .signup-code-hint { color: var(--text-light); font-size: 0.85rem; max-width: 46ch; }
-    .signup-code-hint code { background: var(--bg-light); padding: 0.05rem 0.3rem; border-radius: 4px; }
+    .signup-code-label { font-weight: 700; }
+    .signup-code-hint { color: var(--text-light); font-size: 0.9rem; }
     .signup-code-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
     #signupCodeValue { font-size: 1.15rem; font-weight: 600; letter-spacing: 0.06em; padding: 0.45rem 0.8rem; background: var(--bg-light); border: 1px solid var(--border); border-radius: 6px; min-width: 13ch; text-align: center; }
 
@@ -63,9 +56,8 @@
     .students-table { table-layout: fixed; width: 100%; }
     .students-table th, .students-table td { vertical-align: middle; }
     .col-check   { width: 4%; text-align: center; }
-    .col-name    { width: 15%; }
-    .col-email   { width: 15%; }
-    .col-classes { width: 15%; }
+    .col-name    { width: 22%; }
+    .col-classes { width: 22%; }
     .col-num     { width: 7%; text-align: center; }
     .col-active  { width: 10%; }
     .col-assign  { width: 15%; }
@@ -160,7 +152,6 @@
         background: var(--bg-light);
     }
 
-    .students-table td.col-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .class-pills { display: flex; flex-wrap: wrap; gap: 0.35rem; }
     .class-pill {
@@ -260,7 +251,6 @@
                     <button class="edit-name-btn" data-student-id="{{ s.id }}" data-student-alias="{{ s.name }}">✎ Edit</button>
                 </div>
             </td>
-            <td class="col-email" title="{{ s.email }}">{{ s.email }}</td>
             <td class="col-classes">
                 <div class="class-pills">
                     {% for enrollment in classes_by_student.get(s.id, []) %}
@@ -319,7 +309,6 @@
         <tr>
             <th class="col-check"><input type="checkbox" class="group-select-all" data-group="{{ group_id }}" style="cursor: pointer;"></th>
             <th class="col-name">Name</th>
-            <th class="col-email">Email</th>
             <th class="col-classes">Classes</th>
             <th class="col-num">Pages Opened</th>
             <th class="col-num">Completed</th>
@@ -749,21 +738,13 @@ loadNameMappings();
 
 <script>
 (function () {
-    // ---- Signup code: masked until you click Show ----
+    // ---- Signup code: copy button ----
     var codeEl = document.getElementById('signupCodeValue');
     if (codeEl) {
-        var toggle = document.getElementById('signupCodeToggle');
-        var MASK = '••••-••••-••••';
-        toggle.addEventListener('click', function () {
-            var showing = toggle.getAttribute('aria-pressed') === 'true';
-            codeEl.textContent = showing ? MASK : codeEl.dataset.code;
-            toggle.textContent = showing ? 'Show' : 'Hide';
-            toggle.setAttribute('aria-pressed', String(!showing));
-        });
         document.getElementById('signupCodeCopy').addEventListener('click', function (e) {
             var btn = e.currentTarget;
             if (!navigator.clipboard) { return; }
-            navigator.clipboard.writeText(codeEl.dataset.code).then(function () {
+            navigator.clipboard.writeText(codeEl.textContent.trim()).then(function () {
                 btn.textContent = 'Copied';
                 setTimeout(function () { btn.textContent = 'Copy'; }, 1500);
             }).catch(function () {});

@@ -111,11 +111,12 @@
 
             <div class="auth-field">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" minlength="8" autocomplete="new-password" required>
+                <input type="password" id="password" name="password" minlength="10" autocomplete="new-password" aria-describedby="pwHint" required>
+                <p class="su-hint" id="pwHint" style="margin-top:0.3rem;">At least 10 characters. Three random words works well, and nobody else should know it.</p>
             </div>
             <div class="auth-field">
                 <label for="confirm_password">Confirm password</label>
-                <input type="password" id="confirm_password" name="confirm_password" minlength="8" autocomplete="new-password" required>
+                <input type="password" id="confirm_password" name="confirm_password" minlength="10" autocomplete="new-password" required>
             </div>
             <div class="auth-field">
                 <label for="signup_code">Signup code <span style="font-weight:400; color:var(--text-light);">(from your teacher)</span></label>
