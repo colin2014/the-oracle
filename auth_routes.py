@@ -23,9 +23,18 @@ TEST_USER_PASSWORD = os.environ.get("TEST_USER_PASSWORD", "")
 
 USERNAME_RE = re.compile(r"^[a-z0-9._-]{3,80}$")
 
+# Playful usernames come from a short list (625 combinations), so a strong password
+# is what actually protects an account from being guessed.
+PASSWORD_MIN_LENGTH = 10
+
 
 def normalize_username(raw):
     return (raw or "").strip().lower()
+
+
+def _login_identifier():
+    """The username (or legacy email) being logged in to, normalised for rate-limit keys."""
+    return (request.form.get("identifier") or request.form.get("email") or "").strip().lower()[:120]
 
 
 def _safe_next(url):
@@ -69,7 +78,9 @@ def _signup_page(**chosen):
 
 
 @auth_bp.route("/signup", methods=["GET", "POST"])
-@limiter.limit("5 per hour", methods=["POST"])
+# A whole class shares one public IP address at school, so per-IP limits must be generous
+# enough for 30+ students signing up in the same lesson; the signup code is the real gate.
+@limiter.limit("150 per hour", methods=["POST"])
 def signup():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard"))
@@ -111,8 +122,8 @@ def signup():
             error = "Choose a password."
         elif password != confirm:
             error = "Passwords do not match."
-        elif len(password) < 8:
-            error = "Password must be at least 8 characters."
+        elif len(password) < PASSWORD_MIN_LENGTH:
+            error = f"Password must be at least {PASSWORD_MIN_LENGTH} characters."
 
         username = username_for(happy, animal) if is_valid_pair(happy, animal) else None
         if not error and User.query.filter_by(username=username).first():
@@ -145,7 +156,13 @@ def signup():
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
-@limiter.limit("10 per minute; 100 per hour", methods=["POST"])
+# Two brakes on password guessing:
+#  * per ACCOUNT: only FAILED attempts count, so guessing one account's password is
+#    stopped quickly while a class of students logging in normally is never affected;
+#  * per IP: a generous ceiling, because a whole school shares one address.
+@limiter.limit("200 per minute; 2000 per hour", methods=["POST"])
+@limiter.limit("15 per 15 minutes", methods=["POST"], key_func=lambda: "acct:" + _login_identifier(),
+               deduct_when=lambda response: response.status_code != 302)
 def login():
     from flask import session
     # Visiting the login page always ends any admin→student impersonation,

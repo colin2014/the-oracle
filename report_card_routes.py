@@ -4,6 +4,7 @@ from flask import Blueprint, render_template, request, jsonify, current_app, sen
 from flask_login import login_required, current_user
 from auth import admin_required
 from extensions import db
+from safe_errors import server_error
 from models import (
     User, Class, ClassEnrollment, ReadingActivity, ReadingDailyLog,
     StudentConfidence, QuizAnswer, QuizQuestion, FlashcardProgress, StudentFeedbackInsight,
@@ -690,7 +691,7 @@ def get_report_summary(student_id):
         print(f"Error in get_report_summary: {type(e).__name__}: {e}")
         import traceback
         traceback.print_exc()
-        return jsonify({'error': f'{type(e).__name__}: {str(e)[:200]}'}), 500
+        return server_error(e, 'The report could not be generated.')
 
     # Add performance levels
     reading_level = _get_performance_level(stats['reading']['completion_rate'])
@@ -964,4 +965,4 @@ def get_report_pdf(student_id):
         print(f"Error generating PDF: {type(e).__name__}: {e}")
         import traceback
         traceback.print_exc()
-        return jsonify({'error': f'{type(e).__name__}: {str(e)[:200]}'}), 500
+        return server_error(e, 'The report could not be generated.')

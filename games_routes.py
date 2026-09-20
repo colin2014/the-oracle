@@ -522,6 +522,10 @@ def play(session_id):
 @login_required
 def play_state(session_id):
     s = GameSession.query.get_or_404(session_id)
+    # Only the session's own participants (or a teacher) may read its live state. This used
+    # to be checked for the ladder alone, so any student could read another class's game.
+    if not current_user.is_admin() and _participant_for(s) is None:
+        abort(403)
     if s.game_type == "concept_ladder":
         p = _participant_for(s)
         if p is None:
@@ -578,6 +582,10 @@ def play_state(session_id):
                 state["thinker_level"] = thinker.level
         # Add server time for timer calculations
         state["server_now"] = datetime.utcnow().isoformat() + "Z"
+        # The secret word is only revealed once the round is over; sending it earlier lets
+        # any guesser read the answer straight out of this response.
+        if not current_user.is_admin() and state.get("phase") not in ("round_over", "finished"):
+            state.pop("current_word", None)
         return jsonify(state)
     if s.game_type == "connections":
         return jsonify(s.state_dict())
@@ -623,14 +631,30 @@ def play_answer(session_id):
     abort(404)
 
 
+# What a student player may do through /play/<id>/action. Host controls (start_game,
+# next_round, finish, shuffle, ...) belong to the teacher's admin-only board route.
+STUDENT_PLAY_ACTIONS = {
+    "connections": {"select_word", "submit_guess"},
+    "think_of_word": set(),
+}
+
+
 @games_bp.route("/play/<int:session_id>/action", methods=["POST"])
 @login_required
 def play_action(session_id):
     s = GameSession.query.get_or_404(session_id)
+    payload = request.get_json(silent=True) or {}
+    action = payload.get("action")
+    if not current_user.is_admin():
+        # Without this, any logged-in student could end or restart any class's game.
+        if _participant_for(s) is None:
+            abort(403)
+        if action not in STUDENT_PLAY_ACTIONS.get(s.game_type, set()):
+            abort(403)
     if s.game_type == "think_of_word":
-        return _word_action(s, (request.json or {}).get("action"), request.json or {})
+        return _word_action(s, action, payload)
     if s.game_type == "connections":
-        return _connections_action(s, (request.json or {}).get("action"), request.json or {})
+        return _connections_action(s, action, payload)
     abort(404)
 
 

@@ -8,6 +8,9 @@ from functools import wraps
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 from auth import admin_required
+from auth_routes import PASSWORD_MIN_LENGTH
+from db_cleanup import purge_dependents
+from safe_errors import server_error
 from extensions import db
 from email_utils import generate_assignment_email
 from local_name_mapping import load_name_mappings, save_name_mapping, get_display_name
@@ -109,9 +112,6 @@ def students():
         usage_by_student=usage_by_student,
         signup_code=SIGNUP_CODE,
     )
-
-
-PASSWORD_MIN_LENGTH = 8
 
 
 def _generate_password(length=12):
@@ -614,10 +614,19 @@ def delete_class(class_id):
 def delete_student(student_id):
     student = User.query.filter_by(id=student_id, role="student").first_or_404()
     student_name = student.name
-    student_email = student.email
-    db.session.delete(student)
-    db.session.commit()
-    flash(f"Deleted student '{student_name}' ({student_email}) and all associated data.", "success")
+    try:
+        # The User model has no cascades and SQLite doesn't enforce foreign keys, so remove
+        # the student's dependent rows explicitly. Otherwise their progress, answers and
+        # reports would stay behind and be inherited by whoever next gets this id.
+        purge_dependents(db.session, "users", [student.id])
+        db.session.delete(student)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Could not delete student id=%s", student_id)
+        flash("Could not delete that student. Nothing was changed.", "error")
+        return redirect(url_for("admin.students"))
+    flash(f"Deleted student '{student_name}' and all of their data.", "success")
     return redirect(url_for("admin.students"))
 
 
@@ -1471,7 +1480,7 @@ def api_set_student_name(student_id):
             "alias": student.name,
         })
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return server_error(e)
 
 
 @admin_bp.route("/api/student-names/<int:student_id>", methods=["DELETE"])
@@ -1489,4 +1498,4 @@ def api_delete_student_name(student_id):
             "alias": student.name,
         })
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        return server_error(e)

@@ -19,7 +19,9 @@ from datetime import timedelta
 
 from extensions import db, login_manager, mail, limiter
 from auth import admin_required
+from safe_errors import server_error
 from file_guard import is_servable
+from request_log import init_request_logging
 
 app = Flask(__name__)
 scraper = ContentScraper(data_dir="data")
@@ -78,6 +80,7 @@ login_manager.login_view = "auth.login"
 mail.init_app(app)
 limiter.init_app(app)
 csrf = CSRFProtect(app)
+init_request_logging(app)
 
 import models  # noqa: E402  (register models with SQLAlchemy metadata)
 
@@ -926,7 +929,7 @@ def scrape_dom():
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return server_error(e)
 
 
 def _scrape_single_page(folder_name, content_dir, title, url, data):
@@ -1189,7 +1192,7 @@ def edit_book():
 
         return jsonify({'success': True})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return server_error(e)
 
 @app.route('/api/books/<book_id>/scrape', methods=['POST'])
 @csrf.exempt
@@ -1205,7 +1208,7 @@ def scrape_book(book_id):
         result = scraper.scrape_book(book_id, base_url)
         return jsonify(result)
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return server_error(e)
 
 @app.route('/api/scrape/stop', methods=['POST'])
 @login_required
@@ -1479,7 +1482,7 @@ def save_syllabus():
             json.dump(data, f, indent=2, ensure_ascii=False)
         return jsonify({'success': True})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return server_error(e)
 
 
 @app.route('/api/content/<path:folder_name>', methods=['GET'])
@@ -1620,7 +1623,7 @@ def save_content_details(folder_name):
             
         return jsonify({'success': True, 'message': 'Content saved successfully'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return server_error(e)
 
 @app.route('/api/book-pages/<path:folder_name>', methods=['GET'])
 @login_required
@@ -1650,7 +1653,8 @@ def list_book_pages(folder_name):
 
         return jsonify({'pages': pages})
     except Exception as e:
-        return jsonify({'pages': [], 'error': str(e)}), 200
+        app.logger.error('Could not list pages', exc_info=e)
+        return jsonify({'pages': [], 'error': 'Could not load pages.'}), 200
 
 @app.route('/api/search', methods=['POST'])
 @login_required
@@ -1760,7 +1764,7 @@ def create_page():
 
         return jsonify({'success': True, 'folder': folder})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return server_error(e)
 
 @app.route('/api/sections', methods=['POST'])
 @csrf.exempt
@@ -1817,7 +1821,7 @@ def create_section():
 
         return jsonify({'success': True, 'id': new_item['id']})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return server_error(e)
 
 @app.route('/api/pages/<path:folder>/duplicate', methods=['POST'])
 @login_required
@@ -1856,7 +1860,7 @@ def duplicate_page(folder):
         rel_folder = str(dst.relative_to(data_dir)).replace('\\', '/')
         return jsonify({'success': True, 'folder': rel_folder, 'title': new_title})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return server_error(e)
 
 @app.route('/api/pages/<folder>/rename', methods=['POST'])
 @login_required
@@ -1952,7 +1956,8 @@ def delete_page(folder):
                     syllabus = json.load(f)
             except (json.JSONDecodeError, UnicodeDecodeError) as e:
                 print(f'[DEBUG] Error reading syllabus: {e}')
-                return jsonify({'success': False, 'error': f'Failed to read syllabus: {str(e)}'}), 500
+                app.logger.error('Failed to read syllabus', exc_info=e)
+                return jsonify({'success': False, 'error': 'Failed to read syllabus.'}), 500
 
             def remove_item(items):
                 for i, item in enumerate(items):
@@ -1973,7 +1978,8 @@ def delete_page(folder):
                 print(f'[DEBUG] Syllabus updated successfully')
             except (json.JSONEncodeError, OSError, UnicodeEncodeError) as e:
                 print(f'[DEBUG] Error writing syllabus: {e}')
-                return jsonify({'success': False, 'error': f'Failed to write syllabus: {str(e)}'}), 500
+                app.logger.error('Failed to write syllabus', exc_info=e)
+                return jsonify({'success': False, 'error': 'Failed to write syllabus.'}), 500
 
         print(f'[DEBUG] Delete completed successfully')
         return jsonify({'success': True})
@@ -1981,7 +1987,7 @@ def delete_page(folder):
         print(f'[DEBUG] Unexpected error: {e}')
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return server_error(e)
 
 @app.route('/api/book/<book_folder>/cover', methods=['POST'])
 @login_required
@@ -2031,7 +2037,7 @@ def upload_book_cover(book_folder):
         
         return jsonify({'success': True, 'cover_image': book_meta['cover_image']})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return server_error(e)
 
 @app.route('/api/book/<book_folder>/upload-image', methods=['POST'])
 @csrf.exempt
@@ -2064,7 +2070,7 @@ def upload_page_image(book_folder):
 
         return jsonify({'success': True, 'src': f"/data/{book_folder}/images/{filename}"})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return server_error(e)
 
 @app.route('/api/content-browser', methods=['GET', 'DELETE'])
 @csrf.exempt
@@ -2138,7 +2144,7 @@ def content_browser():
         return jsonify({'success': True, 'items': items})
 
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return server_error(e)
 
 @app.route('/api/move-folder', methods=['POST'])
 @csrf.exempt
@@ -2191,7 +2197,7 @@ def move_folder():
         return jsonify({'success': True, 'message': f'Moved to {folder_name}'})
 
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return server_error(e)
 
 @app.route('/data/<path:filepath>')
 @login_required
@@ -2827,7 +2833,7 @@ def create_book_folder(book_folder):
         return jsonify({'success': True, 'folder_id': folder.id})
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return server_error(e)
 
 @app.route('/api/book/<book_folder>/folders/<int:folder_id>', methods=['DELETE'])
 @login_required
@@ -2858,7 +2864,7 @@ def delete_book_folder(book_folder, folder_id):
         return jsonify({'success': True})
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return server_error(e)
 
 @app.route('/api/book/<book_folder>/page-assignment', methods=['POST'])
 @login_required
@@ -2887,7 +2893,7 @@ def assign_page_to_folder(book_folder):
         return jsonify({'success': True})
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return server_error(e)
 
 @app.route('/api/heading-styles', methods=['GET'])
 @login_required
@@ -2906,7 +2912,7 @@ def get_heading_styles():
             }
         return jsonify(styles_dict)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return server_error(e)
 
 @app.route('/api/heading-styles', methods=['POST'])
 @csrf.exempt
@@ -2936,7 +2942,7 @@ def save_heading_styles():
         return jsonify({'success': True})
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return server_error(e)
 
 @app.route('/health', methods=['GET'])
 def health():
