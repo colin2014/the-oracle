@@ -83,3 +83,16 @@ Books _ GrowHall*_files/
 
 # Excel lock files
 ~$*.xls*
+
+# Teacher-local student name mappings (real names — never commit; see STUDENT_NAME_MAPPING.md)
+teacher_names/
+
+# Runtime uploads and instance data
+static/uploads/
+uploads/
+
+# Crash dumps / debug output
+*.dmp
+*.stackdump
+core.*
+debug.out
