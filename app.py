@@ -19,6 +19,7 @@ from datetime import timedelta
 
 from extensions import db, login_manager, mail, limiter
 from auth import admin_required
+from file_guard import is_servable
 
 app = Flask(__name__)
 scraper = ContentScraper(data_dir="data")
@@ -2196,8 +2197,7 @@ def move_folder():
 @login_required
 def serve_file(filepath):
     """Serve scraped content files and images"""
-    name = Path(filepath).name
-    if name == 'app.db' or name.startswith('app.db-') or name.endswith('.db'):
+    if not is_servable(filepath, 'data', Path('data/app.db').resolve()):
         abort(404)
     return send_from_directory('data', filepath)
 
