@@ -38,7 +38,7 @@ A web-based tool to scrape, organize, and search educational content with embedd
 
 ## Installation
 
-Requires Python 3.11+.
+Requires Python 3.12+ (`test_routes.py` uses nested triple-quoted f-strings, which are a syntax error on 3.11).
 
 ### 1. Clone and install dependencies
 
