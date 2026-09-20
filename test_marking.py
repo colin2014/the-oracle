@@ -21,6 +21,15 @@ from extensions import db
 _CONFIDENCE_AUTO_ACCEPT = 0.90
 
 
+def _as_whole(number):
+    """2.0 -> 2. TestQuestion.marks is a Float column, and a prompt that says
+    'integer 0-2.0' makes the model answer 2.0, which used to fail validation
+    and silently push a correct, confident mark into the review queue."""
+    if isinstance(number, float) and number.is_integer():
+        return int(number)
+    return number
+
+
 def _subtopic_descriptor(question):
     """The workbook's student-friendly description of what this subtopic covers.
     Given to the marker as context so its feedback can name the capability the
@@ -38,9 +47,10 @@ def _call_claude_marker(question, answer_text):
     if not api_key:
         return None
 
+    max_marks = _as_whole(question.marks)
     prompt = (
         "You are marking a written answer for an IB DP Computer Science exam question "
-        f"worth {question.marks} mark{'s' if question.marks != 1 else ''}. Both the "
+        f"worth {max_marks} mark{'s' if max_marks != 1 else ''}. Both the "
         "student and the teacher will read your feedback directly, and the teacher will "
         "review your mark before it's finalized.\n\n"
         f"SUBTOPIC: {question.subtopic_title}\n"
@@ -51,7 +61,7 @@ def _call_claude_marker(question, answer_text):
         f"AI MARKING CHECKLIST: {question.ai_checklist or 'None provided.'}\n"
         f"IF WRONG, SUGGEST: {question.if_wrong_explainer or 'None provided.'}\n\n"
         f"STUDENT ANSWER: {answer_text}\n\n"
-        f"Award marks out of {question.marks} based on how well the answer satisfies the "
+        f"Award marks out of {max_marks} based on how well the answer satisfies the "
         "marking guidance. Be fair but rigorous — this is a formal, single-attempt exam, "
         "not a practice quiz.\n\n"
         "Write feedback that is SPECIFIC to what this student actually wrote — quote or "
@@ -73,7 +83,7 @@ def _call_claude_marker(question, answer_text):
         "clearly covered by the marking guidance. Use HIGH confidence (0.90+) only when "
         "the mark is unambiguous.\n\n"
         "Respond with ONLY valid JSON: "
-        '{"marks_awarded": <integer 0-' + str(question.marks) + '>, '
+        '{"marks_awarded": <integer 0-' + str(max_marks) + '>, '
         '"feedback": "2-3 sentences, specific to this answer, for both student and teacher", '
         '"confidence": <float 0.0-1.0>}'
     )
@@ -89,6 +99,11 @@ def _call_claude_marker(question, answer_text):
         verdict = json.loads(raw)
 
         marks_awarded = verdict.get("marks_awarded")
+        # Tolerate 2.0 for 2 (JSON models often echo a float); still reject
+        # bools, fractions like 1.5, strings and anything out of range.
+        if isinstance(marks_awarded, bool) or not isinstance(marks_awarded, (int, float)):
+            return None
+        marks_awarded = _as_whole(marks_awarded)
         if not isinstance(marks_awarded, int) or marks_awarded < 0 or marks_awarded > question.marks:
             return None
         confidence = verdict.get("confidence")
