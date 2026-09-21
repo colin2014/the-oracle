@@ -47,7 +47,7 @@
     }
 
     .accordion-header:hover {
-        background: var(--bg-hover, #f3f4f6);
+        background: var(--surface-hover, #f0f4f8);
     }
 
     .accordion-header.open {
@@ -144,7 +144,7 @@
     }
 
     .view-btn:hover {
-        background: var(--primary-hover, #8b5fef);
+        background: var(--primary-light, #9d84ff);
         transform: translateY(-1px);
         box-shadow: 0 2px 6px rgba(157, 132, 255, 0.3);
     }
@@ -473,11 +473,11 @@ function openStudentView(studentId, studentName) {
                 iframe.style.display = 'block';
             };
         } else {
-            loading.innerHTML = `<p style="color: var(--error, #e53e3e);">Failed to load: ${data.error}</p>`;
+            loading.innerHTML = `<p style="color: var(--danger, #e53e3e);">Failed to load: ${data.error}</p>`;
         }
     })
     .catch(error => {
-        loading.innerHTML = `<p style="color: var(--error, #e53e3e);">Error: ${error.message}</p>`;
+        loading.innerHTML = `<p style="color: var(--danger, #e53e3e);">Error: ${error.message}</p>`;
     });
 }
 

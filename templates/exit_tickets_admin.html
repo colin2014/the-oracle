@@ -36,7 +36,7 @@
           <a href="{{ url_for('exit_tickets.admin_edit', ticket_id=t.id) }}">Edit</a> &middot;
           <a href="{{ url_for('exit_tickets.admin_results', ticket_id=t.id) }}">Results</a> &middot;
           <a href="{{ url_for('exit_tickets.admin_preview', ticket_id=t.id) }}">Preview</a> &middot;
-          <a href="#" data-del="{{ t.id }}" data-name="{{ t.title }}" style="color:#dc2626">Delete</a>
+          <a href="#" data-del="{{ t.id }}" data-name="{{ t.title }}" class="et-danger">Delete</a>
         </td>
       </tr>
     {% endfor %}

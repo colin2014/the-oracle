@@ -1641,3 +1641,62 @@ button,
         font-size: 0.8rem;
     }
 }
+
+/* ============================================
+   Dark theme: filled buttons
+   ============================================ */
+/* The dark palette brightens the accent (#8366e8 -> #9d84ff) because it has to read as INK on a
+   dark ground: links, active nav items, focus rings. That same brightened value is wrong as a
+   FILL behind a white label — white on #9d84ff measures 2.93:1, well under the 4.5:1 floor, and
+   worse than the 4.0:1 the same button gets in light theme. So dark theme splits the two jobs:
+   --primary stays the bright ink value, --primary-fill is the deeper value used behind white
+   labels. Same for the semantic fills, which are brightened for the same reason.
+   This is the Fill-Versus-Ink Rule (DESIGN.md) applied in the dark direction. */
+:root {
+    --primary-fill: var(--primary);
+    --danger-fill: var(--danger);
+    --success-fill: var(--success);
+}
+[data-theme="dark"] {
+    --primary-fill: #7a5fe0;
+    --danger-fill: #cc3b3b;
+    --success-fill: #0b7a6e;
+}
+[data-theme="dark"] .admin-btn,
+[data-theme="dark"] .filter-btn.active,
+[data-theme="dark"] .hub-pill.active,
+[data-theme="dark"] .mini-btn.primary,
+[data-theme="dark"] .detail-action-button,
+[data-theme="dark"] .tsb-btn,
+[data-theme="dark"] .gj-submit,
+[data-theme="dark"] .auth-submit,
+[data-theme="dark"] .sl-grade-opt[aria-pressed="true"],
+[data-theme="dark"] .sl-kind-opt[aria-pressed="true"],
+[data-theme="dark"] .sl-rail-item[aria-current="true"] {
+    background: var(--primary-fill);
+    color: #fff;
+}
+[data-theme="dark"] .admin-btn:hover,
+[data-theme="dark"] .detail-action-button:hover {
+    background: #6a4fd0;
+}
+[data-theme="dark"] .admin-btn-danger,
+[data-theme="dark"] .admin-btn-danger:hover {
+    background: var(--danger-fill);
+}
+[data-theme="dark"] .qr-bulk {
+    background: var(--success-fill);
+    color: #fff;
+}
+/* syllabus.html carries its own blue accent rather than the site violet. */
+[data-theme="dark"] .pm-btn.primary {
+    background: #3f72d6;
+    color: #fff;
+}
+/* Small destructive links sit on the page, not on a fill, so they take the bright ink value:
+   #dc2626 on the dark ground is 3.9:1. */
+[data-theme="dark"] .delete-class-btn,
+[data-theme="dark"] a.delete-link,
+[data-theme="dark"] .danger-link {
+    color: #ff9a9a;
+}

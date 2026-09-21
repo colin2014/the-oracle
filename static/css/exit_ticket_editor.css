@@ -1,11 +1,15 @@
-/* Exit ticket editor (teacher). Question cards use the same accent/tint as the printed tickets. */
+/* Exit ticket editor (teacher). Question cards use the same accent/tint as the printed tickets, and
+   derive their dark-mode colours from that one accent the same way the player does (see exit_ticket.css). */
 .ete-page { max-width: 980px; }
 .ete-bar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; padding: .7rem 1rem; margin: 0 0 1rem;
   background: var(--bg-white, #fff); border: 1px solid var(--border, #e5e7eb); border-radius: 10px; box-shadow: 0 2px 10px rgba(0, 0, 0, .06); }
 .ete-bar .ete-status { flex: 1; min-width: 10rem; font-size: .88rem; color: var(--text-light, #6b7280); }
 .ete-bar .ete-status.err { color: #b91c1c; font-weight: 700; }
 .ete-bar .ete-status.ok { color: #0b7a6e; font-weight: 700; }
+[data-theme="dark"] .ete-bar .ete-status.err { color: #FF9A9A; }
+[data-theme="dark"] .ete-bar .ete-status.ok { color: #5FD9C6; }
 .ete-version { font-size: .75rem; font-weight: 700; background: #ECEEFA; color: #4453C4; padding: .2rem .6rem; border-radius: 999px; }
+[data-theme="dark"] .ete-version { background: #262A44; color: #AFB9FF; }
 .ete-card { background: var(--bg-white, #fff); border: 1px solid var(--border, #e5e7eb); border-radius: 10px; padding: 1.1rem 1.2rem; margin-bottom: 1.2rem; }
 .ete-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: .9rem 1.1rem; }
 .ete-grid label, .ete-field label { display: block; font-size: .78rem; font-weight: 700; margin-bottom: .25rem; color: var(--text-light, #6b7280); }
@@ -15,28 +19,42 @@
 .ete-check input { width: auto; }
 .ete-span { grid-column: 1 / -1; }
 
-.ete-q { --accent: #4453C4; --tint: #ECEEFA; position: relative; background: var(--tint); border-radius: 6px; padding: .9rem 1rem 1rem 1.5rem; margin-bottom: 1rem; }
-.ete-q::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 9px; background: var(--accent); border-radius: 6px 0 0 6px; }
+.ete-q { --accent: #4453C4; --tint: #ECEEFA; --ac: var(--accent); --on-ac: #fff; --panel: var(--tint);
+  --lbl: #555; --field: #fff;
+  position: relative; background: var(--panel); border-radius: 6px; padding: .9rem 1rem 1rem 1.5rem; margin-bottom: 1rem; }
+[data-theme="dark"] .ete-q {
+  --ac: color-mix(in srgb, var(--accent) 55%, #fff);
+  --on-ac: #13141b;
+  --panel: color-mix(in srgb, var(--accent) 15%, #1B1D27);
+  --lbl: #B3B3C2; --field: #171821;
+}
+.ete-q::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 9px; background: var(--ac); border-radius: 6px 0 0 6px; }
 .ete-q-head { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; margin-bottom: .7rem; }
-.ete-pill { background: var(--accent); color: #fff; font-weight: 700; font-size: .72rem; letter-spacing: .07em; text-transform: uppercase; padding: .32rem .8rem; border-radius: 4px; }
-.ete-num { font-weight: 700; color: var(--accent); }
+.ete-pill { background: var(--ac); color: var(--on-ac); font-weight: 700; font-size: .72rem; letter-spacing: .07em; text-transform: uppercase; padding: .32rem .8rem; border-radius: 4px; }
+.ete-num { font-weight: 700; color: var(--ac); }
 .ete-spacer { flex: 1; }
-.ete-marks { display: flex; align-items: center; gap: .4rem; font-size: .8rem; font-weight: 700; color: #555; }
+.ete-marks { display: flex; align-items: center; gap: .4rem; font-size: .8rem; font-weight: 700; color: var(--lbl); }
 .ete-marks input { width: 5rem !important; }
-.ete-icon { width: 34px; height: 34px; border-radius: 6px; border: 1.5px solid var(--accent); background: #fff; color: var(--accent); cursor: pointer; font-size: .9rem; }
+.ete-icon { width: 34px; height: 34px; border-radius: 6px; border: 1.5px solid var(--ac); background: var(--field); color: var(--ac); cursor: pointer; font-size: .9rem; }
 .ete-icon:disabled { opacity: .3; cursor: default; }
 .ete-icon.danger { color: #b91c1c; border-color: #b91c1c; }
-.ete-q label.ete-lbl { display: block; font-size: .74rem; font-weight: 700; color: #555; margin: .7rem 0 .25rem; }
+[data-theme="dark"] .ete-icon.danger { color: #FF9A9A; border-color: #FF9A9A; }
+.ete-q input[type=text], .ete-q textarea, .ete-q select, .ete-q input[type=number] { background: var(--field); }
+.ete-q label.ete-lbl { display: block; font-size: .74rem; font-weight: 700; color: var(--lbl); margin: .7rem 0 .25rem; }
 .ete-row { display: flex; align-items: center; gap: .5rem; margin-bottom: .4rem; }
 .ete-row input[type=text] { flex: 1; min-width: 0; }
-.ete-row input[type=radio] { width: 1.1rem; height: 1.1rem; accent-color: var(--accent); flex: none; }
+.ete-row input[type=radio] { width: 1.1rem; height: 1.1rem; accent-color: var(--ac); flex: none; }
 .ete-row .ete-tf { flex: none; width: 6.5rem !important; }
-.ete-add { border: 1.5px dashed var(--accent); background: rgba(255, 255, 255, .6); color: var(--accent); font-weight: 700; padding: .35rem .8rem; border-radius: 6px; cursor: pointer; margin-top: .2rem; }
+.ete-add { border: 1.5px dashed var(--ac); background: color-mix(in srgb, var(--field) 60%, transparent); color: var(--ac); font-weight: 700; padding: .35rem .8rem; border-radius: 6px; cursor: pointer; margin-top: .2rem; }
 .ete-blanks { margin: .1rem 0 .7rem 1rem; }
-.ete-blanks .ete-row span { font-size: .78rem; font-weight: 700; color: #555; flex: none; width: 4.6rem; }
+.ete-blanks .ete-row span { font-size: .78rem; font-weight: 700; color: var(--lbl); flex: none; width: 4.6rem; }
 .ete-hint { font-size: .78rem; color: #666; margin: .2rem 0 .5rem; }
+[data-theme="dark"] .ete-hint { color: var(--text-light, #9a9aa8); }
 .ete-addbar { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.2rem 0 2rem; align-items: center; }
 .ete-addbar strong { margin-right: .3rem; }
-.ete-addbtn { border: 0; color: #fff; font-weight: 700; font-size: .8rem; padding: .5rem .9rem; border-radius: 6px; cursor: pointer; }
+.ete-addbtn { border: 0; background: var(--accent, #4453C4); color: #fff; font-weight: 700; font-size: .8rem; padding: .5rem .9rem; border-radius: 6px; cursor: pointer; }
+[data-theme="dark"] .ete-addbtn { background: color-mix(in srgb, var(--accent, #4453C4) 55%, #fff); color: #13141b; }
 .ete-empty { text-align: center; color: var(--text-light, #6b7280); padding: 2rem 1rem; border: 2px dashed var(--border, #d1d5db); border-radius: 10px; margin-bottom: 1rem; }
 .ete-page button:focus-visible, .ete-page input:focus-visible, .ete-page select:focus-visible, .ete-page textarea:focus-visible { outline: 3px solid #1a1a1a; outline-offset: 2px; }
+[data-theme="dark"] .ete-page button:focus-visible, [data-theme="dark"] .ete-page input:focus-visible,
+[data-theme="dark"] .ete-page select:focus-visible, [data-theme="dark"] .ete-page textarea:focus-visible { outline-color: #fff; }

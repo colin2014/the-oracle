@@ -3,14 +3,36 @@
 {% if current_user.is_authenticated %}
 {% from '_avatar_macro.html' import avatar_svg with context %}
 <style>
+    /* The rail is included on pages that load style.css and on a few that do not (unit plan,
+       exemplars, test present). Those pages have no design tokens at all, so every var() here
+       would fall back to its light literal and the rail would stay white in dark mode. Declaring
+       the rail's own tokens — themselves falling back to the global ones — keeps it correct
+       either way. */
+    .osb-sidebar, .osb-menu, .osb-tabbar {
+        --osb-surface: var(--bg-white, #ffffff);
+        --osb-line: var(--border, #e5e7eb);
+        --osb-ink: var(--text-dark, #1a1a1a);
+        --osb-muted: var(--text-light, #6b7280);
+        --osb-accent: var(--primary, #8366e8);
+        --osb-hover: var(--bg-light, #f3f4f6);
+    }
+    [data-theme="dark"] .osb-sidebar, [data-theme="dark"] .osb-menu, [data-theme="dark"] .osb-tabbar {
+        --osb-surface: var(--bg-white, #17181f);
+        --osb-line: var(--border, #262833);
+        --osb-ink: var(--text-dark, #ececf1);
+        --osb-muted: var(--text-light, #9a9aa8);
+        --osb-accent: var(--primary, #9d84ff);
+        --osb-hover: var(--bg-light, #1d1f28);
+    }
+
     body { margin-left: 80px !important; }
     html.osb-pinned body { margin-left: 240px !important; }
 
     .osb-sidebar {
         position: fixed; left: 0; top: 0; bottom: 0; height: 100vh; z-index: 1200;
         width: 80px; box-sizing: border-box;
-        background: var(--bg-white, #ffffff);
-        border-right: 1px solid var(--border, #e5e7eb);
+        background: var(--osb-surface);
+        border-right: 1px solid var(--osb-line);
         padding: 1.25rem 0.6rem;
         display: flex; flex-direction: column;
         overflow-y: auto; overflow-x: hidden;
@@ -33,16 +55,16 @@
         display: flex; align-items: center; justify-content: center;
         width: 40px; height: 40px; margin: 0 auto 0.5rem;
         background: none; border: none; border-radius: 6px; cursor: pointer;
-        color: var(--text-light, #6b7280); transition: background 0.2s ease, color 0.2s ease, margin 0.2s ease; flex-shrink: 0;
+        color: var(--osb-muted); transition: background 0.2s ease, color 0.2s ease, margin 0.2s ease; flex-shrink: 0;
     }
     .osb-sidebar:hover .osb-pin, .osb-sidebar.osb-open .osb-pin { margin: 0 0 0.5rem; }
-    .osb-pin:hover { background: rgba(157, 132, 255, 0.12); color: var(--primary, #8366e8); }
-    .osb-pin[aria-pressed="true"] { background: rgba(157, 132, 255, 0.2); color: var(--primary, #8366e8); }
+    .osb-pin:hover { background: rgba(157, 132, 255, 0.12); color: var(--osb-accent); }
+    .osb-pin[aria-pressed="true"] { background: rgba(157, 132, 255, 0.2); color: var(--osb-accent); }
     .osb-pin svg { width: 20px; height: 20px; stroke: currentColor; }
 
     .osb-brand {
         display: flex; align-items: center; justify-content: center; gap: 0.6rem;
-        color: var(--primary, #8366e8); text-decoration: none;
+        color: var(--osb-accent); text-decoration: none;
         font-weight: 700; font-size: 1.05rem; margin-bottom: 1.5rem; padding: 0.4rem;
         white-space: nowrap;
     }
@@ -54,7 +76,7 @@
     .osb-section { display: flex; flex-direction: column; margin-bottom: 1.25rem; }
     .osb-section h3 {
         font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.5px;
-        color: var(--text-light, #6b7280); font-weight: 700;
+        color: var(--osb-muted); font-weight: 700;
         margin: 0 0 0.5rem 0; padding: 0 0.8rem; display: none;
     }
     .osb-sidebar:hover .osb-section h3, .osb-sidebar.osb-open .osb-section h3 { display: block; }
@@ -62,26 +84,26 @@
     .osb-item {
         display: flex; align-items: center; justify-content: center; gap: 1rem;
         padding: 0.7rem 0.8rem; border-radius: 6px; margin-bottom: 0.15rem;
-        color: var(--text-dark, #1a1a1a); text-decoration: none; font-size: 0.9rem;
+        color: var(--osb-ink); text-decoration: none; font-size: 0.9rem;
         transition: background 0.2s ease, color 0.2s ease; white-space: nowrap;
     }
     .osb-sidebar:hover .osb-item, .osb-sidebar.osb-open .osb-item { justify-content: flex-start; }
     .osb-item svg { width: 22px; height: 22px; flex-shrink: 0; stroke: currentColor; }
     .osb-item span { display: none; white-space: nowrap; }
     .osb-sidebar:hover .osb-item span, .osb-sidebar.osb-open .osb-item span { display: inline; }
-    .osb-item:hover { background: rgba(157, 132, 255, 0.12); color: var(--primary, #8366e8); }
-    .osb-item.active { background: rgba(157, 132, 255, 0.2); color: var(--primary, #8366e8); font-weight: 600; }
+    .osb-item:hover { background: rgba(157, 132, 255, 0.12); color: var(--osb-accent); }
+    .osb-item.active { background: rgba(157, 132, 255, 0.2); color: var(--osb-accent); font-weight: 600; }
 
     /* Footer: user card with the menu opening ABOVE the username, inside the sidebar */
     .osb-footer {
-        border-top: 1px solid var(--border, #e5e7eb);
+        border-top: 1px solid var(--osb-line);
         padding-top: 0.75rem; margin-top: auto; position: relative;
     }
     .osb-user-btn {
         display: flex; align-items: center; justify-content: center; gap: 0.75rem;
         width: 100%; padding: 0.5rem 0.6rem; background: none; border: none;
         border-radius: 6px; cursor: pointer; font-family: inherit;
-        color: var(--text-dark, #1a1a1a); transition: background 0.2s ease;
+        color: var(--osb-ink); transition: background 0.2s ease;
     }
     .osb-sidebar:hover .osb-user-btn, .osb-sidebar.osb-open .osb-user-btn { justify-content: flex-start; }
     .osb-user-btn:hover { background: rgba(157, 132, 255, 0.12); }
@@ -95,11 +117,11 @@
     .osb-user-info { display: none; flex-direction: column; min-width: 0; flex: 1; text-align: left; }
     .osb-sidebar:hover .osb-user-info, .osb-sidebar.osb-open .osb-user-info { display: flex; }
     .osb-user-name {
-        font-weight: 600; font-size: 0.85rem; color: var(--text-dark, #1a1a1a);
+        font-weight: 600; font-size: 0.85rem; color: var(--osb-ink);
         overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .osb-user-role {
-        font-size: 0.7rem; color: var(--text-light, #6b7280);
+        font-size: 0.7rem; color: var(--osb-muted);
         text-transform: uppercase; letter-spacing: 0.5px;
     }
     .osb-chevron { width: 14px; height: 14px; flex-shrink: 0; transition: transform 0.2s; display: none; stroke: currentColor; }
@@ -108,8 +130,8 @@
 
     .osb-dropdown {
         position: absolute; left: 0; right: 0; bottom: calc(100% + 0.5rem);
-        background: var(--bg-white, #ffffff);
-        border: 1px solid var(--border, #e5e7eb);
+        background: var(--osb-surface);
+        border: 1px solid var(--osb-line);
         border-radius: 8px; box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
         display: none; flex-direction: column; overflow: hidden; z-index: 10;
     }
@@ -117,13 +139,13 @@
     .osb-menu-item {
         display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem;
         background: none; border: none; width: 100%; text-align: left;
-        color: var(--text-dark, #1a1a1a); text-decoration: none; cursor: pointer;
+        color: var(--osb-ink); text-decoration: none; cursor: pointer;
         font-size: 0.9rem; font-weight: 500; font-family: inherit;
         transition: background 0.2s ease; white-space: nowrap;
     }
-    .osb-menu-item:hover { background: var(--bg-light, #f3f4f6); }
+    .osb-menu-item:hover { background: var(--osb-hover); }
     .osb-menu-item svg { width: 18px; height: 18px; flex-shrink: 0; stroke: currentColor; }
-    .osb-divider { height: 1px; background: var(--border, #e5e7eb); margin: 0; }
+    .osb-divider { height: 1px; background: var(--osb-line); margin: 0; }
     .osb-logout { color: #dc3545; }
     .osb-logout svg { stroke: #dc3545; }
     .osb-logout:hover { background: rgba(220, 53, 69, 0.1); }
@@ -132,8 +154,8 @@
     .osb-tabbar {
         display: none;
         position: fixed; left: 0; right: 0; bottom: 0; z-index: 1200;
-        background: var(--bg-white, #ffffff);
-        border-top: 1px solid var(--border, #e5e7eb);
+        background: var(--osb-surface);
+        border-top: 1px solid var(--osb-line);
         padding: 0.3rem 0.25rem calc(0.3rem + env(safe-area-inset-bottom, 0px));
         justify-content: space-around;
         box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
@@ -143,12 +165,12 @@
         flex: 1; max-width: 110px;
         display: flex; flex-direction: column; align-items: center; gap: 2px;
         padding: 0.35rem 0.2rem; border-radius: 10px;
-        color: var(--text-light, #6b7280); text-decoration: none;
+        color: var(--osb-muted); text-decoration: none;
         font-size: 0.65rem; font-weight: 600;
         -webkit-tap-highlight-color: transparent;
     }
     .osb-tab svg { width: 24px; height: 24px; stroke: currentColor; }
-    .osb-tab.active { color: var(--primary, #8366e8); }
+    .osb-tab.active { color: var(--osb-accent); }
     .osb-tab:active { background: rgba(157, 132, 255, 0.12); }
 
     @media (max-width: 768px) {

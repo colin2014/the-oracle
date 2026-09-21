@@ -104,6 +104,18 @@
             box-shadow: 0 4px 12px rgba(157, 132, 255, 0.2);
         }
 
+        /* Stop carries the danger fill, and when disabled it has to read as disabled rather than
+           as grey-on-salmon, which measured 1:1 against its own background. */
+        .scraper-controls button.scraper-stop {
+            background: var(--danger-fill, var(--danger));
+        }
+        .scraper-controls button:disabled {
+            background: var(--border);
+            color: var(--text-light);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
         .scraper-controls button:hover {
             background: linear-gradient(135deg, #d299ff 0%, #b565ff 100%);
             transform: translateY(-2px);
@@ -396,7 +408,7 @@
             <div class="scraper-controls">
                 <input type="url" id="bookUrl" placeholder="https://example.com/books/..." />
                 <button onclick="startBookScrape()">🔍 Scrape Book</button>
-                <button onclick="stopScraping()" id="stopBtn" style="background: var(--danger);" disabled>⏹ Stop</button>
+                <button onclick="stopScraping()" id="stopBtn" class="scraper-stop" disabled>⏹ Stop</button>
             </div>
             <div id="scraperStatus" class="scraper-status"></div>
         </div>

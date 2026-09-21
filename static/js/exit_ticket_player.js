@@ -354,7 +354,7 @@
 
     const refl = h('section', { class: 'et-q et-reflect', 'aria-labelledby': 'etreflect' });
     refl.append(h('div', { class: 'et-q-head' }, h('span', { class: 'et-pill', text: 'Reflection' })),
-      h('p', { class: 'et-q-text', id: 'etreflect', style: 'color:#4453C4', text: 'How confident do you feel about this objective?' }));
+      h('p', { class: 'et-q-text', id: 'etreflect', text: 'How confident do you feel about this objective?' }));
     const scale = h('div', { class: 'et-scale', role: 'group', 'aria-label': 'Confidence from 1 to 5' });
     const sbtns = [1, 2, 3, 4, 5].map((n) => {
       const b = h('button', { type: 'button', 'aria-pressed': String(confidence === n), text: String(n) });
@@ -470,7 +470,7 @@
     if (p.confidence || p.reflection_note) {
       const refl = h('section', { class: 'et-q et-reflect' });
       refl.append(h('div', { class: 'et-q-head' }, h('span', { class: 'et-pill', text: 'Reflection' })),
-        h('p', { class: 'et-q-text', style: 'color:#4453C4', text: 'Confidence: ' + (p.confidence ? p.confidence + ' out of 5' : 'not given') }));
+        h('p', { class: 'et-q-text', text: 'Confidence: ' + (p.confidence ? p.confidence + ' out of 5' : 'not given') }));
       if (p.reflection_note) refl.append(h('div', { class: 'et-written', text: p.reflection_note }));
       body.append(refl);
     }

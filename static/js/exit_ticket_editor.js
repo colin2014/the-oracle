@@ -293,7 +293,7 @@
     const addbar = h('div', { class: 'ete-addbar' }, h('strong', { text: 'Add a question:' }),
       ORDER.map((k) => {
         const b = h('button', { type: 'button', class: 'ete-addbtn', text: TYPES[k].label });
-        b.style.background = TYPES[k].accent;
+        b.style.setProperty('--accent', TYPES[k].accent);   // the stylesheet derives the fill, so dark mode can brighten it
         b.addEventListener('click', () => { t.questions.push(newQuestion(k)); markDirty(); draw(); const last = list.lastElementChild; if (last) last.scrollIntoView({ block: 'center', behavior: 'smooth' }); });
         return b;
       }));
