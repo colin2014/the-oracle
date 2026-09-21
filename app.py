@@ -95,6 +95,7 @@ from test_routes import test_bp
 from assessment_routes import assessment_bp
 from slides_routes import slides_bp
 from games_routes import games_bp
+from exit_ticket_routes import exit_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp, url_prefix="/admin")
@@ -107,6 +108,7 @@ app.register_blueprint(test_bp)
 app.register_blueprint(assessment_bp)
 app.register_blueprint(slides_bp)
 app.register_blueprint(games_bp)
+app.register_blueprint(exit_bp)  # CSRF stays ON here: every write sends the X-CSRFToken header
 csrf.exempt(quiz_bp)  # JSON APIs, same as the other fetch()-driven endpoints
 csrf.exempt(flashcards_bp)
 csrf.exempt(concept_chains_bp)

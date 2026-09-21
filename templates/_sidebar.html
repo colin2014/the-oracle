@@ -198,6 +198,10 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
             <span>Assessment</span>
         </a>
+        <a href="{{ url_for('exit_tickets.admin_list') }}" class="osb-item {% if request.endpoint and request.endpoint.startswith('exit_tickets.') %}active{% endif %}" title="Exit Tickets">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="17" rx="2"></rect><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"></path><path d="M8.5 12.5l2 2 4.5-4.5"></path></svg>
+            <span>Exit Tickets</span>
+        </a>
         <a href="{{ url_for('admin.analytics_hub') }}" class="osb-item {% if request.endpoint and 'analytics' in request.endpoint %}active{% endif %}" title="Analytics">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"></path><path d="M18 17V9"></path><path d="M13 17V5"></path><path d="M8 17v-3"></path></svg>
             <span>Analytics</span>
@@ -232,6 +236,10 @@
         <a href="{{ url_for('student_reading') }}" class="osb-item {% if request.endpoint == 'student_reading' %}active{% endif %}" title="Reading">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
             <span>Reading</span>
+        </a>
+        <a href="{{ url_for('exit_tickets.student_home') }}" class="osb-item {% if request.endpoint and request.endpoint.startswith('exit_tickets.') %}active{% endif %}" title="Exit Tickets">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="17" rx="2"></rect><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"></path><path d="M8.5 12.5l2 2 4.5-4.5"></path></svg>
+            <span>Exit Tickets</span>
         </a>
         <a href="{{ url_for('concept_chains.games_hub') }}" class="osb-item {% if request.endpoint == 'concept_chains.games_hub' or request.endpoint == 'student_flashcards' or (request.endpoint and (request.endpoint.startswith('flashcards.') or request.endpoint.startswith('concept_chains.'))) %}active{% endif %}" title="Games">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v10H6z"></path><path d="M4 14h16v4H4z"></path><circle cx="9" cy="9" r="1.5"></circle><circle cx="15" cy="9" r="1.5"></circle></svg>

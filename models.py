@@ -1332,3 +1332,165 @@ class BugHuntSnippet(db.Model):
 
     def line_count(self):
         return len((self.code or "").splitlines())
+
+
+# ---------------------------------------------------------------------------
+# Exit tickets: short web quizzes, one per syllabus subtopic, assigned to classes
+# ---------------------------------------------------------------------------
+
+class ExitTicket(db.Model):
+    """A short end-of-lesson quiz for one syllabus subtopic (e.g. A1.1.1 The CPU).
+
+    Questions live in ExitTicketQuestion; the teacher edits them in the browser.
+    """
+
+    __tablename__ = "exit_tickets"
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(30), nullable=True, index=True)        # "A1.1.1"
+    topic_id = db.Column(db.String(60), nullable=True, index=True)    # slug in unit_plan_topics, e.g. "a1-1-1"
+    title = db.Column(db.String(200), nullable=False)                 # "The CPU"
+    objective = db.Column(db.Text, nullable=True)                     # the syllabus statement
+    status = db.Column(db.String(20), nullable=False, default="draft")  # draft | published
+    allow_retries = db.Column(db.Boolean, nullable=False, default=True)
+    show_answers = db.Column(db.String(10), nullable=False, default="after")  # after | never
+    # Bumped whenever a save actually changes the questions. Each attempt records the version it was taken on.
+    version = db.Column(db.Integer, nullable=False, default=1, server_default="1")
+    created_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    created_by = db.relationship("User", foreign_keys=[created_by_id])
+    # Every question row ever saved, including ones the teacher has since removed (kept for history).
+    all_questions = db.relationship(
+        "ExitTicketQuestion", backref="ticket", cascade="all, delete-orphan",
+        order_by="ExitTicketQuestion.position",
+    )
+    assignments = db.relationship("ExitTicketAssignment", backref="ticket", cascade="all, delete-orphan")
+
+    @property
+    def questions(self):
+        """The questions students get now (removed ones are hidden, not deleted)."""
+        return [q for q in self.all_questions if q.active]
+
+    @property
+    def total_marks(self):
+        return sum((q.marks or 0) for q in self.questions)
+
+
+class ExitTicketQuestion(db.Model):
+    """One question. `qtype` decides the shape of `data` (JSON):
+
+    mcq        {"options": [str, ...], "correct": int}
+    truefalse  {"statements": [{"text": str, "answer": bool}, ...]}
+    fill       {"sentences": [{"text": "The ____ does X.", "blanks": [[accepted, ...], ...]}, ...]}
+    match      {"pairs": [{"left": str, "right": str}, ...], "distractors": [str, ...]}
+    order      {"items": [str, ...]}                       # stored in the CORRECT order
+    short      {"model_answer": str, "marking_points": [str, ...]}
+    explain    {"model_answer": str, "marking_points": [str, ...]}
+    """
+
+    __tablename__ = "exit_ticket_questions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey("exit_tickets.id"), nullable=False, index=True)
+    position = db.Column(db.Integer, nullable=False, default=0)
+    qtype = db.Column(db.String(20), nullable=False)
+    prompt = db.Column(db.Text, nullable=False, default="")
+    marks = db.Column(db.Float, nullable=False, default=1.0)
+    data = db.Column(db.Text, nullable=False, default="{}")
+    # False = the teacher removed it. The row stays so attempts that included it keep their history.
+    active = db.Column(db.Boolean, nullable=False, default=True, server_default="1")
+
+    def data_dict(self):
+        import json
+        try:
+            d = json.loads(self.data or "{}")
+            return d if isinstance(d, dict) else {}
+        except ValueError:
+            return {}
+
+
+class ExitTicketAssignment(db.Model):
+    """A ticket assigned to a whole class (student_id null) or to one student."""
+
+    __tablename__ = "exit_ticket_assignments"
+
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey("exit_tickets.id"), nullable=False, index=True)
+    class_id = db.Column(db.Integer, db.ForeignKey("classes.id"), nullable=True, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
+    assigned_by_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    due_date = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    class_ = db.relationship("Class", foreign_keys=[class_id])
+    student = db.relationship("User", foreign_keys=[student_id])
+    assigned_by = db.relationship("User", foreign_keys=[assigned_by_id])
+
+
+class ExitTicketSubmission(db.Model):
+    """One attempt at a ticket by one student. Retries create new rows (attempt_number)."""
+
+    __tablename__ = "exit_ticket_submissions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey("exit_tickets.id"), nullable=False, index=True)
+    assignment_id = db.Column(db.Integer, db.ForeignKey("exit_ticket_assignments.id"), nullable=True, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    attempt_number = db.Column(db.Integer, nullable=False, default=1)
+    started_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    submitted_at = db.Column(db.DateTime, nullable=True)
+    status = db.Column(db.String(20), nullable=False, default="in_progress")  # in_progress | submitted
+    total_awarded = db.Column(db.Float, nullable=True)
+    total_possible = db.Column(db.Float, nullable=True)
+    confidence = db.Column(db.Integer, nullable=True)         # the Reflection box: 1-5
+    reflection_note = db.Column(db.Text, nullable=True)       # "One thing I still want to check"
+    # The ticket's questions (with answers) exactly as they were when this attempt started. Marking, the
+    # review screen and the teacher's view all use THIS, so later edits to the ticket never change it.
+    snapshot = db.Column(db.Text, nullable=True)
+    ticket_version = db.Column(db.Integer, nullable=True)
+    # Per-attempt shuffles for match/order questions, with opaque tokens, so the browser
+    # never receives the correct pairing or order: {"<question id>": {...}}
+    layout = db.Column(db.Text, nullable=False, default="{}")
+
+    ticket = db.relationship("ExitTicket", foreign_keys=[ticket_id])
+    student = db.relationship("User", foreign_keys=[student_id])
+    answers = db.relationship("ExitTicketAnswer", backref="submission", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        db.UniqueConstraint("ticket_id", "student_id", "attempt_number", name="uq_exit_ticket_attempt"),
+    )
+
+    def layout_dict(self):
+        import json
+        try:
+            d = json.loads(self.layout or "{}")
+            return d if isinstance(d, dict) else {}
+        except ValueError:
+            return {}
+
+
+class ExitTicketAnswer(db.Model):
+    """A student's answer to one question, with how it was marked."""
+
+    __tablename__ = "exit_ticket_answers"
+
+    id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey("exit_ticket_submissions.id"), nullable=False, index=True)
+    question_id = db.Column(db.Integer, db.ForeignKey("exit_ticket_questions.id"), nullable=False, index=True)
+    response = db.Column(db.Text, nullable=True)              # JSON of what the student answered
+    marks_awarded = db.Column(db.Float, nullable=True)
+    marks_possible = db.Column(db.Float, nullable=False, default=1.0)
+    feedback = db.Column(db.Text, nullable=True)
+    detail = db.Column(db.Text, nullable=True)                # JSON: per-item right/wrong for objective types
+    status = db.Column(db.String(20), nullable=False, default="pending")  # marked | pending | needs_review
+    marked_by = db.Column(db.String(10), nullable=True)       # auto | ai | teacher
+    confidence = db.Column(db.Float, nullable=True)           # AI's own confidence, 0-1
+    ai_tries = db.Column(db.Integer, nullable=False, default=0)
+
+    question = db.relationship("ExitTicketQuestion", foreign_keys=[question_id])
+
+    __table_args__ = (
+        db.UniqueConstraint("submission_id", "question_id", name="uq_exit_ticket_answer_question"),
+    )

@@ -1,0 +1,98 @@
+{% extends "admin_base.html" %}
+{% block title %}{{ ticket.title }} results{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/exit_ticket.css') }}">
+<div style="max-width: 1000px;">
+  <p style="margin:0 0 .6rem"><a href="{{ url_for('exit_tickets.admin_list') }}">&larr; All exit tickets</a></p>
+  <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1.2rem;">
+    <h1 style="margin:0; flex:1;">{% if ticket.code %}{{ ticket.code }} &nbsp;{% endif %}{{ ticket.title }}</h1>
+    <span class="et-chipbadge {{ 'done' if ticket.status == 'published' else 'draft' }}">{{ ticket.status|capitalize }}</span>
+    <a class="btn btn-secondary" href="{{ url_for('exit_tickets.admin_edit', ticket_id=ticket.id) }}">Edit</a>
+    <a class="btn btn-secondary" href="{{ url_for('exit_tickets.admin_preview', ticket_id=ticket.id) }}">Preview</a>
+  </div>
+
+  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:.8rem; margin-bottom:1.5rem;">
+    <div class="et-card"><div><div class="et-card-meta">Students assigned</div><p class="et-card-title" style="font-size:1.5rem">{{ summary.assigned }}</p></div></div>
+    <div class="et-card"><div><div class="et-card-meta">Completed</div><p class="et-card-title" style="font-size:1.5rem">{{ summary.done }}</p></div></div>
+    <div class="et-card"><div><div class="et-card-meta">Average best score</div><p class="et-card-title" style="font-size:1.5rem">{% if summary.average is not none %}{{ summary.average }} / {{ total }}{% else %}-{% endif %}</p></div></div>
+  </div>
+
+  <h2 style="margin:0 0 .6rem;">Assign</h2>
+  {% if ticket.status != 'published' %}
+  <div class="et-card" style="margin-bottom:1.5rem;"><p style="margin:0">Publish this exit ticket (in the editor) before assigning it, so students can see it.</p></div>
+  {% else %}
+  <div class="et-card" style="margin-bottom:1rem; align-items:flex-end;">
+    <div class="et-card-main">
+      <label for="asgClass" style="font-weight:700; display:block; margin-bottom:.3rem;">To a class</label>
+      <select id="asgClass"><option value="">Choose a class</option>{% for c in classes %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}</select>
+    </div>
+    <div><label for="asgClassDue" style="font-weight:700; display:block; margin-bottom:.3rem;">Due (optional)</label><input id="asgClassDue" type="date"></div>
+    <button type="button" class="btn btn-primary" id="asgClassBtn">Assign to class</button>
+  </div>
+  <div class="et-card" style="margin-bottom:1rem; align-items:flex-end;">
+    <div class="et-card-main">
+      <label for="asgStudent" style="font-weight:700; display:block; margin-bottom:.3rem;">To one student</label>
+      <select id="asgStudent"><option value="">Choose a student</option>{% for s in all_students %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select>
+    </div>
+    <div><label for="asgStudentDue" style="font-weight:700; display:block; margin-bottom:.3rem;">Due (optional)</label><input id="asgStudentDue" type="date"></div>
+    <button type="button" class="btn btn-primary" id="asgStudentBtn">Assign to student</button>
+  </div>
+  <p id="asgMsg" role="status" style="min-height:1.2rem; margin:0 0 1rem; color:#b91c1c"></p>
+  {% endif %}
+
+  {% if assignments %}
+  <h3 style="margin:.5rem 0 .4rem;">Currently assigned to</h3>
+  <div class="et-list" style="margin-bottom:1.5rem;">
+    {% for a in assignments %}
+    <div class="et-card" style="padding:.6rem 1rem;">
+      <div class="et-card-main"><strong>{% if a.class_ %}{{ a.class_.name }}{% elif a.student %}{{ a.student.name }}{% endif %}</strong>
+        <span class="et-card-meta">{% if a.due_date %} &middot; due {{ a.due_date.strftime('%d %b %Y') }}{% else %} &middot; no due date{% endif %}</span></div>
+      <button type="button" class="btn btn-secondary btn-sm" data-unassign="{{ a.id }}">Remove</button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <h2 style="margin:0 0 .6rem;">Results</h2>
+  {% if rows %}
+  <table class="et-tbl">
+    <thead><tr><th>Student</th><th>Best score</th><th>Attempts</th><th>Confidence</th><th></th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td>{{ r.student.name }}</td>
+        <td>{% if r.best %}<strong>{{ (r.best.total_awarded or 0)|round(1) }}</strong> / {{ (r.best.total_possible or total)|round(1) }}{% else %}<span style="color:var(--text-light)">Not done</span>{% endif %}</td>
+        <td>{% for s in r.attempts %}<a href="{{ url_for('exit_tickets.admin_attempt', submission_id=s.id) }}" title="{{ (s.total_awarded or 0)|round(1) }} / {{ (s.total_possible or total)|round(1) }}">#{{ s.attempt_number }}</a>{% if s.ticket_version and s.ticket_version != ticket.version %} <span class="et-flag" title="Taken on an earlier version of this ticket">v{{ s.ticket_version }}</span>{% endif %}{% if not loop.last %}, {% endif %}{% else %}-{% endfor %}</td>
+        <td>{% if r.last and r.last.confidence %}{{ r.last.confidence }} / 5{% else %}-{% endif %}</td>
+        <td>{% if r.pending %}<span class="et-flag">Marking / needs you</span>{% elif r.review %}<span class="et-flag">AI unsure: check</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="et-card"><p style="margin:0">Nobody has been assigned this exit ticket yet.</p></div>
+  {% endif %}
+</div>
+<script>
+(function () {
+  var token = document.querySelector('meta[name="csrf-token"]').content;
+  var msg = document.getElementById('asgMsg');
+  function call(url, method, body) {
+    return fetch(url, { method: method, credentials: 'same-origin', headers: { 'X-CSRFToken': token, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || 'Failed'); return d; }); });
+  }
+  function assign(body) {
+    call('/exit-tickets/api/tickets/{{ ticket.id }}/assign', 'POST', body).then(function () { location.reload(); }).catch(function (e) { msg.textContent = e.message; });
+  }
+  var cb = document.getElementById('asgClassBtn'), sb = document.getElementById('asgStudentBtn');
+  if (cb) cb.addEventListener('click', function () { assign({ class_id: Number(document.getElementById('asgClass').value) || null, due_date: document.getElementById('asgClassDue').value || null }); });
+  if (sb) sb.addEventListener('click', function () { assign({ student_id: Number(document.getElementById('asgStudent').value) || null, due_date: document.getElementById('asgStudentDue').value || null }); });
+  document.querySelectorAll('[data-unassign]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (!confirm('Remove this assignment? Students keep any attempts they have already made.')) return;
+      call('/exit-tickets/api/assignments/' + b.dataset.unassign, 'DELETE').then(function () { location.reload(); }).catch(function (e) { alert(e.message); });
+    });
+  });
+})();
+</script>
+{% endblock %}

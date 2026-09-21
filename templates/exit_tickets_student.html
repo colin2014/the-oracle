@@ -1,0 +1,44 @@
+{% extends "student_base.html" %}
+{% block title %}Exit Tickets{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/exit_ticket.css') }}">
+<div style="max-width: 860px; margin: 0 auto;">
+  <h1 style="margin: 0 0 .3rem;">Exit Tickets</h1>
+  <p style="margin: 0 0 1.5rem; color: var(--text-light);">Short quizzes your teacher has set. Your written answers are marked automatically.</p>
+
+  {% if rows %}
+  <div class="et-list">
+    {% for r in rows %}
+    {% set t = r.ticket %}
+    <div class="et-card">
+      <div class="et-card-main">
+        <p class="et-card-title">{% if t.code %}{{ t.code }} &nbsp;{% endif %}{{ t.title }}</p>
+        <div class="et-card-meta">
+          {% if r.best %}Best score {{ (r.best.total_awarded or 0)|round(1) }} / {{ (r.best.total_possible or t.total_marks)|round(1) }}{% else %}Not attempted yet{% endif %}
+          {% if r.attempts %} &middot; {{ r.attempts }} attempt{{ '' if r.attempts == 1 else 's' }}{% endif %}
+          {% if r.due %} &middot; Due {{ r.due.strftime('%d %b %Y') }}{% endif %}
+        </div>
+      </div>
+      {% if r.best %}<span class="et-chipbadge done">Done</span>
+      {% elif r.due and r.due < now %}<span class="et-chipbadge late">Overdue</span>
+      {% else %}<span class="et-chipbadge">To do</span>{% endif %}
+
+      {% if r.open %}
+      <a class="btn btn-primary" href="{{ url_for('exit_tickets.attempt_page', submission_id=r.open.id) }}">Continue</a>
+      {% else %}
+        {% if r.last %}<a class="btn btn-secondary" href="{{ url_for('exit_tickets.attempt_page', submission_id=r.last.id) }}">Review</a>{% endif %}
+        {% if r.can_start %}
+        <form method="post" action="{{ url_for('exit_tickets.start_attempt', ticket_id=t.id) }}" style="margin:0">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-primary">{{ 'Try again' if r.attempts else 'Start' }}</button>
+        </form>
+        {% endif %}
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="student-card"><p style="margin:0">No exit tickets have been set for you yet.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

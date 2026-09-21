@@ -1,0 +1,71 @@
+{% extends "admin_base.html" %}
+{% block title %}Exit Tickets{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/exit_ticket.css') }}">
+<div style="max-width: 1000px;">
+  <h1 style="margin: 0 0 .3rem;">Exit Tickets</h1>
+  <p style="margin: 0 0 1.5rem; color: var(--text-light);">Build web versions of your exit tickets, assign them to a class, and let AI mark the written answers.</p>
+
+  <form method="post" action="{{ url_for('exit_tickets.admin_new') }}" class="et-card" style="margin-bottom: 1.5rem;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="et-card-main">
+      <label for="newTitle" style="font-weight:700; display:block; margin-bottom:.3rem;">New exit ticket</label>
+      <div style="display:flex; gap:.6rem; flex-wrap:wrap;">
+        <input id="newTitle" name="title" type="text" required maxlength="200" placeholder="Title, e.g. The CPU" style="flex:1; min-width:12rem;">
+        <select name="topic_id" aria-label="Syllabus topic" style="flex:1; min-width:14rem;">
+          <option value="">No syllabus topic</option>
+          {% for t in topics %}<option value="{{ t.topic_id }}">{{ t.code }} &nbsp;{{ t.statement[:70] }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">Create</button>
+  </form>
+
+  {% if tickets %}
+  <table class="et-tbl">
+    <thead><tr><th>Topic</th><th>Title</th><th>Status</th><th>Questions</th><th>Marks</th><th>Submitted</th><th></th></tr></thead>
+    <tbody>
+    {% for t in tickets %}
+      <tr>
+        <td>{{ t.code or '' }}</td>
+        <td><a href="{{ url_for('exit_tickets.admin_edit', ticket_id=t.id) }}"><strong>{{ t.title }}</strong></a></td>
+        <td><span class="et-chipbadge {{ 'done' if t.status == 'published' else 'draft' }}">{{ t.status|capitalize }}</span></td>
+        <td>{{ t.questions|length }}</td>
+        <td>{{ t.total_marks|round(1) }}</td>
+        <td>{{ counts.get(t.id, 0) }}</td>
+        <td style="white-space:nowrap; text-align:right;">
+          <a href="{{ url_for('exit_tickets.admin_edit', ticket_id=t.id) }}">Edit</a> &middot;
+          <a href="{{ url_for('exit_tickets.admin_results', ticket_id=t.id) }}">Results</a> &middot;
+          <a href="{{ url_for('exit_tickets.admin_preview', ticket_id=t.id) }}">Preview</a> &middot;
+          <a href="#" data-dup="{{ t.id }}">Duplicate</a> &middot;
+          <a href="#" data-del="{{ t.id }}" data-name="{{ t.title }}" style="color:#dc2626">Delete</a>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="et-card"><p style="margin:0">No exit tickets yet. Create your first one above.</p></div>
+  {% endif %}
+</div>
+<script>
+(function () {
+  var token = document.querySelector('meta[name="csrf-token"]').content;
+  function call(url, method) {
+    return fetch(url, { method: method, credentials: 'same-origin', headers: { 'X-CSRFToken': token, 'Content-Type': 'application/json' } })
+      .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || 'Failed'); return d; }); });
+  }
+  document.querySelectorAll('[data-dup]').forEach(function (a) {
+    a.addEventListener('click', function (e) { e.preventDefault();
+      call('/exit-tickets/api/tickets/' + a.dataset.dup + '/duplicate', 'POST').then(function (d) { location.href = d.edit_url; }).catch(function (x) { alert(x.message); });
+    });
+  });
+  document.querySelectorAll('[data-del]').forEach(function (a) {
+    a.addEventListener('click', function (e) { e.preventDefault();
+      if (!confirm('Delete "' + a.dataset.name + '" and every student attempt at it? This cannot be undone.')) return;
+      call('/exit-tickets/api/tickets/' + a.dataset.del, 'DELETE').then(function () { location.reload(); }).catch(function (x) { alert(x.message); });
+    });
+  });
+})();
+</script>
+{% endblock %}

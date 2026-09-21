@@ -1,0 +1,31 @@
+{% extends "admin_base.html" if current_user.is_admin() else "student_base.html" %}
+{% block title %}Exit Ticket{% endblock %}
+{% block content %}
+{% set t = sub.ticket if sub else ticket %}
+{% set config = {
+  'mode': mode,
+  'apiUrl': api_url,
+  'submitUrl': submit_url,
+  'csrf': csrf_token(),
+  'types': types,
+  'logo': url_for('static', filename='images/exit_ticket_logo.png'),
+  'listUrl': (url_for('exit_tickets.student_home') if mode == 'student'
+              else (url_for('exit_tickets.admin_results', ticket_id=t.id) if mode == 'teacher'
+                    else url_for('exit_tickets.admin_edit', ticket_id=t.id))),
+  'startUrl': url_for('exit_tickets.start_attempt', ticket_id=t.id),
+  'remarkUrl': url_for('exit_tickets.api_remark', submission_id=sub.id) if sub else '',
+  'overrideBase': '/exit-tickets/api/answers/',
+  'previewPayload': preview_payload if preview_payload is defined else none,
+} %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/exit_ticket.css') }}">
+<div class="et-page">
+  {% if mode == 'preview' %}
+  <p style="margin:0 0 .8rem"><a href="{{ url_for('exit_tickets.admin_edit', ticket_id=t.id) }}">&larr; Back to the editor</a></p>
+  {% elif mode == 'teacher' %}
+  <p style="margin:0 0 .8rem"><a href="{{ url_for('exit_tickets.admin_results', ticket_id=t.id) }}">&larr; Back to results</a></p>
+  {% endif %}
+  <div id="etApp" aria-live="off"><noscript>This page needs JavaScript.</noscript></div>
+</div>
+<script type="application/json" id="etConfig">{{ config|tojson }}</script>
+<script src="{{ url_for('static', filename='js/exit_ticket_player.js') }}"></script>
+{% endblock %}

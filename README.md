@@ -106,6 +106,21 @@ in `.env` to get the Flask debug server and non-Secure cookies.
 New accounts need the `SIGNUP_CODE` from `.env` and only ever store a username;
 no name or email is collected. Login and signup are rate limited per client IP.
 
+## Exit Tickets
+
+Web versions of the printed exit tickets, one per syllabus subtopic: multiple choice, true/false,
+fill the gap, match the pairs (click or drag), put in order, short answer and explain. Teachers edit
+questions in the browser (**Exit Tickets** in the sidebar), publish a ticket, and assign it to a class
+or a student. Multiple choice, true/false, fill, match and order are marked instantly; written answers
+are marked by Claude Haiku in the background, with feedback the teacher can override.
+
+- Needs the tables from migration `s4t5u6v7w8x9`: `flask --app app db upgrade`
+- Import the printed tickets (PowerPoint) as **drafts**: `python exit_ticket_import.py "<Subtopics folder>"`
+  is a dry run that reports what it read; add `--apply` to create them. Running it again skips tickets
+  that already exist. It needs `python-pptx` (in `requirements.txt`).
+- Correct answers are never sent to the student's browser before they submit, and match/order questions
+  are shuffled per attempt.
+
 ## Moving Between Machines
 
 The code is in git; your **content and database are not**. To move them:

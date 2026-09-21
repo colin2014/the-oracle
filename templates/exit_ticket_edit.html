@@ -1,0 +1,22 @@
+{% extends "admin_base.html" %}
+{% block title %}Edit exit ticket{% endblock %}
+{% block content %}
+{% set config = {
+  'ticket': ticket_json,
+  'topics': topics,
+  'types': types,
+  'saveUrl': url_for('exit_tickets.api_save_ticket', ticket_id=ticket.id),
+  'previewUrl': url_for('exit_tickets.admin_preview', ticket_id=ticket.id),
+  'resultsUrl': url_for('exit_tickets.admin_results', ticket_id=ticket.id),
+  'listUrl': url_for('exit_tickets.admin_list'),
+  'csrf': csrf_token(),
+} %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/exit_ticket.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/exit_ticket_editor.css') }}">
+<div class="ete-page">
+  <p style="margin:0 0 .6rem"><a href="{{ url_for('exit_tickets.admin_list') }}">&larr; All exit tickets</a></p>
+  <div id="eteApp"><noscript>This page needs JavaScript.</noscript></div>
+</div>
+<script type="application/json" id="eteConfig">{{ config|tojson }}</script>
+<script src="{{ url_for('static', filename='js/exit_ticket_editor.js') }}"></script>
+{% endblock %}
