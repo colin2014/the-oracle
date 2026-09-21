@@ -101,17 +101,8 @@ def matches_accepted(answer, accepted):
 
 
 def default_marks(qtype, data):
-    if qtype == "mcq":
-        return 1.0
-    if qtype == "truefalse":
-        return float(len(data["statements"]))
-    if qtype == "fill":
-        return float(sum(len(s["blanks"]) for s in data["sentences"]))
-    if qtype == "match":
-        return float(len(data["pairs"]))
-    if qtype == "order":
-        return float(len(data["items"]))
-    return 2.0 if qtype == "short" else 4.0
+    """Each question is one mark (all parts must be right); the closing explain question is worth four."""
+    return 4.0 if qtype == "explain" else 1.0
 
 
 # --------------------------------------------------------------------------- validating what the editor sends
@@ -280,7 +271,8 @@ def reveal_view(question):
 # --------------------------------------------------------------------------- marking the objective types
 
 def _award(total_marks, right, count):
-    return round(total_marks * right / count, 2) if count else 0.0
+    """All or nothing: the question's marks are earned only when every part is right."""
+    return float(total_marks) if count and right == count else 0.0
 
 
 def mark_objective(qtype, data, marks, response, layout):
@@ -329,9 +321,7 @@ def mark_objective(qtype, data, marks, response, layout):
 def objective_feedback(qtype, marks_awarded, marks_possible):
     if marks_awarded >= marks_possible:
         return "Correct."
-    if marks_awarded <= 0:
-        return "Not quite."
-    return "Partly right."
+    return "Not quite."
 
 
 # --------------------------------------------------------------------------- marking the written types with AI

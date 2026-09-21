@@ -31,14 +31,11 @@ class HelperTests(unittest.TestCase):
         _, confident = I._assign(["a", "b"], ["zzz", "qqq"], ["one", "two"])
         self.assertFalse(confident)
 
-    def test_marks_follow_the_printed_scheme_and_total_ten(self):
-        qs = [{"qtype": "mcq", "data": {}}, {"qtype": "truefalse", "data": {"statements": [1, 2, 3]}},
-              {"qtype": "fill", "data": {"sentences": [{"blanks": [["a"]]}, {"blanks": [["b"]]}]}},
-              {"qtype": "match", "data": {}}, {"qtype": "explain", "data": {}}]
+    def test_marks_are_one_each_with_explain_four_and_total_ten(self):
+        qs = [{"qtype": t, "data": {}} for t in ("mcq", "truefalse", "fill", "match", "order", "short", "explain")]
         self.assertTrue(I.allocate_marks(qs))
-        self.assertEqual([q["marks"] for q in qs], [1.0, 3.0, 2.0, 2.0, 2.0])
-        qs.append({"qtype": "short", "data": {}})
-        self.assertFalse(I.allocate_marks(qs))          # an extra question means the total is no longer 10
+        self.assertEqual([q["marks"] for q in qs], [1.0] * 6 + [4.0])
+        self.assertFalse(I.allocate_marks(qs[:5]))      # a shorter ticket is not 10 marks
 
 
 class BuildQuestionTests(unittest.TestCase):

@@ -259,13 +259,10 @@ def build_question(raw, ans, warn):
 
 
 def allocate_marks(questions):
-    """The scheme the printed tickets follow: MCQ 1, T/F 1 per statement, fill 1 per blank, match/order/short 2,
-    explain takes the rest of the 10. Returns True if the total came to exactly 10."""
+    """The scheme: every question is 1 mark (all parts must be right) and the explain question is 4.
+    Returns True if the total came to exactly 10."""
     for q in questions:
-        d = q["data"]
-        q["marks"] = {"mcq": 1.0, "truefalse": float(len(d.get("statements", []))),
-                      "fill": float(sum(len(s["blanks"]) for s in d.get("sentences", []))),
-                      "match": 2.0, "order": 2.0, "short": 2.0, "explain": 2.0}[q["qtype"]]
+        q["marks"] = 4.0 if q["qtype"] == "explain" else 1.0
     return abs(sum(q["marks"] for q in questions) - 10) < 1e-9
 
 

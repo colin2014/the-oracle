@@ -23,13 +23,12 @@
 
   {% if tickets %}
   <table class="et-tbl">
-    <thead><tr><th>Topic</th><th>Title</th><th>Status</th><th>Questions</th><th>Marks</th><th>Submitted</th><th></th></tr></thead>
+    <thead><tr><th>Topic</th><th>Title</th><th>Questions</th><th>Marks</th><th>Submitted</th><th></th></tr></thead>
     <tbody>
     {% for t in tickets %}
       <tr>
         <td>{{ t.code or '' }}</td>
         <td><a href="{{ url_for('exit_tickets.admin_edit', ticket_id=t.id) }}"><strong>{{ t.title }}</strong></a></td>
-        <td><span class="et-chipbadge {{ 'done' if t.status == 'published' else 'draft' }}">{{ t.status|capitalize }}</span></td>
         <td>{{ t.questions|length }}</td>
         <td>{{ t.total_marks|round(1) }}</td>
         <td>{{ counts.get(t.id, 0) }}</td>
@@ -37,7 +36,6 @@
           <a href="{{ url_for('exit_tickets.admin_edit', ticket_id=t.id) }}">Edit</a> &middot;
           <a href="{{ url_for('exit_tickets.admin_results', ticket_id=t.id) }}">Results</a> &middot;
           <a href="{{ url_for('exit_tickets.admin_preview', ticket_id=t.id) }}">Preview</a> &middot;
-          <a href="#" data-dup="{{ t.id }}">Duplicate</a> &middot;
           <a href="#" data-del="{{ t.id }}" data-name="{{ t.title }}" style="color:#dc2626">Delete</a>
         </td>
       </tr>
@@ -55,11 +53,6 @@
     return fetch(url, { method: method, credentials: 'same-origin', headers: { 'X-CSRFToken': token, 'Content-Type': 'application/json' } })
       .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || 'Failed'); return d; }); });
   }
-  document.querySelectorAll('[data-dup]').forEach(function (a) {
-    a.addEventListener('click', function (e) { e.preventDefault();
-      call('/exit-tickets/api/tickets/' + a.dataset.dup + '/duplicate', 'POST').then(function (d) { location.href = d.edit_url; }).catch(function (x) { alert(x.message); });
-    });
-  });
   document.querySelectorAll('[data-del]').forEach(function (a) {
     a.addEventListener('click', function (e) { e.preventDefault();
       if (!confirm('Delete "' + a.dataset.name + '" and every student attempt at it? This cannot be undone.')) return;

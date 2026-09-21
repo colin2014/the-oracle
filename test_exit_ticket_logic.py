@@ -22,11 +22,11 @@ class ValidationTests(unittest.TestCase):
     def test_each_type_accepts_a_valid_question_and_defaults_marks(self):
         cases = {
             "mcq": (q("mcq", options=["a", "b", "c"], correct=1), 1.0),
-            "truefalse": (q("truefalse", statements=[{"text": "x", "answer": True}, {"text": "y", "answer": False}]), 2.0),
-            "fill": (q("fill", sentences=[{"text": "The ____ and ____.", "blanks": [["a"], ["b", "bee"]]}]), 2.0),
-            "match": (q("match", pairs=[{"left": "A", "right": "1"}, {"left": "B", "right": "2"}]), 2.0),
-            "order": (q("order", items=["one", "two", "three"]), 3.0),
-            "short": (q("short", model_answer="m"), 2.0),
+            "truefalse": (q("truefalse", statements=[{"text": "x", "answer": True}, {"text": "y", "answer": False}]), 1.0),
+            "fill": (q("fill", sentences=[{"text": "The ____ and ____.", "blanks": [["a"], ["b", "bee"]]}]), 1.0),
+            "match": (q("match", pairs=[{"left": "A", "right": "1"}, {"left": "B", "right": "2"}]), 1.0),
+            "order": (q("order", items=["one", "two", "three"]), 1.0),
+            "short": (q("short", model_answer="m"), 1.0),
             "explain": (q("explain", model_answer="m", marking_points=["p1"]), 4.0),
         }
         for name, (raw, marks) in cases.items():
@@ -120,11 +120,11 @@ class ObjectiveMarkingTests(unittest.TestCase):
         for wrong in (0, 1, None, "2", True, [2]):
             self.assertEqual(L.mark_objective("mcq", d, 1, wrong, None)["marks"], 0.0, wrong)
 
-    def test_truefalse_partial_credit(self):
+    def test_truefalse_needs_every_statement(self):
         d = {"statements": [{"text": "a", "answer": False}, {"text": "b", "answer": True}, {"text": "c", "answer": True}]}
         self.assertEqual(L.mark_objective("truefalse", d, 3, [False, True, True], None)["marks"], 3.0)
         r = L.mark_objective("truefalse", d, 3, [False, False, None], None)
-        self.assertEqual((r["marks"], r["detail"]), (1.0, [True, False, False]))
+        self.assertEqual((r["marks"], r["detail"]), (0.0, [True, False, False]))
         self.assertEqual(L.mark_objective("truefalse", d, 3, "junk", None)["marks"], 0.0)
 
     def test_fill_is_forgiving_about_case_punctuation_and_one_typo(self):
@@ -133,7 +133,7 @@ class ObjectiveMarkingTests(unittest.TestCase):
         good = ["  control unit! ", "COUNTER"]
         self.assertEqual(L.mark_objective("fill", d, 2, good, None)["marks"], 2.0)
         self.assertEqual(L.mark_objective("fill", d, 2, ["cu", "Countr"], None)["marks"], 2.0)       # alt answer + 1-letter typo
-        self.assertEqual(L.mark_objective("fill", d, 2, ["ALU", "Conter"], None)["marks"], 1.0)       # 'Conter' is one letter off
+        self.assertEqual(L.mark_objective("fill", d, 2, ["ALU", "Conter"], None)["marks"], 0.0)       # 'Conter' is one letter off
         self.assertEqual(L.mark_objective("fill", d, 2, ["ALU", "Pointer"], None)["marks"], 0.0)      # genuinely wrong
         self.assertEqual(L.mark_objective("fill", d, 2, ["", 5], None)["marks"], 0.0)
 
@@ -147,30 +147,30 @@ class ObjectiveMarkingTests(unittest.TestCase):
         lay = L.build_layout("match", data)
         return data, lay, lay["tokens"]          # tokens[i] is the token of original right i
 
-    def test_match_scores_per_pair(self):
+    def test_match_needs_every_pair(self):
         data, lay, tok = self._match_setup()
         perfect = {str(i): tok[i] for i in range(4)}
         self.assertEqual(L.mark_objective("match", data, 4, perfect, lay)["marks"], 4.0)
         two_wrong = dict(perfect, **{"0": tok[1], "1": tok[0]})
         r = L.mark_objective("match", data, 4, two_wrong, lay)
-        self.assertEqual((r["marks"], r["detail"]), (2.0, [False, False, True, True]))
-        self.assertEqual(L.mark_objective("match", data, 4, dict(perfect, **{"3": tok[4]}), lay)["marks"], 3.0)   # distractor
+        self.assertEqual((r["marks"], r["detail"]), (0.0, [False, False, True, True]))
+        self.assertEqual(L.mark_objective("match", data, 4, dict(perfect, **{"3": tok[4]}), lay)["marks"], 0.0)   # distractor
         self.assertEqual(L.mark_objective("match", data, 4, {"0": "not-a-token"}, lay)["marks"], 0.0)
         self.assertEqual(L.mark_objective("match", data, 4, ["junk"], lay)["marks"], 0.0)
 
-    def test_match_marks_scale_to_the_question_total(self):
+    def test_match_needs_every_pair_for_the_mark(self):
         data, lay, tok = self._match_setup()
         half = {str(i): tok[i] for i in range(2)}
-        self.assertEqual(L.mark_objective("match", data, 2, half, lay)["marks"], 1.0)     # 2 of 4 pairs on a 2-mark question
+        self.assertEqual(L.mark_objective("match", data, 2, half, lay)["marks"], 0.0)     # half the pairs earns nothing: all parts must be right
 
-    def test_order_scores_per_position(self):
+    def test_order_needs_every_position(self):
         data = {"items": ["Fetch", "Decode", "Execute"]}
         lay = L.build_layout("order", data)
         tok = lay["tokens"]
         self.assertEqual(L.mark_objective("order", data, 3, [tok[0], tok[1], tok[2]], lay)["marks"], 3.0)
         r = L.mark_objective("order", data, 3, [tok[1], tok[0], tok[2]], lay)
-        self.assertEqual((r["marks"], r["detail"]), (1.0, [False, False, True]))
-        self.assertEqual(L.mark_objective("order", data, 3, [tok[0]], lay)["marks"], 1.0)   # incomplete
+        self.assertEqual((r["marks"], r["detail"]), (0.0, [False, False, True]))
+        self.assertEqual(L.mark_objective("order", data, 3, [tok[0]], lay)["marks"], 0.0)   # incomplete
         self.assertEqual(L.mark_objective("order", data, 3, None, lay)["marks"], 0.0)
 
     def test_malformed_data_scores_zero_instead_of_crashing(self):
